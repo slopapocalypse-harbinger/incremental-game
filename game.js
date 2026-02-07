@@ -21,6 +21,8 @@ const BASE_RATES = {
   starshipColonizeRate: 0.1,
 };
 
+const MAX_OFFLINE_SECONDS = 6 * 60 * 60;
+
 const philosophyLines = [
   "A seed today, a galaxy tomorrow.",
   "Do birds dream of infinite worms?",
@@ -102,6 +104,7 @@ function createDefaultGame() {
     upgrades: {},
     log: [],
     won: false,
+    lastSavedAt: Date.now(),
   };
 }
 
@@ -241,11 +244,18 @@ const upgradesConfig = [
 
 function initGame() {
   const saved = loadGame();
-  game = saved || createDefaultGame();
+  if (saved) {
+    game = saved.game;
+  } else {
+    game = createDefaultGame();
+  }
   restoreUpgrades();
   rebuildUpgradesUI();
   bindEvents();
   refreshUnlocks(true);
+  if (saved && saved.offlineSummary) {
+    addLog(saved.offlineSummary);
+  }
   updateUI();
   if (!game.won) {
     startLoops();
@@ -700,6 +710,7 @@ function saveGame() {
     upgrades: game.upgrades,
     log: game.log,
     won: game.won,
+    lastSavedAt: Date.now(),
   };
   localStorage.setItem("birdGameSave", JSON.stringify(payload));
 }
@@ -711,11 +722,70 @@ function loadGame() {
     const data = JSON.parse(raw);
     const loaded = createDefaultGame();
     Object.assign(loaded, data);
-    return loaded;
+    const offlineSummary = applyOfflineProgress(loaded);
+    return { game: loaded, offlineSummary };
   } catch (error) {
     console.error("Failed to load save", error);
     return null;
   }
+}
+
+function applyOfflineProgress(loaded) {
+  const now = Date.now();
+  if (!loaded.lastSavedAt) {
+    loaded.lastSavedAt = now;
+    return null;
+  }
+  const deltaSeconds = Math.max(
+    0,
+    Math.min((now - loaded.lastSavedAt) / 1000, MAX_OFFLINE_SECONDS)
+  );
+  if (deltaSeconds <= 0) {
+    loaded.lastSavedAt = now;
+    return null;
+  }
+
+  const multiplier = loaded.ngMultiplier;
+  const seedsGain = loaded.birds * loaded.seedRatePerBird * multiplier * deltaSeconds;
+  loaded.seeds += seedsGain;
+
+  const birdsBefore = loaded.birds;
+  if (loaded.nests > 0) {
+    loaded.birdFraction += loaded.nests * loaded.birdGrowthRatePerNest * multiplier * deltaSeconds;
+    const newBirds = Math.floor(loaded.birdFraction);
+    if (newBirds > 0) {
+      loaded.birdFraction -= newBirds;
+      loaded.birds += newBirds;
+    }
+  }
+
+  const worldBefore = loaded.worldControl;
+  if (loaded.worldUnlocked && loaded.worldControl < 100) {
+    const rate = loaded.birds * loaded.worldControlRateFactor * multiplier * deltaSeconds * 100;
+    loaded.worldControl = Math.min(100, loaded.worldControl + rate);
+  }
+
+  const starBefore = loaded.starSystems;
+  if (loaded.spaceUnlocked && loaded.starSystems < STAR_TARGET) {
+    loaded.starSystems = Math.min(
+      STAR_TARGET,
+      loaded.starSystems + loaded.starships * loaded.starshipColonizeRate * multiplier * deltaSeconds
+    );
+  }
+
+  loaded.lastSavedAt = now;
+
+  const birdsGain = loaded.birds - birdsBefore;
+  const worldGain = loaded.worldControl - worldBefore;
+  const starGain = loaded.starSystems - starBefore;
+
+  return `Offline gains (${formatNumber(deltaSeconds, 1)}s): +${formatNumber(
+    seedsGain,
+    2
+  )} seeds, +${formatNumber(birdsGain)} birds, +${formatNumber(
+    worldGain,
+    2
+  )}% world control, +${formatNumber(starGain, 2)} systems.`;
 }
 
 function restoreUpgrades() {
