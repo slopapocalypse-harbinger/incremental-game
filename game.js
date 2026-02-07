@@ -46,10 +46,14 @@ let saveTimer = null;
 
 const elements = {
   seeds: document.getElementById("seeds"),
+  seedRate: document.getElementById("seed-rate"),
   birds: document.getElementById("birds"),
+  birdRate: document.getElementById("bird-rate"),
   nests: document.getElementById("nests"),
   worldControl: document.getElementById("world-control"),
+  worldRate: document.getElementById("world-rate"),
   starSystems: document.getElementById("star-systems"),
+  starRate: document.getElementById("star-rate"),
   nestsRow: document.getElementById("nests-row"),
   worldRow: document.getElementById("world-row"),
   spaceRow: document.getElementById("space-row"),
@@ -67,6 +71,10 @@ const elements = {
   upgrades: document.getElementById("upgrades"),
   log: document.getElementById("log"),
   ending: document.getElementById("ending"),
+  nextTargetTitle: document.getElementById("next-target-title"),
+  nextTargetDetail: document.getElementById("next-target-detail"),
+  nextTargetProgressBar: document.getElementById("next-target-progress-bar"),
+  nextTargetProgressText: document.getElementById("next-target-progress-text"),
 };
 
 function createDefaultGame() {
@@ -81,6 +89,7 @@ function createDefaultGame() {
     birdCost: COSTS.birdBase,
     nestCost: COSTS.nestBase,
     starshipCost: COSTS.starshipBase,
+    peckPower: 1,
     seedRatePerBird: BASE_RATES.seedRatePerBird,
     birdGrowthRatePerNest: BASE_RATES.birdGrowthRatePerNest,
     worldControlRateFactor: BASE_RATES.worldControlRateFactor,
@@ -97,6 +106,57 @@ function createDefaultGame() {
 }
 
 const upgradesConfig = [
+  {
+    id: "quick-pecking",
+    name: "Quick Pecking",
+    desc: "Double manual pecking. Your beak is a blur.",
+    cost: 15,
+    unlockCondition: () => game.birds >= 1,
+    applyEffect: () => {
+      game.peckPower *= 2;
+    },
+    reapplyEffectForLoad: () => {
+      game.peckPower *= 2;
+    },
+  },
+  {
+    id: "gathering-calls",
+    name: "Gathering Calls",
+    desc: "Seed rate per bird increases by 50%. Squawk for success.",
+    cost: 75,
+    unlockCondition: () => game.birds >= 5,
+    applyEffect: () => {
+      game.seedRatePerBird *= 1.5;
+    },
+    reapplyEffectForLoad: () => {
+      game.seedRatePerBird *= 1.5;
+    },
+  },
+  {
+    id: "cozy-nests",
+    name: "Cozy Nests",
+    desc: "Nest growth speeds up by 50%. Warm fluff, warm future.",
+    cost: 300,
+    unlockCondition: () => game.nests >= 1,
+    applyEffect: () => {
+      game.birdGrowthRatePerNest *= 1.5;
+    },
+    reapplyEffectForLoad: () => {
+      game.birdGrowthRatePerNest *= 1.5;
+    },
+  },
+  {
+    id: "flock-discounts",
+    name: "Flock Discounts",
+    desc: "Birds and nests cost 20% less right now. Bulk seed ordering.",
+    cost: 600,
+    unlockCondition: () => game.birds >= 15,
+    applyEffect: () => {
+      game.birdCost = Math.max(1, Math.ceil(game.birdCost * 0.8));
+      game.nestCost = Math.max(1, Math.ceil(game.nestCost * 0.8));
+    },
+    reapplyEffectForLoad: () => {},
+  },
   {
     id: "sharper-beaks",
     name: "Sharper Beaks",
@@ -139,6 +199,19 @@ const upgradesConfig = [
     },
   },
   {
+    id: "aerial-bureaucracy",
+    name: "Aerial Bureaucracy",
+    desc: "World control rises 50% faster. More forms, more feathers.",
+    cost: 150_000,
+    unlockCondition: () => game.worldUnlocked && game.worldControl >= 25,
+    applyEffect: () => {
+      game.worldControlRateFactor *= 1.5;
+    },
+    reapplyEffectForLoad: () => {
+      game.worldControlRateFactor *= 1.5;
+    },
+  },
+  {
     id: "wormhole-tech",
     name: "Wormhole Tech",
     desc: "Wormholes made of worms. Space travel doubles.",
@@ -149,6 +222,19 @@ const upgradesConfig = [
     },
     reapplyEffectForLoad: () => {
       game.starshipColonizeRate *= 2;
+    },
+  },
+  {
+    id: "star-charts",
+    name: "Star Charts",
+    desc: "Colonization rate increases by 50%. The stars are just seeds.",
+    cost: 25_000_000,
+    unlockCondition: () => game.spaceUnlocked && game.starSystems >= 5,
+    applyEffect: () => {
+      game.starshipColonizeRate *= 1.5;
+    },
+    reapplyEffectForLoad: () => {
+      game.starshipColonizeRate *= 1.5;
     },
   },
 ];
@@ -171,7 +257,7 @@ function initGame() {
 function bindEvents() {
   elements.peckButton.addEventListener("click", () => {
     if (game.won) return;
-    const gain = 1 * game.ngMultiplier;
+    const gain = game.peckPower * game.ngMultiplier;
     game.seeds += gain;
     addLog(`Peck! +${formatNumber(gain)} seeds.`, false);
     updateUI();
@@ -322,6 +408,22 @@ function updateUI() {
   elements.starSystems.textContent = `${formatNumber(game.starSystems, 2)} / ${STAR_TARGET}`;
   elements.ngPlus.textContent = game.ngPlusCount;
   elements.ngMultiplier.textContent = formatNumber(game.ngMultiplier);
+  elements.seedRate.textContent = formatNumber(
+    game.birds * game.seedRatePerBird * game.ngMultiplier,
+    2
+  );
+  elements.birdRate.textContent = formatNumber(
+    game.nests * game.birdGrowthRatePerNest * game.ngMultiplier,
+    2
+  );
+  elements.worldRate.textContent = formatNumber(
+    game.worldUnlocked ? game.birds * game.worldControlRateFactor * game.ngMultiplier * 100 : 0,
+    2
+  );
+  elements.starRate.textContent = formatNumber(
+    game.spaceUnlocked ? game.starships * game.starshipColonizeRate * game.ngMultiplier : 0,
+    2
+  );
 
   elements.birdCost.textContent = formatNumber(game.birdCost);
   elements.nestCost.textContent = formatNumber(game.nestCost);
@@ -333,6 +435,64 @@ function updateUI() {
   elements.peckButton.disabled = game.won;
 
   updateUpgradesButtons();
+  updateNextTarget();
+}
+
+function updateNextTarget() {
+  const target = getNextTarget();
+  elements.nextTargetTitle.textContent = target.title;
+  elements.nextTargetDetail.textContent = target.detail;
+  elements.nextTargetProgressText.textContent = target.progressText;
+  elements.nextTargetProgressBar.style.width = `${(target.progress * 100).toFixed(1)}%`;
+}
+
+function getNextTarget() {
+  if (!game.nestsUnlocked) {
+    const progress = Math.min(1, game.birds / BIRDS_FOR_NESTS);
+    return {
+      title: "Unlock Nests",
+      detail: `Reach ${BIRDS_FOR_NESTS} birds to build nests.`,
+      progressText: `${formatNumber(game.birds)} / ${BIRDS_FOR_NESTS} birds`,
+      progress,
+    };
+  }
+
+  if (!game.worldUnlocked) {
+    const progress = Math.min(1, game.birds / BIRDS_FOR_WORLD);
+    return {
+      title: "Start World Control",
+      detail: `Reach ${BIRDS_FOR_WORLD} birds to begin the takeover.`,
+      progressText: `${formatNumber(game.birds)} / ${BIRDS_FOR_WORLD} birds`,
+      progress,
+    };
+  }
+
+  if (!game.spaceUnlocked) {
+    const progress = Math.min(1, game.worldControl / 100);
+    return {
+      title: "Unlock Space",
+      detail: "Drive world control to 100% to reach the stars.",
+      progressText: `${formatNumber(game.worldControl, 2)}% / 100%`,
+      progress,
+    };
+  }
+
+  if (game.starSystems < STAR_TARGET) {
+    const progress = Math.min(1, game.starSystems / STAR_TARGET);
+    return {
+      title: "Colonize the Stars",
+      detail: `Expand to ${STAR_TARGET} star systems.`,
+      progressText: `${formatNumber(game.starSystems, 2)} / ${STAR_TARGET} systems`,
+      progress,
+    };
+  }
+
+  return {
+    title: game.won ? "Victory Achieved" : "Awaiting Victory",
+    detail: "Launch New Game+ or bask in the feathers.",
+    progressText: "100% complete",
+    progress: 1,
+  };
 }
 
 function updateUpgradesAvailability() {
@@ -527,6 +687,7 @@ function saveGame() {
     birdCost: game.birdCost,
     nestCost: game.nestCost,
     starshipCost: game.starshipCost,
+    peckPower: game.peckPower,
     seedRatePerBird: game.seedRatePerBird,
     birdGrowthRatePerNest: game.birdGrowthRatePerNest,
     worldControlRateFactor: game.worldControlRateFactor,
@@ -558,6 +719,11 @@ function loadGame() {
 }
 
 function restoreUpgrades() {
+  game.peckPower = 1;
+  game.seedRatePerBird = BASE_RATES.seedRatePerBird;
+  game.birdGrowthRatePerNest = BASE_RATES.birdGrowthRatePerNest;
+  game.worldControlRateFactor = BASE_RATES.worldControlRateFactor;
+  game.starshipColonizeRate = BASE_RATES.starshipColonizeRate;
   upgradesConfig.forEach((upgrade) => {
     if (!game.upgrades[upgrade.id]) {
       game.upgrades[upgrade.id] = { unlocked: false, purchased: false };
