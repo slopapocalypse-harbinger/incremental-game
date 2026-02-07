@@ -1,21 +1,21 @@
 const TICK_MS = 100;
 const DELTA = TICK_MS / 1000;
 
-const BIRDS_FOR_NESTS = 10;
+const BIRDS_FOR_NESTS = 8;
 const BIRDS_FOR_WORLD = 500;
 const STAR_TARGET = 50;
 
 const COSTS = {
-  birdBase: 10,
-  birdMult: 1.15,
-  nestBase: 100,
-  nestMult: 1.15,
+  birdBase: 8,
+  birdMult: 1.12,
+  nestBase: 80,
+  nestMult: 1.12,
   starshipBase: 1_000_000,
   starshipMult: 1.3,
 };
 
 const BASE_RATES = {
-  seedRatePerBird: 1,
+  seedRatePerBird: 1.2,
   birdGrowthRatePerNest: 0.05,
   featherScienceRatePerNest: 0.2,
   worldControlRateFactor: 1e-6,
@@ -118,7 +118,7 @@ const upgradesConfig = [
     id: "quick-pecking",
     name: "Quick Pecking",
     desc: "Double manual pecking. Your beak is a blur.",
-    cost: 15,
+    cost: 10,
     unlockCondition: () => game.birds >= 1,
     applyEffect: () => {
       game.peckPower *= 2;
@@ -131,7 +131,7 @@ const upgradesConfig = [
     id: "gathering-calls",
     name: "Gathering Calls",
     desc: "Seed rate per bird increases by 50%. Squawk for success.",
-    cost: 75,
+    cost: 50,
     unlockCondition: () => game.birds >= 5,
     applyEffect: () => {
       game.seedRatePerBird *= 1.5;
@@ -295,6 +295,10 @@ function bindEvents() {
   elements.buyBird.addEventListener("click", () => {
     if (game.seeds < game.birdCost || game.won) return;
     game.seeds -= game.birdCost;
+    if (game.birds === 1) {
+      game.seeds += 5;
+      addLog("First recruit bonus: +5 seeds.", false);
+    }
     game.birds += 1;
     game.birdCost = Math.ceil(game.birdCost * COSTS.birdMult);
     addLog("A bird joins the flock.");
