@@ -84,6 +84,29 @@ button:disabled {
   cursor: not-allowed;
 }
 
+.upgrade {
+  padding: 0.35rem 0;
+}
+
+.upgrade + .upgrade {
+  border-top: 1px dashed rgba(43, 43, 43, 0.2);
+  margin-top: 0.35rem;
+}
+
+.upgrade-unlock {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin-bottom: 0.4rem;
+}
+
+.upgrade.locked {
+  opacity: 0.6;
+}
+
+.upgrade.locked button {
+  background: #f3efe6;
+}
+
 .log-panel {
   display: flex;
   flex-direction: column;

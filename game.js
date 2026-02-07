@@ -111,6 +111,7 @@ const upgradesConfig = [
     name: "Quick Pecking",
     desc: "Double manual pecking. Your beak is a blur.",
     cost: 15,
+    unlockText: "Reach 1 bird",
     unlockCondition: () => game.birds >= 1,
     applyEffect: () => {
       game.peckPower *= 2;
@@ -124,6 +125,7 @@ const upgradesConfig = [
     name: "Gathering Calls",
     desc: "Seed rate per bird increases by 50%. Squawk for success.",
     cost: 75,
+    unlockText: "Reach 5 birds",
     unlockCondition: () => game.birds >= 5,
     applyEffect: () => {
       game.seedRatePerBird *= 1.5;
@@ -137,6 +139,7 @@ const upgradesConfig = [
     name: "Cozy Nests",
     desc: "Nest growth speeds up by 50%. Warm fluff, warm future.",
     cost: 300,
+    unlockText: "Build 1 nest",
     unlockCondition: () => game.nests >= 1,
     applyEffect: () => {
       game.birdGrowthRatePerNest *= 1.5;
@@ -150,6 +153,7 @@ const upgradesConfig = [
     name: "Flock Discounts",
     desc: "Birds and nests cost 20% less right now. Bulk seed ordering.",
     cost: 600,
+    unlockText: "Reach 15 birds",
     unlockCondition: () => game.birds >= 15,
     applyEffect: () => {
       game.birdCost = Math.max(1, Math.ceil(game.birdCost * 0.8));
@@ -162,6 +166,7 @@ const upgradesConfig = [
     name: "Sharper Beaks",
     desc: "Twice the seed rate per bird. Natural selection, but spikier.",
     cost: 50,
+    unlockText: "Reach 10 birds",
     unlockCondition: () => game.birds >= 10,
     applyEffect: () => {
       game.seedRatePerBird *= 2;
@@ -175,6 +180,7 @@ const upgradesConfig = [
     name: "Bird Brains",
     desc: "Double seed rate and nest growth. Genius is just organized pecking.",
     cost: 1000,
+    unlockText: "Reach 50 birds",
     unlockCondition: () => game.birds >= 50,
     applyEffect: () => {
       game.seedRatePerBird *= 2;
@@ -190,6 +196,7 @@ const upgradesConfig = [
     name: "Bird Propaganda",
     desc: "World control doubles. The United Nests approve this message.",
     cost: 50_000,
+    unlockText: "Unlock world control and reach 10%",
     unlockCondition: () => game.worldUnlocked && game.worldControl >= 10,
     applyEffect: () => {
       game.worldControlRateFactor *= 2;
@@ -203,6 +210,7 @@ const upgradesConfig = [
     name: "Aerial Bureaucracy",
     desc: "World control rises 50% faster. More forms, more feathers.",
     cost: 150_000,
+    unlockText: "Unlock world control and reach 25%",
     unlockCondition: () => game.worldUnlocked && game.worldControl >= 25,
     applyEffect: () => {
       game.worldControlRateFactor *= 1.5;
@@ -216,6 +224,7 @@ const upgradesConfig = [
     name: "Wormhole Tech",
     desc: "Wormholes made of worms. Space travel doubles.",
     cost: 10_000_000,
+    unlockText: "Unlock space and reach 1 star system",
     unlockCondition: () => game.spaceUnlocked && game.starSystems >= 1,
     applyEffect: () => {
       game.starshipColonizeRate *= 2;
@@ -229,6 +238,7 @@ const upgradesConfig = [
     name: "Star Charts",
     desc: "Colonization rate increases by 50%. The stars are just seeds.",
     cost: 25_000_000,
+    unlockText: "Unlock space and reach 5 star systems",
     unlockCondition: () => game.spaceUnlocked && game.starSystems >= 5,
     applyEffect: () => {
       game.starshipColonizeRate *= 1.5;
@@ -496,34 +506,44 @@ function getNextTarget() {
 }
 
 function updateUpgradesAvailability() {
-  let anyUnlocked = false;
   upgradesConfig.forEach((upgrade) => {
     if (upgrade.unlockCondition()) {
       game.upgrades[upgrade.id].unlocked = true;
-      anyUnlocked = true;
     }
   });
-  elements.upgradesPanel.hidden = !anyUnlocked;
+  elements.upgradesPanel.hidden = false;
 }
 
 function updateUpgradesButtons() {
   upgradesConfig.forEach((upgrade) => {
     const state = game.upgrades[upgrade.id];
     const button = document.getElementById(`upgrade-${upgrade.id}`);
+    const wrapper = document.getElementById(`upgrade-wrapper-${upgrade.id}`);
+    const unlock = document.getElementById(`upgrade-unlock-${upgrade.id}`);
     if (!button) return;
 
+    button.hidden = false;
     if (state.purchased) {
       button.disabled = true;
       button.textContent = `${upgrade.name} (Purchased)`;
+      if (unlock) unlock.hidden = true;
+      if (wrapper) wrapper.classList.remove("locked");
       return;
     }
 
     if (state.unlocked) {
-      button.hidden = false;
       button.disabled = game.seeds < upgrade.cost || game.won;
       button.textContent = `${upgrade.name} (${formatNumber(upgrade.cost)} seeds)`;
+      if (unlock) unlock.hidden = true;
+      if (wrapper) wrapper.classList.remove("locked");
     } else {
-      button.hidden = true;
+      button.disabled = true;
+      button.textContent = `Locked (${upgrade.unlockText})`;
+      if (unlock) {
+        unlock.textContent = `Unlocks when ${upgrade.unlockText}.`;
+        unlock.hidden = false;
+      }
+      if (wrapper) wrapper.classList.add("locked");
     }
   });
 }
@@ -539,16 +559,22 @@ function rebuildUpgradesUI() {
     }
     const wrapper = document.createElement("div");
     wrapper.className = "upgrade";
+    wrapper.id = `upgrade-wrapper-${upgrade.id}`;
     const button = document.createElement("button");
     button.id = `upgrade-${upgrade.id}`;
-    button.hidden = true;
     button.addEventListener("click", () => purchaseUpgrade(upgrade));
+
+    const unlock = document.createElement("div");
+    unlock.className = "upgrade-unlock";
+    unlock.id = `upgrade-unlock-${upgrade.id}`;
+    unlock.textContent = `Unlocks when ${upgrade.unlockText}.`;
 
     const desc = document.createElement("div");
     desc.className = "upgrade-desc";
     desc.textContent = upgrade.desc;
 
     wrapper.appendChild(button);
+    wrapper.appendChild(unlock);
     wrapper.appendChild(desc);
     elements.upgrades.appendChild(wrapper);
   });
