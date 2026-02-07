@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Birds vs. Everything</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="container">
+    <header>
+      <h1>Birds vs. Everything</h1>
+      <p class="subtitle">A minimalist incremental game about the inevitable feathered coup/coop.</p>
+    </header>
+
+    <section class="panels">
+      <div class="panel">
+        <h2>Resources</h2>
+        <div class="resource-line">Seeds: <span id="seeds">0</span></div>
+        <div class="resource-line">Birds: <span id="birds">1</span></div>
+        <div class="resource-line" id="nests-row" hidden>Nests: <span id="nests">0</span></div>
+        <div class="resource-line" id="world-row" hidden>World Control: <span id="world-control">0%</span></div>
+        <div class="resource-line" id="space-row" hidden>Star Systems: <span id="star-systems">0 / 50</span></div>
+        <div class="resource-line">NG+: <span id="ng-plus">0</span> (x<span id="ng-multiplier">1</span>)</div>
+      </div>
+
+      <div class="panel">
+        <h2>Actions</h2>
+        <button id="peck-button">Peck for Seeds</button>
+        <button id="buy-bird">Buy 1 Bird (<span id="bird-cost">10</span> seeds)</button>
+        <button id="buy-nest" hidden>Build 1 Nest (<span id="nest-cost">100</span> seeds)</button>
+        <button id="buy-starship" hidden>Build 1 Starship (<span id="starship-cost">1000000</span> seeds)</button>
+        <button id="new-game-plus" class="win-button" hidden>New Game+</button>
+      </div>
+
+      <div class="panel" id="upgrades-panel" hidden>
+        <h2>Upgrades</h2>
+        <div id="upgrades"></div>
+      </div>
+    </section>
+
+    <section class="panel log-panel">
+      <h2>Bird Log</h2>
+      <div id="log" class="log"></div>
+    </section>
+
+    <section id="ending" class="panel ending" hidden>
+      <h2>The Feathered Finale</h2>
+      <p>Earth is a nest now. The galaxy is a flight path. The birds have asked, politely, for a snack.</p>
+    </section>
+  </main>
+
+  <script src="game.js"></script>
+</body>
+</html>
