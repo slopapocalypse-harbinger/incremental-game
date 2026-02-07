@@ -22,6 +22,7 @@
         <div class="resource-line" id="world-row" hidden>World Control: <span id="world-control">0%</span> <span class="rate">(+<span id="world-rate">0</span>%/s)</span></div>
         <div class="resource-line" id="space-row" hidden>Star Systems: <span id="star-systems">0 / 50</span> <span class="rate">(+<span id="star-rate">0</span>/s)</span></div>
         <div class="resource-line">NG+: <span id="ng-plus">0</span> (x<span id="ng-multiplier">1</span>)</div>
+        <div class="resource-line">Prestige Feathers: <span id="prestige-currency">0</span></div>
       </div>
 
       <div class="panel">
@@ -46,6 +47,13 @@
       <div class="panel" id="upgrades-panel" hidden>
         <h2>Upgrades</h2>
         <div id="upgrades"></div>
+      </div>
+
+      <div class="panel" id="prestige-panel" hidden>
+        <h2>Prestige</h2>
+        <div class="prestige-detail" id="prestige-detail">Reach 10 star systems to earn prestige.</div>
+        <button id="prestige-button" class="prestige-button" hidden>Ascend for +1 Prestige Feather</button>
+        <div id="prestige-upgrades"></div>
       </div>
     </section>
 

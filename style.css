@@ -110,6 +110,12 @@ button:disabled {
   font-weight: bold;
 }
 
+.prestige-button {
+  border-color: #6a4ea8;
+  color: #6a4ea8;
+  font-weight: bold;
+}
+
 .next-target-panel {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(15, 92, 63, 0.15);

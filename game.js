@@ -4,6 +4,7 @@ const DELTA = TICK_MS / 1000;
 const BIRDS_FOR_NESTS = 10;
 const BIRDS_FOR_WORLD = 500;
 const STAR_TARGET = 50;
+const PRESTIGE_THRESHOLDS = [10, 25, 50];
 
 const COSTS = {
   birdBase: 10,
@@ -59,6 +60,11 @@ const elements = {
   spaceRow: document.getElementById("space-row"),
   ngPlus: document.getElementById("ng-plus"),
   ngMultiplier: document.getElementById("ng-multiplier"),
+  prestigeCurrency: document.getElementById("prestige-currency"),
+  prestigeDetail: document.getElementById("prestige-detail"),
+  prestigeButton: document.getElementById("prestige-button"),
+  prestigePanel: document.getElementById("prestige-panel"),
+  prestigeUpgrades: document.getElementById("prestige-upgrades"),
   peckButton: document.getElementById("peck-button"),
   buyBird: document.getElementById("buy-bird"),
   birdCost: document.getElementById("bird-cost"),
@@ -100,6 +106,8 @@ function createDefaultGame() {
     ngPlusCount: 0,
     ngMultiplier: 1,
     upgrades: {},
+    prestigeCurrency: 0,
+    prestigeUpgrades: {},
     log: [],
     won: false,
   };
@@ -239,11 +247,55 @@ const upgradesConfig = [
   },
 ];
 
+const prestigeUpgradesConfig = [
+  {
+    id: "legacy-pecks",
+    name: "Legacy Pecks",
+    desc: "Manual pecking is 50% stronger, forever.",
+    cost: 1,
+    unlockCondition: () => game.prestigeCurrency > 0,
+    applyEffect: () => {
+      game.peckPower *= 1.5;
+    },
+    reapplyEffectForLoad: () => {
+      game.peckPower *= 1.5;
+    },
+  },
+  {
+    id: "stellar-hatchery",
+    name: "Stellar Hatchery",
+    desc: "Nest growth is 35% faster across realities.",
+    cost: 2,
+    unlockCondition: () => game.prestigeCurrency >= 1,
+    applyEffect: () => {
+      game.birdGrowthRatePerNest *= 1.35;
+    },
+    reapplyEffectForLoad: () => {
+      game.birdGrowthRatePerNest *= 1.35;
+    },
+  },
+  {
+    id: "cosmic-foragers",
+    name: "Cosmic Foragers",
+    desc: "Seed rate per bird increases by 35%, permanently.",
+    cost: 3,
+    unlockCondition: () => game.prestigeCurrency >= 2,
+    applyEffect: () => {
+      game.seedRatePerBird *= 1.35;
+    },
+    reapplyEffectForLoad: () => {
+      game.seedRatePerBird *= 1.35;
+    },
+  },
+];
+
 function initGame() {
   const saved = loadGame();
   game = saved || createDefaultGame();
   restoreUpgrades();
+  restorePrestigeUpgrades();
   rebuildUpgradesUI();
+  rebuildPrestigeUpgradesUI();
   bindEvents();
   refreshUnlocks(true);
   updateUI();
@@ -310,6 +362,10 @@ function bindEvents() {
   elements.newGamePlus.addEventListener("click", () => {
     startNewGamePlus();
   });
+
+  elements.prestigeButton.addEventListener("click", () => {
+    ascendPrestige();
+  });
 }
 
 function startLoops() {
@@ -352,6 +408,7 @@ function gameTick() {
 
   refreshUnlocks();
   handleMilestones();
+  checkPrestige();
   checkWin();
   updateUI();
 }
@@ -408,6 +465,7 @@ function updateUI() {
   elements.starSystems.textContent = `${formatNumber(game.starSystems, 2)} / ${STAR_TARGET}`;
   elements.ngPlus.textContent = game.ngPlusCount;
   elements.ngMultiplier.textContent = formatNumber(game.ngMultiplier);
+  elements.prestigeCurrency.textContent = formatNumber(game.prestigeCurrency);
   elements.seedRate.textContent = formatNumber(
     game.birds * game.seedRatePerBird * game.ngMultiplier,
     2
@@ -435,6 +493,7 @@ function updateUI() {
   elements.peckButton.disabled = game.won;
 
   updateUpgradesButtons();
+  updatePrestigeUI();
   updateNextTarget();
 }
 
@@ -528,6 +587,32 @@ function updateUpgradesButtons() {
   });
 }
 
+function updatePrestigeUI() {
+  const gain = getPrestigeGain();
+  const nextThreshold = PRESTIGE_THRESHOLDS.find((threshold) => threshold > game.starSystems);
+  const unlocked = game.prestigeCurrency > 0 || gain > 0 || game.starSystems >= PRESTIGE_THRESHOLDS[0];
+  elements.prestigePanel.hidden = !unlocked;
+
+  if (nextThreshold) {
+    elements.prestigeDetail.textContent = `Reach ${nextThreshold} star systems to earn prestige.`;
+  } else if (gain > 0) {
+    elements.prestigeDetail.textContent = `Ascend now to claim ${gain} prestige.`;
+  } else {
+    elements.prestigeDetail.textContent = "Prestige currency awaits another cycle.";
+  }
+
+  if (gain > 0 && !game.won) {
+    elements.prestigeButton.hidden = false;
+    elements.prestigeButton.disabled = false;
+    elements.prestigeButton.textContent = `Ascend for +${gain} Prestige Feather${gain === 1 ? "" : "s"}`;
+  } else {
+    elements.prestigeButton.hidden = true;
+  }
+
+  updatePrestigeUpgradesAvailability();
+  updatePrestigeUpgradesButtons();
+}
+
 function rebuildUpgradesUI() {
   elements.upgrades.innerHTML = "";
   upgradesConfig.forEach((upgrade) => {
@@ -554,6 +639,32 @@ function rebuildUpgradesUI() {
   });
 }
 
+function rebuildPrestigeUpgradesUI() {
+  elements.prestigeUpgrades.innerHTML = "";
+  prestigeUpgradesConfig.forEach((upgrade) => {
+    if (!game.prestigeUpgrades[upgrade.id]) {
+      game.prestigeUpgrades[upgrade.id] = {
+        unlocked: false,
+        purchased: false,
+      };
+    }
+    const wrapper = document.createElement("div");
+    wrapper.className = "upgrade";
+    const button = document.createElement("button");
+    button.id = `prestige-upgrade-${upgrade.id}`;
+    button.hidden = true;
+    button.addEventListener("click", () => purchasePrestigeUpgrade(upgrade));
+
+    const desc = document.createElement("div");
+    desc.className = "upgrade-desc";
+    desc.textContent = upgrade.desc;
+
+    wrapper.appendChild(button);
+    wrapper.appendChild(desc);
+    elements.prestigeUpgrades.appendChild(wrapper);
+  });
+}
+
 function purchaseUpgrade(upgrade) {
   const state = game.upgrades[upgrade.id];
   if (!state.unlocked || state.purchased || game.seeds < upgrade.cost || game.won) return;
@@ -563,6 +674,48 @@ function purchaseUpgrade(upgrade) {
   addLog(`Upgrade purchased: ${upgrade.name}.`);
   updateUI();
   saveGame();
+}
+
+function purchasePrestigeUpgrade(upgrade) {
+  const state = game.prestigeUpgrades[upgrade.id];
+  if (!state.unlocked || state.purchased || game.prestigeCurrency < upgrade.cost) return;
+  game.prestigeCurrency -= upgrade.cost;
+  state.purchased = true;
+  upgrade.applyEffect();
+  addLog(`Prestige upgrade claimed: ${upgrade.name}.`);
+  updateUI();
+  saveGame();
+}
+
+function updatePrestigeUpgradesAvailability() {
+  prestigeUpgradesConfig.forEach((upgrade) => {
+    if (upgrade.unlockCondition()) {
+      game.prestigeUpgrades[upgrade.id].unlocked = true;
+    }
+  });
+}
+
+function updatePrestigeUpgradesButtons() {
+  prestigeUpgradesConfig.forEach((upgrade) => {
+    const state = game.prestigeUpgrades[upgrade.id];
+    const button = document.getElementById(`prestige-upgrade-${upgrade.id}`);
+    if (!button) return;
+
+    if (state.purchased) {
+      button.disabled = true;
+      button.textContent = `${upgrade.name} (Purchased)`;
+      button.hidden = false;
+      return;
+    }
+
+    if (state.unlocked) {
+      button.hidden = false;
+      button.disabled = game.prestigeCurrency < upgrade.cost;
+      button.textContent = `${upgrade.name} (${formatNumber(upgrade.cost)} prestige)`;
+    } else {
+      button.hidden = true;
+    }
+  });
 }
 
 function handleMilestones() {
@@ -596,6 +749,35 @@ function handleMilestones() {
   }
 }
 
+function getPrestigeGain() {
+  return PRESTIGE_THRESHOLDS.filter((threshold) => game.starSystems >= threshold).length;
+}
+
+function checkPrestige() {
+  updatePrestigeUpgradesAvailability();
+}
+
+function ascendPrestige() {
+  const gain = getPrestigeGain();
+  if (gain <= 0 || game.won) return;
+  stopLoops();
+  const prestigeUpgrades = game.prestigeUpgrades;
+  const prestigeCurrency = game.prestigeCurrency + gain;
+  game = createDefaultGame();
+  game.prestigeCurrency = prestigeCurrency;
+  game.prestigeUpgrades = prestigeUpgrades;
+  resetMilestones();
+  rebuildUpgradesUI();
+  rebuildPrestigeUpgradesUI();
+  refreshUnlocks(true);
+  elements.log.innerHTML = "";
+  addLog(`Prestige achieved. +${gain} prestige feathers earned.`);
+  restorePrestigeUpgrades();
+  updateUI();
+  saveGame();
+  startLoops();
+}
+
 function checkWin() {
   if (game.starSystems >= STAR_TARGET && !game.won) {
     game.won = true;
@@ -620,18 +802,24 @@ function startNewGamePlus() {
   game.ngPlusCount += 1;
   game.ngMultiplier *= 2;
   const multiplier = game.ngMultiplier;
+  const prestigeCurrency = game.prestigeCurrency;
+  const prestigeUpgrades = game.prestigeUpgrades;
   game = createDefaultGame();
   game.ngPlusCount = game.ngPlusCount || 0;
   game.ngMultiplier = multiplier;
+  game.prestigeCurrency = prestigeCurrency;
+  game.prestigeUpgrades = prestigeUpgrades;
   game.log = [];
   resetMilestones();
   rebuildUpgradesUI();
+  rebuildPrestigeUpgradesUI();
   refreshUnlocks(true);
   elements.log.innerHTML = "";
   addLog(`New Game+ begun. Feathered multiplier now x${formatNumber(multiplier)}.`);
   elements.newGamePlus.hidden = true;
   elements.ending.hidden = true;
   game.won = false;
+  restorePrestigeUpgrades();
   updateUI();
   saveGame();
   startLoops();
@@ -698,6 +886,8 @@ function saveGame() {
     ngPlusCount: game.ngPlusCount,
     ngMultiplier: game.ngMultiplier,
     upgrades: game.upgrades,
+    prestigeCurrency: game.prestigeCurrency,
+    prestigeUpgrades: game.prestigeUpgrades,
     log: game.log,
     won: game.won,
   };
@@ -733,6 +923,20 @@ function restoreUpgrades() {
     }
   });
   loadLog();
+}
+
+function restorePrestigeUpgrades() {
+  if (!game.prestigeUpgrades) {
+    game.prestigeUpgrades = {};
+  }
+  prestigeUpgradesConfig.forEach((upgrade) => {
+    if (!game.prestigeUpgrades[upgrade.id]) {
+      game.prestigeUpgrades[upgrade.id] = { unlocked: false, purchased: false };
+    }
+    if (game.prestigeUpgrades[upgrade.id].purchased) {
+      upgrade.reapplyEffectForLoad();
+    }
+  });
 }
 
 function loadLog() {
