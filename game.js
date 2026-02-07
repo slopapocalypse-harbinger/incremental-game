@@ -17,6 +17,7 @@ const COSTS = {
 const BASE_RATES = {
   seedRatePerBird: 1,
   birdGrowthRatePerNest: 0.05,
+  featherScienceRatePerNest: 0.2,
   worldControlRateFactor: 1e-6,
   starshipColonizeRate: 0.1,
 };
@@ -54,6 +55,8 @@ const elements = {
   worldRate: document.getElementById("world-rate"),
   starSystems: document.getElementById("star-systems"),
   starRate: document.getElementById("star-rate"),
+  featherScience: document.getElementById("feather-science"),
+  featherScienceRate: document.getElementById("feather-science-rate"),
   nestsRow: document.getElementById("nests-row"),
   worldRow: document.getElementById("world-row"),
   spaceRow: document.getElementById("space-row"),
@@ -85,6 +88,7 @@ function createDefaultGame() {
     starships: 0,
     worldControl: 0,
     starSystems: 0,
+    featherScience: 0,
     birdFraction: 0,
     birdCost: COSTS.birdBase,
     nestCost: COSTS.nestBase,
@@ -92,6 +96,7 @@ function createDefaultGame() {
     peckPower: 1,
     seedRatePerBird: BASE_RATES.seedRatePerBird,
     birdGrowthRatePerNest: BASE_RATES.birdGrowthRatePerNest,
+    featherScienceRatePerNest: BASE_RATES.featherScienceRatePerNest,
     worldControlRateFactor: BASE_RATES.worldControlRateFactor,
     starshipColonizeRate: BASE_RATES.starshipColonizeRate,
     nestsUnlocked: false,
@@ -196,6 +201,19 @@ const upgradesConfig = [
     },
     reapplyEffectForLoad: () => {
       game.worldControlRateFactor *= 2;
+    },
+  },
+  {
+    id: "feathered-research",
+    name: "Feathered Research",
+    desc: "Feather Science papers accelerate world control by 75%.",
+    costFeatherScience: 120,
+    unlockCondition: () => game.nests >= 5,
+    applyEffect: () => {
+      game.worldControlRateFactor *= 1.75;
+    },
+    reapplyEffectForLoad: () => {
+      game.worldControlRateFactor *= 1.75;
     },
   },
   {
@@ -338,6 +356,10 @@ function gameTick() {
     }
   }
 
+  if (game.nests > 0) {
+    game.featherScience += game.nests * game.featherScienceRatePerNest * multiplier * DELTA;
+  }
+
   if (game.worldUnlocked && game.worldControl < 100) {
     const rate = game.birds * game.worldControlRateFactor * multiplier * DELTA * 100;
     game.worldControl = Math.min(100, game.worldControl + rate);
@@ -408,12 +430,17 @@ function updateUI() {
   elements.starSystems.textContent = `${formatNumber(game.starSystems, 2)} / ${STAR_TARGET}`;
   elements.ngPlus.textContent = game.ngPlusCount;
   elements.ngMultiplier.textContent = formatNumber(game.ngMultiplier);
+  elements.featherScience.textContent = formatNumber(game.featherScience, 2);
   elements.seedRate.textContent = formatNumber(
     game.birds * game.seedRatePerBird * game.ngMultiplier,
     2
   );
   elements.birdRate.textContent = formatNumber(
     game.nests * game.birdGrowthRatePerNest * game.ngMultiplier,
+    2
+  );
+  elements.featherScienceRate.textContent = formatNumber(
+    game.nests * game.featherScienceRatePerNest * game.ngMultiplier,
     2
   );
   elements.worldRate.textContent = formatNumber(
@@ -520,8 +547,18 @@ function updateUpgradesButtons() {
 
     if (state.unlocked) {
       button.hidden = false;
-      button.disabled = game.seeds < upgrade.cost || game.won;
-      button.textContent = `${upgrade.name} (${formatNumber(upgrade.cost)} seeds)`;
+      const seedCost = upgrade.cost ?? 0;
+      const featherCost = upgrade.costFeatherScience ?? 0;
+      button.disabled =
+        game.seeds < seedCost || game.featherScience < featherCost || game.won;
+      const costParts = [];
+      if (seedCost > 0) {
+        costParts.push(`${formatNumber(seedCost)} seeds`);
+      }
+      if (featherCost > 0) {
+        costParts.push(`${formatNumber(featherCost)} feather science`);
+      }
+      button.textContent = `${upgrade.name} (${costParts.join(", ")})`;
     } else {
       button.hidden = true;
     }
@@ -556,8 +593,18 @@ function rebuildUpgradesUI() {
 
 function purchaseUpgrade(upgrade) {
   const state = game.upgrades[upgrade.id];
-  if (!state.unlocked || state.purchased || game.seeds < upgrade.cost || game.won) return;
-  game.seeds -= upgrade.cost;
+  const seedCost = upgrade.cost ?? 0;
+  const featherCost = upgrade.costFeatherScience ?? 0;
+  if (
+    !state.unlocked ||
+    state.purchased ||
+    game.seeds < seedCost ||
+    game.featherScience < featherCost ||
+    game.won
+  )
+    return;
+  game.seeds -= seedCost;
+  game.featherScience -= featherCost;
   state.purchased = true;
   upgrade.applyEffect();
   addLog(`Upgrade purchased: ${upgrade.name}.`);
@@ -683,6 +730,7 @@ function saveGame() {
     starships: game.starships,
     worldControl: game.worldControl,
     starSystems: game.starSystems,
+    featherScience: game.featherScience,
     birdFraction: game.birdFraction,
     birdCost: game.birdCost,
     nestCost: game.nestCost,
@@ -690,6 +738,7 @@ function saveGame() {
     peckPower: game.peckPower,
     seedRatePerBird: game.seedRatePerBird,
     birdGrowthRatePerNest: game.birdGrowthRatePerNest,
+    featherScienceRatePerNest: game.featherScienceRatePerNest,
     worldControlRateFactor: game.worldControlRateFactor,
     starshipColonizeRate: game.starshipColonizeRate,
     nestsUnlocked: game.nestsUnlocked,
@@ -722,6 +771,7 @@ function restoreUpgrades() {
   game.peckPower = 1;
   game.seedRatePerBird = BASE_RATES.seedRatePerBird;
   game.birdGrowthRatePerNest = BASE_RATES.birdGrowthRatePerNest;
+  game.featherScienceRatePerNest = BASE_RATES.featherScienceRatePerNest;
   game.worldControlRateFactor = BASE_RATES.worldControlRateFactor;
   game.starshipColonizeRate = BASE_RATES.starshipColonizeRate;
   upgradesConfig.forEach((upgrade) => {
