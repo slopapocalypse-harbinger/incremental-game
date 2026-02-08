@@ -1,25 +1,25 @@
 const TICK_MS = 100;
 const DELTA = TICK_MS / 1000;
 
-const BIRDS_FOR_NESTS = 8;
-const BIRDS_FOR_WORLD = 500;
-const STAR_TARGET = 50;
+const BIRDS_FOR_NESTS = 15;
+const BIRDS_FOR_WORLD = 750;
+const STAR_TARGET = 80;
 
 const COSTS = {
-  birdBase: 8,
-  birdMult: 1.12,
-  nestBase: 80,
-  nestMult: 1.12,
-  starshipBase: 1_000_000,
-  starshipMult: 1.3,
+  birdBase: 12,
+  birdMult: 1.14,
+  nestBase: 180,
+  nestMult: 1.15,
+  starshipBase: 2_500_000,
+  starshipMult: 1.32,
 };
 
 const BASE_RATES = {
-  seedRatePerBird: 1.2,
-  birdGrowthRatePerNest: 0.05,
-  featherScienceRatePerNest: 0.2,
-  worldControlRateFactor: 1e-6,
-  starshipColonizeRate: 0.1,
+  seedRatePerBird: 1,
+  birdGrowthRatePerNest: 0.045,
+  featherScienceRatePerNest: 0.18,
+  worldControlRateFactor: 8e-7,
+  starshipColonizeRate: 0.08,
 };
 
 const MAX_OFFLINE_SECONDS = 6 * 60 * 60;
@@ -62,6 +62,7 @@ const elements = {
   nestsRow: document.getElementById("nests-row"),
   worldRow: document.getElementById("world-row"),
   spaceRow: document.getElementById("space-row"),
+  ngRow: document.getElementById("ng-row"),
   ngPlus: document.getElementById("ng-plus"),
   ngMultiplier: document.getElementById("ng-multiplier"),
   peckButton: document.getElementById("peck-button"),
@@ -118,8 +119,8 @@ const upgradesConfig = [
     id: "quick-pecking",
     name: "Quick Pecking",
     desc: "Double manual pecking. Your beak is a blur.",
-    cost: 10,
-    unlockCondition: () => game.birds >= 1,
+    cost: 25,
+    unlockCondition: () => game.birds >= 2,
     applyEffect: () => {
       game.peckPower *= 2;
     },
@@ -131,8 +132,8 @@ const upgradesConfig = [
     id: "gathering-calls",
     name: "Gathering Calls",
     desc: "Seed rate per bird increases by 50%. Squawk for success.",
-    cost: 50,
-    unlockCondition: () => game.birds >= 5,
+    cost: 120,
+    unlockCondition: () => game.birds >= 6,
     applyEffect: () => {
       game.seedRatePerBird *= 1.5;
     },
@@ -144,7 +145,7 @@ const upgradesConfig = [
     id: "cozy-nests",
     name: "Cozy Nests",
     desc: "Nest growth speeds up by 50%. Warm fluff, warm future.",
-    cost: 300,
+    cost: 600,
     unlockCondition: () => game.nests >= 1,
     applyEffect: () => {
       game.birdGrowthRatePerNest *= 1.5;
@@ -157,8 +158,8 @@ const upgradesConfig = [
     id: "flock-discounts",
     name: "Flock Discounts",
     desc: "Birds and nests cost 20% less right now. Bulk seed ordering.",
-    cost: 600,
-    unlockCondition: () => game.birds >= 15,
+    cost: 1500,
+    unlockCondition: () => game.birds >= 25,
     applyEffect: () => {
       game.birdCost = Math.max(1, Math.ceil(game.birdCost * 0.8));
       game.nestCost = Math.max(1, Math.ceil(game.nestCost * 0.8));
@@ -169,8 +170,8 @@ const upgradesConfig = [
     id: "sharper-beaks",
     name: "Sharper Beaks",
     desc: "Twice the seed rate per bird. Natural selection, but spikier.",
-    cost: 50,
-    unlockCondition: () => game.birds >= 10,
+    cost: 180,
+    unlockCondition: () => game.birds >= 12,
     applyEffect: () => {
       game.seedRatePerBird *= 2;
     },
@@ -182,8 +183,8 @@ const upgradesConfig = [
     id: "bird-brains",
     name: "Bird Brains",
     desc: "Double seed rate and nest growth. Genius is just organized pecking.",
-    cost: 1000,
-    unlockCondition: () => game.birds >= 50,
+    cost: 3500,
+    unlockCondition: () => game.birds >= 80,
     applyEffect: () => {
       game.seedRatePerBird *= 2;
       game.birdGrowthRatePerNest *= 2;
@@ -197,7 +198,7 @@ const upgradesConfig = [
     id: "bird-propaganda",
     name: "Bird Propaganda",
     desc: "World control doubles. The United Nests approve this message.",
-    cost: 50_000,
+    cost: 80_000,
     unlockCondition: () => game.worldUnlocked && game.worldControl >= 10,
     applyEffect: () => {
       game.worldControlRateFactor *= 2;
@@ -210,8 +211,8 @@ const upgradesConfig = [
     id: "feathered-research",
     name: "Feathered Research",
     desc: "Feather Science papers accelerate world control by 75%.",
-    costFeatherScience: 120,
-    unlockCondition: () => game.nests >= 5,
+    costFeatherScience: 300,
+    unlockCondition: () => game.nests >= 6,
     applyEffect: () => {
       game.worldControlRateFactor *= 1.75;
     },
@@ -223,8 +224,8 @@ const upgradesConfig = [
     id: "aerial-bureaucracy",
     name: "Aerial Bureaucracy",
     desc: "World control rises 50% faster. More forms, more feathers.",
-    cost: 150_000,
-    unlockCondition: () => game.worldUnlocked && game.worldControl >= 25,
+    cost: 220_000,
+    unlockCondition: () => game.worldUnlocked && game.worldControl >= 30,
     applyEffect: () => {
       game.worldControlRateFactor *= 1.5;
     },
@@ -236,8 +237,8 @@ const upgradesConfig = [
     id: "wormhole-tech",
     name: "Wormhole Tech",
     desc: "Wormholes made of worms. Space travel doubles.",
-    cost: 10_000_000,
-    unlockCondition: () => game.spaceUnlocked && game.starSystems >= 1,
+    cost: 20_000_000,
+    unlockCondition: () => game.spaceUnlocked && game.starSystems >= 2,
     applyEffect: () => {
       game.starshipColonizeRate *= 2;
     },
@@ -249,8 +250,8 @@ const upgradesConfig = [
     id: "star-charts",
     name: "Star Charts",
     desc: "Colonization rate increases by 50%. The stars are just seeds.",
-    cost: 25_000_000,
-    unlockCondition: () => game.spaceUnlocked && game.starSystems >= 5,
+    cost: 45_000_000,
+    unlockCondition: () => game.spaceUnlocked && game.starSystems >= 8,
     applyEffect: () => {
       game.starshipColonizeRate *= 1.5;
     },
@@ -444,6 +445,7 @@ function updateUI() {
   elements.starSystems.textContent = `${formatNumber(game.starSystems, 2)} / ${STAR_TARGET}`;
   elements.ngPlus.textContent = game.ngPlusCount;
   elements.ngMultiplier.textContent = formatNumber(game.ngMultiplier);
+  elements.ngRow.hidden = game.ngPlusCount === 0 && !game.won;
   elements.featherScience.textContent = formatNumber(game.featherScience, 2);
   elements.seedRate.textContent = formatNumber(
     game.birds * game.seedRatePerBird * game.ngMultiplier,
@@ -537,29 +539,32 @@ function getNextTarget() {
 }
 
 function updateUpgradesAvailability() {
-  let anyUnlocked = false;
+  let anyAvailable = false;
   upgradesConfig.forEach((upgrade) => {
     if (upgrade.unlockCondition()) {
       game.upgrades[upgrade.id].unlocked = true;
-      anyUnlocked = true;
+      if (!game.upgrades[upgrade.id].purchased) {
+        anyAvailable = true;
+      }
     }
   });
-  elements.upgradesPanel.hidden = !anyUnlocked;
+  elements.upgradesPanel.hidden = !anyAvailable;
 }
 
 function updateUpgradesButtons() {
   upgradesConfig.forEach((upgrade) => {
     const state = game.upgrades[upgrade.id];
     const button = document.getElementById(`upgrade-${upgrade.id}`);
+    const wrapper = document.getElementById(`upgrade-wrapper-${upgrade.id}`);
     if (!button) return;
 
     if (state.purchased) {
-      button.disabled = true;
-      button.textContent = `${upgrade.name} (Purchased)`;
+      if (wrapper) wrapper.hidden = true;
       return;
     }
 
     if (state.unlocked) {
+      if (wrapper) wrapper.hidden = false;
       button.hidden = false;
       const seedCost = upgrade.cost ?? 0;
       const featherCost = upgrade.costFeatherScience ?? 0;
@@ -574,6 +579,7 @@ function updateUpgradesButtons() {
       }
       button.textContent = `${upgrade.name} (${costParts.join(", ")})`;
     } else {
+      if (wrapper) wrapper.hidden = true;
       button.hidden = true;
     }
   });
@@ -589,6 +595,7 @@ function rebuildUpgradesUI() {
       };
     }
     const wrapper = document.createElement("div");
+    wrapper.id = `upgrade-wrapper-${upgrade.id}`;
     wrapper.className = "upgrade";
     const button = document.createElement("button");
     button.id = `upgrade-${upgrade.id}`;
@@ -622,6 +629,7 @@ function purchaseUpgrade(upgrade) {
   state.purchased = true;
   upgrade.applyEffect();
   addLog(`Upgrade purchased: ${upgrade.name}.`);
+  updateUpgradesAvailability();
   updateUI();
   saveGame();
 }
@@ -670,6 +678,7 @@ function checkWin() {
 function showWinState() {
   elements.newGamePlus.hidden = false;
   elements.ending.hidden = false;
+  elements.ngRow.hidden = false;
   elements.peckButton.disabled = true;
   elements.buyBird.disabled = true;
   elements.buyNest.disabled = true;
