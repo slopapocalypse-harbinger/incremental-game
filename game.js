@@ -541,9 +541,10 @@ function getNextTarget() {
 function updateUpgradesAvailability() {
   let anyAvailable = false;
   upgradesConfig.forEach((upgrade) => {
+    const state = ensureUpgradeState(upgrade.id);
     if (upgrade.unlockCondition()) {
-      game.upgrades[upgrade.id].unlocked = true;
-      if (!game.upgrades[upgrade.id].purchased) {
+      state.unlocked = true;
+      if (!state.purchased) {
         anyAvailable = true;
       }
     }
@@ -553,7 +554,7 @@ function updateUpgradesAvailability() {
 
 function updateUpgradesButtons() {
   upgradesConfig.forEach((upgrade) => {
-    const state = game.upgrades[upgrade.id];
+    const state = ensureUpgradeState(upgrade.id);
     const button = document.getElementById(`upgrade-${upgrade.id}`);
     const wrapper = document.getElementById(`upgrade-wrapper-${upgrade.id}`);
     if (!button) return;
@@ -588,12 +589,7 @@ function updateUpgradesButtons() {
 function rebuildUpgradesUI() {
   elements.upgrades.innerHTML = "";
   upgradesConfig.forEach((upgrade) => {
-    if (!game.upgrades[upgrade.id]) {
-      game.upgrades[upgrade.id] = {
-        unlocked: false,
-        purchased: false,
-      };
-    }
+    ensureUpgradeState(upgrade.id);
     const wrapper = document.createElement("div");
     wrapper.id = `upgrade-wrapper-${upgrade.id}`;
     wrapper.className = "upgrade";
@@ -613,7 +609,7 @@ function rebuildUpgradesUI() {
 }
 
 function purchaseUpgrade(upgrade) {
-  const state = game.upgrades[upgrade.id];
+  const state = ensureUpgradeState(upgrade.id);
   const seedCost = upgrade.cost ?? 0;
   const featherCost = upgrade.costFeatherScience ?? 0;
   if (
@@ -851,6 +847,9 @@ function applyOfflineProgress(loaded) {
 }
 
 function restoreUpgrades() {
+  if (!game.upgrades || typeof game.upgrades !== "object") {
+    game.upgrades = {};
+  }
   game.peckPower = 1;
   game.seedRatePerBird = BASE_RATES.seedRatePerBird;
   game.birdGrowthRatePerNest = BASE_RATES.birdGrowthRatePerNest;
@@ -858,14 +857,22 @@ function restoreUpgrades() {
   game.worldControlRateFactor = BASE_RATES.worldControlRateFactor;
   game.starshipColonizeRate = BASE_RATES.starshipColonizeRate;
   upgradesConfig.forEach((upgrade) => {
-    if (!game.upgrades[upgrade.id]) {
-      game.upgrades[upgrade.id] = { unlocked: false, purchased: false };
-    }
+    ensureUpgradeState(upgrade.id);
     if (game.upgrades[upgrade.id].purchased) {
       upgrade.reapplyEffectForLoad();
     }
   });
   loadLog();
+}
+
+function ensureUpgradeState(upgradeId) {
+  if (!game.upgrades || typeof game.upgrades !== "object") {
+    game.upgrades = {};
+  }
+  if (!game.upgrades[upgradeId]) {
+    game.upgrades[upgradeId] = { unlocked: false, purchased: false };
+  }
+  return game.upgrades[upgradeId];
 }
 
 function loadLog() {
