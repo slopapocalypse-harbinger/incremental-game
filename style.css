@@ -19,6 +19,81 @@ body {
   color: var(--ink);
 }
 
+header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.hero-art {
+  position: relative;
+  height: 90px;
+  border: 2px solid var(--border);
+  background: linear-gradient(180deg, #cfe9ff 0%, #f6f2ea 100%);
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.hero-sun {
+  position: absolute;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffe173 0%, #f7b733 60%, #f59e0b 100%);
+  top: 8px;
+  right: 14px;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.5);
+}
+
+.hero-cloud {
+  position: absolute;
+  width: 70px;
+  height: 26px;
+  background: #fff;
+  border-radius: 20px;
+  top: 18px;
+  box-shadow: 18px 6px 0 0 #fff, -16px 8px 0 0 #fff;
+  opacity: 0.9;
+}
+
+.cloud-one {
+  left: 12px;
+}
+
+.cloud-two {
+  left: 140px;
+  top: 34px;
+  transform: scale(0.85);
+}
+
+.hero-bird {
+  position: absolute;
+  font-size: 1.4rem;
+  bottom: 12px;
+  left: 16px;
+  filter: drop-shadow(1px 1px 0 rgba(0, 0, 0, 0.15));
+}
+
+.hero-bird:nth-child(4) {
+  left: 50px;
+  bottom: 32px;
+}
+
+.hero-bird:nth-child(5) {
+  left: 100px;
+  bottom: 18px;
+}
+
+.hero-bird:nth-child(6) {
+  left: 170px;
+  bottom: 26px;
+}
+
+.hero-bird:nth-child(7) {
+  left: 230px;
+  bottom: 12px;
+}
+
 .container {
   max-width: 980px;
   margin: 0 auto;
@@ -102,6 +177,18 @@ button:disabled {
 
 .log-entry {
   margin-bottom: 0.5rem;
+}
+
+.upgrade {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+
+.upgrade-desc {
+  font-size: 0.9rem;
+  color: var(--muted);
 }
 
 .win-button {
