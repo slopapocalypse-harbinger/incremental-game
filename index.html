@@ -27,13 +27,17 @@
         <h2>Resources</h2>
         <div class="resource-line">Seeds: <span id="seeds">0</span> <span class="rate">(+<span id="seed-rate">0</span>/s)</span></div>
         <div class="resource-line" id="twigs-row" hidden>Twigs: <span id="twigs">0</span> <span class="rate">(+<span id="twig-rate">0</span>/s)</span></div>
-        <div class="resource-line" id="eggs-row" hidden>Eggs: <span id="eggs">0</span> <span class="rate">(+<span id="egg-rate">0</span>/s)</span></div>
+        <div class="resource-line" id="eggs-row" hidden>
+          Eggs: <span id="eggs">0</span>
+          <span class="rate">(net <span id="egg-rate">0</span>/s, hatch <span id="hatch-rate">0</span>/s)</span>
+        </div>
         <div class="resource-line">Birds: <span id="birds">1</span> <span class="rate">(+<span id="bird-rate">0</span>/s)</span></div>
         <div class="resource-line" id="nests-row" hidden>Nests: <span id="nests">0</span></div>
         <div class="resource-line" id="roosts-row" hidden>Roosts: <span id="roosts">0</span> <span class="rate">(Harmony x<span id="harmony-multiplier">1</span>)</span></div>
         <div class="resource-line" id="aviaries-row" hidden>Aviaries: <span id="aviaries">0</span> <span class="rate">(+<span id="lore-rate">0</span>/s)</span></div>
         <div class="resource-line">Feather Science: <span id="feather-science">0</span> <span class="rate">(+<span id="feather-science-rate">0</span>/s)</span></div>
         <div class="resource-line" id="lore-row" hidden>Sky Lore: <span id="sky-lore">0</span></div>
+        <div class="resource-detail" id="lore-detail" hidden>Used to launch starships and fund major projects.</div>
         <div class="resource-line" id="world-row" hidden>World Control: <span id="world-control">0%</span> <span class="rate">(+<span id="world-rate">0</span>%/s)</span></div>
         <div class="resource-line" id="space-row" hidden>Star Systems: <span id="star-systems">0 / 140</span> <span class="rate">(+<span id="star-rate">0</span>/s)</span></div>
         <div class="resource-line" id="relic-row" hidden>Relics: <span id="relics">0</span></div>
@@ -42,20 +46,31 @@
 
       <div class="panel">
         <h2>Actions</h2>
-        <button id="peck-button">Peck for Seeds</button>
-        <button id="forage-button" hidden>Forage for Twigs</button>
-        <button id="incubate-button" hidden>Incubate 1 Egg</button>
         <button id="expedition-button" hidden>Send Expedition (<span id="expedition-cost">2500</span> seeds, <span id="expedition-twig-cost">120</span> twigs)</button>
-        <button id="reset-game" class="danger-button">Hard Reset Game</button>
       </div>
 
       <div class="panel">
         <h2>Structures</h2>
-        <button id="buy-bird">Buy 1 Bird (<span id="bird-cost">10</span> seeds)</button>
-        <button id="buy-nest" hidden>Build 1 Nest (<span id="nest-cost">100</span> seeds, <span id="nest-twig-cost">25</span> twigs)</button>
-        <button id="buy-roost" hidden>Build 1 Roost (<span id="roost-cost">1200</span> seeds, <span id="roost-twig-cost">220</span> twigs)</button>
-        <button id="buy-aviary" hidden>Build 1 Aviary (<span id="aviary-cost">8000</span> seeds, <span id="aviary-science-cost">120</span> feather science)</button>
-        <button id="buy-starship" hidden>Build 1 Starship (<span id="starship-cost">1000000</span> seeds, <span id="starship-lore-cost">60</span> lore)</button>
+        <div class="structure-option">
+          <button id="buy-bird">Buy 1 Bird (<span id="bird-cost">10</span> seeds)</button>
+          <div class="structure-desc" id="bird-desc"></div>
+        </div>
+        <div class="structure-option">
+          <button id="buy-nest" hidden>Build 1 Nest (<span id="nest-cost">100</span> seeds, <span id="nest-twig-cost">25</span> twigs)</button>
+          <div class="structure-desc" id="nest-desc" hidden></div>
+        </div>
+        <div class="structure-option">
+          <button id="buy-roost" hidden>Build 1 Roost (<span id="roost-cost">1200</span> seeds, <span id="roost-twig-cost">220</span> twigs)</button>
+          <div class="structure-desc" id="roost-desc" hidden></div>
+        </div>
+        <div class="structure-option">
+          <button id="buy-aviary" hidden>Build 1 Aviary (<span id="aviary-cost">8000</span> seeds, <span id="aviary-science-cost">120</span> feather science)</button>
+          <div class="structure-desc" id="aviary-desc" hidden></div>
+        </div>
+        <div class="structure-option">
+          <button id="buy-starship" hidden>Build 1 Starship (<span id="starship-cost">1000000</span> seeds, <span id="starship-lore-cost">60</span> lore)</button>
+          <div class="structure-desc" id="starship-desc" hidden></div>
+        </div>
         <button id="new-game-plus" class="win-button" hidden>New Game+</button>
       </div>
 
@@ -94,6 +109,12 @@
     <section id="ending" class="panel ending" hidden>
       <h2>The Feathered Finale</h2>
       <p>Earth is a nest now. The galaxy is a flight path. The birds have asked, politely, for a snack.</p>
+    </section>
+
+    <section class="panel reset-panel">
+      <h2>Reset</h2>
+      <p class="reset-note">For when the flock needs a fresh start. This cannot be undone.</p>
+      <button id="reset-game" class="danger-button">Hard Reset Game</button>
     </section>
   </main>
 

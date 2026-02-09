@@ -138,6 +138,12 @@ h2 {
   margin-bottom: 0.35rem;
 }
 
+.resource-detail {
+  margin: 0 0 0.5rem 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
 .rate {
   color: var(--muted);
   font-size: 0.9rem;
@@ -165,6 +171,21 @@ button:active:enabled {
 button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.structure-option {
+  margin-bottom: 0.75rem;
+}
+
+.structure-option:last-of-type {
+  margin-bottom: 0.5rem;
+}
+
+.structure-desc {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-top: -0.25rem;
+  margin-bottom: 0.35rem;
 }
 
 .log-panel {
@@ -227,6 +248,15 @@ button:disabled {
 
 .danger-button:hover:enabled {
   background: #fde8e8;
+}
+
+.reset-panel {
+  text-align: center;
+}
+
+.reset-note {
+  color: var(--muted);
+  margin-top: 0;
 }
 
 .next-target-panel {

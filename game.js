@@ -32,7 +32,7 @@ const COSTS = {
 
 const BASE_RATES = {
   seedRatePerBird: 1,
-  twigRatePerBird: 0.35,
+  twigRatePerBird: 0.15,
   eggRatePerNest: 0.06,
   hatchRatePerNest: 0.03,
   featherScienceRatePerNest: 0.18,
@@ -51,6 +51,15 @@ const philosophyLines = [
   "The coop is the mind, the sky is the body.",
   "We peck, therefore we are.",
   "The universe is a nest in progress.",
+];
+
+const birdChatterLines = [
+  "Did you hear the wind? It approves of our nesting plans.",
+  "If anyone asks, I was never here. Just fluttering.",
+  "These twigs are premium grade. Smells like destiny.",
+  "We should name this roost. Suggestions: Featherington.",
+  "The seeds are plotting something. I can feel it.",
+  "Sky lore tastes like cloudberries.",
 ];
 
 const milestoneFlags = {
@@ -78,6 +87,7 @@ const elements = {
   twigRate: document.getElementById("twig-rate"),
   eggs: document.getElementById("eggs"),
   eggRate: document.getElementById("egg-rate"),
+  hatchRate: document.getElementById("hatch-rate"),
   birds: document.getElementById("birds"),
   birdRate: document.getElementById("bird-rate"),
   nests: document.getElementById("nests"),
@@ -99,15 +109,13 @@ const elements = {
   roostsRow: document.getElementById("roosts-row"),
   aviariesRow: document.getElementById("aviaries-row"),
   loreRow: document.getElementById("lore-row"),
+  loreDetail: document.getElementById("lore-detail"),
   worldRow: document.getElementById("world-row"),
   spaceRow: document.getElementById("space-row"),
   relicRow: document.getElementById("relic-row"),
   ngRow: document.getElementById("ng-row"),
   ngPlus: document.getElementById("ng-plus"),
   ngMultiplier: document.getElementById("ng-multiplier"),
-  peckButton: document.getElementById("peck-button"),
-  forageButton: document.getElementById("forage-button"),
-  incubateButton: document.getElementById("incubate-button"),
   expeditionButton: document.getElementById("expedition-button"),
   expeditionCost: document.getElementById("expedition-cost"),
   expeditionTwigCost: document.getElementById("expedition-twig-cost"),
@@ -127,6 +135,11 @@ const elements = {
   starshipCost: document.getElementById("starship-cost"),
   starshipLoreCost: document.getElementById("starship-lore-cost"),
   newGamePlus: document.getElementById("new-game-plus"),
+  birdDesc: document.getElementById("bird-desc"),
+  nestDesc: document.getElementById("nest-desc"),
+  roostDesc: document.getElementById("roost-desc"),
+  aviaryDesc: document.getElementById("aviary-desc"),
+  starshipDesc: document.getElementById("starship-desc"),
   upgradesPanel: document.getElementById("upgrades-panel"),
   upgrades: document.getElementById("upgrades"),
   projectsPanel: document.getElementById("projects-panel"),
@@ -200,19 +213,6 @@ function createDefaultGame() {
 
 const upgradesConfig = [
   {
-    id: "quick-pecking",
-    name: "Quick Pecking",
-    desc: "Double manual pecking. Your beak is a blur.",
-    cost: 25,
-    unlockCondition: () => game.birds >= 2,
-    applyEffect: () => {
-      game.peckPower *= 2;
-    },
-    reapplyEffectForLoad: () => {
-      game.peckPower *= 2;
-    },
-  },
-  {
     id: "gathering-calls",
     name: "Gathering Calls",
     desc: "Seed rate per bird increases by 50%. Squawk for success.",
@@ -281,14 +281,14 @@ const upgradesConfig = [
   {
     id: "twig-weaving",
     name: "Twig Weaving",
-    desc: "Twigs per bird +75%. The flock learns artisanal carpentry.",
+    desc: "Twigs per bird +50%. The flock learns artisanal carpentry.",
     cost: 2200,
     unlockCondition: () => game.twigsUnlocked && game.birds >= 40,
     applyEffect: () => {
-      game.twigRatePerBird *= 1.75;
+      game.twigRatePerBird *= 1.5;
     },
     reapplyEffectForLoad: () => {
-      game.twigRatePerBird *= 1.75;
+      game.twigRatePerBird *= 1.5;
     },
   },
   {
@@ -476,34 +476,6 @@ function initGame() {
 }
 
 function bindEvents() {
-  elements.peckButton.addEventListener("click", () => {
-    if (game.won) return;
-    const gain = game.peckPower * game.ngMultiplier;
-    game.seeds += gain;
-    addLog(`Peck! +${formatNumber(gain)} seeds.`, false);
-    updateUI();
-    saveGame();
-  });
-
-  elements.forageButton.addEventListener("click", () => {
-    if (game.won) return;
-    const gain = game.foragePower * game.ngMultiplier;
-    game.twigs += gain;
-    addLog(`Foraged +${formatNumber(gain)} twigs.`, false);
-    updateUI();
-    saveGame();
-  });
-
-  elements.incubateButton.addEventListener("click", () => {
-    if (game.won || game.eggs < 1) return;
-    game.eggs -= 1;
-    game.birds += 1;
-    addLog("An egg hatches. A new bird flutters out.");
-    refreshUnlocks();
-    updateUI();
-    saveGame();
-  });
-
   elements.expeditionButton.addEventListener("click", () => {
     if (game.won) return;
     sendExpedition();
@@ -696,7 +668,6 @@ function refreshUnlocks(isLoad = false) {
   if (!game.twigsUnlocked && game.birds >= 5) {
     game.twigsUnlocked = true;
     elements.twigsRow.hidden = false;
-    elements.forageButton.hidden = false;
     if (!isLoad) {
       addLog("Twigs discovered. Every branch is an opportunity.");
     }
@@ -707,7 +678,6 @@ function refreshUnlocks(isLoad = false) {
     elements.nestsRow.hidden = false;
     elements.buyNest.hidden = false;
     elements.eggsRow.hidden = false;
-    elements.incubateButton.hidden = false;
     game.eggsUnlocked = true;
     if (!isLoad) {
       addLog("Nests unlocked. The coop has formed a coup.");
@@ -728,6 +698,7 @@ function refreshUnlocks(isLoad = false) {
     elements.aviariesRow.hidden = false;
     elements.buyAviary.hidden = false;
     elements.loreRow.hidden = false;
+    elements.loreDetail.hidden = false;
     game.loreUnlocked = true;
     if (!isLoad) {
       addLog("Aviaries unlocked. The flock begins to catalog the sky.");
@@ -737,6 +708,7 @@ function refreshUnlocks(isLoad = false) {
   if (!game.loreUnlocked && game.skyLore > 0) {
     game.loreUnlocked = true;
     elements.loreRow.hidden = false;
+    elements.loreDetail.hidden = false;
   }
 
   if (!game.worldUnlocked && game.birds >= BIRDS_FOR_WORLD) {
@@ -771,14 +743,12 @@ function refreshUnlocks(isLoad = false) {
 
   if (game.twigsUnlocked) {
     elements.twigsRow.hidden = false;
-    elements.forageButton.hidden = false;
   }
 
   if (game.nestsUnlocked) {
     elements.nestsRow.hidden = false;
     elements.buyNest.hidden = false;
     elements.eggsRow.hidden = false;
-    elements.incubateButton.hidden = false;
   }
 
   if (game.roostsUnlocked) {
@@ -790,6 +760,7 @@ function refreshUnlocks(isLoad = false) {
     elements.aviariesRow.hidden = false;
     elements.buyAviary.hidden = false;
     elements.loreRow.hidden = false;
+    elements.loreDetail.hidden = false;
   }
 
   if (game.worldUnlocked) {
@@ -815,6 +786,10 @@ function refreshUnlocks(isLoad = false) {
 
 function updateUI() {
   const harmony = getHarmonyMultiplier();
+  const eggRate = game.nests * game.eggRatePerNest * game.ngMultiplier * harmony;
+  const hatchRate =
+    game.nests * game.hatchRatePerNest * game.ngMultiplier * harmony;
+  const netEggRate = eggRate - hatchRate;
   elements.seeds.textContent = formatNumber(game.seeds);
   elements.twigs.textContent = formatNumber(game.twigs);
   elements.eggs.textContent = formatNumber(game.eggs, 2);
@@ -839,10 +814,8 @@ function updateUI() {
     game.birds * game.twigRatePerBird * game.ngMultiplier * harmony,
     2
   );
-  elements.eggRate.textContent = formatNumber(
-    game.nests * game.eggRatePerNest * game.ngMultiplier * harmony,
-    2
-  );
+  elements.eggRate.textContent = formatSignedNumber(netEggRate, 2);
+  elements.hatchRate.textContent = formatNumber(hatchRate, 2);
   elements.birdRate.textContent = formatNumber(
     game.nests * game.hatchRatePerNest * game.ngMultiplier * harmony,
     2
@@ -891,14 +864,12 @@ function updateUI() {
     game.won;
   elements.buyStarship.disabled =
     game.seeds < game.starshipCost || game.skyLore < game.starshipLoreCost || game.won;
-  elements.peckButton.disabled = game.won;
-  elements.forageButton.disabled = game.won;
-  elements.incubateButton.disabled = game.eggs < 1 || game.won;
   elements.expeditionButton.disabled =
     game.seeds < COSTS.expeditionSeedCost ||
     game.twigs < COSTS.expeditionTwigCost ||
     game.won;
 
+  updateStructureDescriptions();
   updateUpgradesButtons();
   updateProjectsButtons();
   updateNextTarget();
@@ -911,6 +882,54 @@ function updateNextTarget() {
   elements.nextTargetDetail.textContent = target.detail;
   elements.nextTargetProgressText.textContent = target.progressText;
   elements.nextTargetProgressBar.style.width = `${(target.progress * 100).toFixed(1)}%`;
+}
+
+function updateStructureDescriptions() {
+  const harmony = getHarmonyMultiplier();
+  const multiplier = game.ngMultiplier;
+  const seedPerBird = game.seedRatePerBird * multiplier * harmony;
+  const twigPerBird = game.twigRatePerBird * multiplier * harmony;
+  const eggPerNest = game.eggRatePerNest * multiplier * harmony;
+  const hatchPerNest = game.hatchRatePerNest * multiplier * harmony;
+  const sciencePerNest = game.featherScienceRatePerNest * multiplier * harmony;
+  const lorePerAviary = game.skyLoreRatePerAviary * multiplier * harmony;
+  const starRate = game.starshipColonizeRate * multiplier * harmony;
+
+  elements.birdDesc.textContent = `Each bird gathers ${formatNumber(
+    seedPerBird,
+    2
+  )} seeds/s and ${formatNumber(twigPerBird, 2)} twigs/s.`;
+
+  elements.nestDesc.textContent = `Each nest produces ${formatNumber(
+    eggPerNest,
+    2
+  )} eggs/s, hatches ${formatNumber(
+    hatchPerNest,
+    2
+  )} birds/s, and adds ${formatNumber(sciencePerNest, 2)} science/s.`;
+
+  elements.roostDesc.textContent = `Each roost adds +${formatNumber(
+    game.harmonyPerRoost,
+    2
+  )} Harmony (boosts all production). Current Harmony x${formatNumber(
+    harmony,
+    2
+  )}.`;
+
+  elements.aviaryDesc.textContent = `Each aviary generates ${formatNumber(
+    lorePerAviary,
+    2
+  )} sky lore/s (used for starships and projects).`;
+
+  elements.starshipDesc.textContent = `Each starship colonizes ${formatNumber(
+    starRate,
+    2
+  )} systems/s.`;
+
+  elements.nestDesc.hidden = elements.buyNest.hidden;
+  elements.roostDesc.hidden = elements.buyRoost.hidden;
+  elements.aviaryDesc.hidden = elements.buyAviary.hidden;
+  elements.starshipDesc.hidden = elements.buyStarship.hidden;
 }
 
 function getHarmonyMultiplier() {
@@ -1333,6 +1352,11 @@ function handleMilestones() {
     const line = philosophyLines[Math.floor(Math.random() * philosophyLines.length)];
     addLog(`Philosophy Bird: "${line}"`, false);
   }
+
+  if (Math.random() < 0.003) {
+    const line = birdChatterLines[Math.floor(Math.random() * birdChatterLines.length)];
+    addLog(`Birds chatter: "${line}"`, false);
+  }
 }
 
 function checkWin() {
@@ -1349,9 +1373,6 @@ function showWinState() {
   elements.newGamePlus.hidden = false;
   elements.ending.hidden = false;
   elements.ngRow.hidden = false;
-  elements.peckButton.disabled = true;
-  elements.forageButton.disabled = true;
-  elements.incubateButton.disabled = true;
   elements.expeditionButton.disabled = true;
   elements.buyBird.disabled = true;
   elements.buyNest.disabled = true;
@@ -1420,6 +1441,11 @@ function formatNumber(value, decimals = 0) {
     return `${(num / 1e9).toFixed(decimals)}B`;
   }
   return num.toExponential(2);
+}
+
+function formatSignedNumber(value, decimals = 0) {
+  const sign = value >= 0 ? "+" : "-";
+  return `${sign}${formatNumber(Math.abs(value), decimals)}`;
 }
 
 function saveGame() {
