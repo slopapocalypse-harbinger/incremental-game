@@ -15,10 +15,8 @@
         <span class="hero-sun"></span>
         <span class="hero-cloud cloud-one"></span>
         <span class="hero-cloud cloud-two"></span>
-        <span class="hero-bird">🕊️</span>
-        <span class="hero-bird">🐦</span>
-        <span class="hero-bird">🪶</span>
-        <span class="hero-bird">🐣</span>
+        <div class="hero-birds" id="hero-birds"></div>
+        <div class="hero-upgrades" id="hero-upgrades"></div>
       </div>
     </header>
 
@@ -38,17 +36,16 @@
         <div class="resource-line">Birds: <span id="birds">1</span> <span class="rate">(+<span id="bird-rate">0</span>/s)</span></div>
         <div class="resource-line" id="nests-row" hidden>Nests: <span id="nests">0</span></div>
         <div class="resource-line" id="roosts-row" hidden>Roosts: <span id="roosts">0</span> <span class="rate">(Harmony x<span id="harmony-multiplier">1</span>)</span></div>
-        <div class="resource-line" id="aviaries-row" hidden>Aviaries: <span id="aviaries">0</span> <span class="rate">(+<span id="lore-rate">0</span>/s)</span></div>
+        <div class="resource-line" id="aviaries-row" hidden>Aviaries: <span id="aviaries">0</span></div>
         <div class="resource-line">Feather Science: <span id="feather-science">0</span> <span class="rate">(+<span id="feather-science-rate">0</span>/s)</span></div>
-        <div class="resource-line" id="lore-row" hidden>Sky Lore: <span id="sky-lore">0</span></div>
-        <div class="resource-detail" id="lore-detail" hidden>Used to launch starships and fund major projects.</div>
+        <div class="resource-line" id="lore-row" hidden>Sky Lore: <span id="sky-lore">0</span> <span class="rate">(+<span id="lore-rate">0</span>/s)</span></div>
         <div class="resource-line" id="world-row" hidden>World Control: <span id="world-control">0%</span> <span class="rate">(+<span id="world-rate">0</span>%/s)</span></div>
         <div class="resource-line" id="space-row" hidden>Star Systems: <span id="star-systems">0 / 140</span> <span class="rate">(+<span id="star-rate">0</span>/s)</span></div>
         <div class="resource-line" id="relic-row" hidden>Relics: <span id="relics">0</span></div>
         <div class="resource-line" id="ng-row" hidden>NG+: <span id="ng-plus">0</span> (x<span id="ng-multiplier">1</span>)</div>
       </div>
 
-      <div class="panel">
+      <div class="panel" id="actions-panel" hidden>
         <h2>Actions</h2>
         <button id="expedition-button" hidden>Send Expedition (<span id="expedition-cost">2500</span> seeds, <span id="expedition-twig-cost">120</span> twigs)</button>
       </div>

@@ -68,32 +68,56 @@ header {
   transform: scale(0.85);
 }
 
-.hero-bird {
+.hero-birds,
+.hero-upgrades {
   position: absolute;
-  font-size: 1.4rem;
-  bottom: 12px;
-  left: 16px;
+  inset: 0;
+  pointer-events: none;
+}
+
+.hero-bird-icon {
+  position: absolute;
+  font-size: clamp(1rem, 1.4vw, 1.5rem);
   filter: drop-shadow(1px 1px 0 rgba(0, 0, 0, 0.15));
+  animation: bird-fly var(--duration, 8s) linear infinite;
+  animation-delay: var(--delay, 0s);
+  top: var(--top, 40%);
+  left: var(--start-x, -20px);
 }
 
-.hero-bird:nth-child(4) {
-  left: 50px;
-  bottom: 32px;
+.hero-upgrade-icon {
+  position: absolute;
+  font-size: 1rem;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.05rem 0.35rem;
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  color: var(--ink);
 }
 
-.hero-bird:nth-child(5) {
-  left: 100px;
-  bottom: 18px;
+.hero-upgrade-icon span {
+  font-size: 0.85rem;
+  color: var(--muted);
 }
 
-.hero-bird:nth-child(6) {
-  left: 170px;
-  bottom: 26px;
-}
-
-.hero-bird:nth-child(7) {
-  left: 230px;
-  bottom: 12px;
+@keyframes bird-fly {
+  0% {
+    transform: translateX(0) translateY(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  50% {
+    transform: translateX(120px) translateY(-8px);
+  }
+  100% {
+    transform: translateX(260px) translateY(4px);
+    opacity: 0;
+  }
 }
 
 .container {
