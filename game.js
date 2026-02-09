@@ -1049,11 +1049,9 @@ function updateUpgradesAvailability() {
   let anyAvailable = false;
   upgradesConfig.forEach((upgrade) => {
     const state = ensureUpgradeState(upgrade.id);
-    if (upgrade.unlockCondition()) {
-      state.unlocked = true;
-      if (!state.purchased) {
-        anyAvailable = true;
-      }
+    state.unlocked = upgrade.unlockCondition();
+    if (state.unlocked && !state.purchased) {
+      anyAvailable = true;
     }
   });
   elements.upgradesPanel.hidden = !anyAvailable;
@@ -1078,32 +1076,28 @@ function updateUpgradesButtons() {
     const state = ensureUpgradeState(upgrade.id);
     const button = document.getElementById(`upgrade-${upgrade.id}`);
     const wrapper = document.getElementById(`upgrade-wrapper-${upgrade.id}`);
+    const desc = document.getElementById(`upgrade-desc-${upgrade.id}`);
     if (!button) return;
+    const shouldShow = state.unlocked && !state.purchased;
 
-    if (state.purchased) {
-      if (wrapper) wrapper.hidden = true;
-      return;
-    }
+    if (wrapper) wrapper.hidden = !shouldShow;
+    button.hidden = !shouldShow;
+    if (desc) desc.hidden = !shouldShow;
 
-    if (state.unlocked) {
-      if (wrapper) wrapper.hidden = false;
-      button.hidden = false;
-      const seedCost = upgrade.cost ?? 0;
-      const featherCost = upgrade.costFeatherScience ?? 0;
-      button.disabled =
-        game.seeds < seedCost || game.featherScience < featherCost || game.won;
-      const costParts = [];
-      if (seedCost > 0) {
-        costParts.push(`${formatNumber(seedCost)} seeds`);
-      }
-      if (featherCost > 0) {
-        costParts.push(`${formatNumber(featherCost)} feather science`);
-      }
-      button.textContent = `${upgrade.name} (${costParts.join(", ")})`;
-    } else {
-      if (wrapper) wrapper.hidden = true;
-      button.hidden = true;
+    if (!shouldShow) return;
+
+    const seedCost = upgrade.cost ?? 0;
+    const featherCost = upgrade.costFeatherScience ?? 0;
+    button.disabled =
+      game.seeds < seedCost || game.featherScience < featherCost || game.won;
+    const costParts = [];
+    if (seedCost > 0) {
+      costParts.push(`${formatNumber(seedCost)} seeds`);
     }
+    if (featherCost > 0) {
+      costParts.push(`${formatNumber(featherCost)} feather science`);
+    }
+    button.textContent = `${upgrade.name} (${costParts.join(", ")})`;
   });
 }
 
@@ -1139,6 +1133,7 @@ function rebuildUpgradesUI() {
     const wrapper = document.createElement("div");
     wrapper.id = `upgrade-wrapper-${upgrade.id}`;
     wrapper.className = "upgrade";
+    wrapper.hidden = true;
     const button = document.createElement("button");
     button.id = `upgrade-${upgrade.id}`;
     button.hidden = true;
@@ -1146,7 +1141,9 @@ function rebuildUpgradesUI() {
 
     const desc = document.createElement("div");
     desc.className = "upgrade-desc";
+    desc.id = `upgrade-desc-${upgrade.id}`;
     desc.textContent = upgrade.desc;
+    desc.hidden = true;
 
     wrapper.appendChild(button);
     wrapper.appendChild(desc);
