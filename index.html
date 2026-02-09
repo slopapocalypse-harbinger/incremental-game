@@ -31,6 +31,10 @@
           Eggs: <span id="eggs">0</span>
           <span class="rate">(net <span id="egg-rate">0</span>/s, hatch <span id="hatch-rate">0</span>/s)</span>
         </div>
+        <div class="resource-control" id="hatch-control" hidden>
+          <label for="hatch-slider">Hatch usage: <span id="hatch-usage">100</span>%</label>
+          <input id="hatch-slider" type="range" min="0" max="100" step="5" value="100" />
+        </div>
         <div class="resource-line">Birds: <span id="birds">1</span> <span class="rate">(+<span id="bird-rate">0</span>/s)</span></div>
         <div class="resource-line" id="nests-row" hidden>Nests: <span id="nests">0</span></div>
         <div class="resource-line" id="roosts-row" hidden>Roosts: <span id="roosts">0</span> <span class="rate">(Harmony x<span id="harmony-multiplier">1</span>)</span></div>

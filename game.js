@@ -106,6 +106,9 @@ const elements = {
   nestsRow: document.getElementById("nests-row"),
   twigsRow: document.getElementById("twigs-row"),
   eggsRow: document.getElementById("eggs-row"),
+  hatchControl: document.getElementById("hatch-control"),
+  hatchSlider: document.getElementById("hatch-slider"),
+  hatchUsage: document.getElementById("hatch-usage"),
   roostsRow: document.getElementById("roosts-row"),
   aviariesRow: document.getElementById("aviaries-row"),
   loreRow: document.getElementById("lore-row"),
@@ -185,6 +188,7 @@ function createDefaultGame() {
     twigRatePerBird: BASE_RATES.twigRatePerBird,
     eggRatePerNest: BASE_RATES.eggRatePerNest,
     hatchRatePerNest: BASE_RATES.hatchRatePerNest,
+    hatchUsagePercent: 100,
     featherScienceRatePerNest: BASE_RATES.featherScienceRatePerNest,
     skyLoreRatePerAviary: BASE_RATES.skyLoreRatePerAviary,
     harmonyPerRoost: BASE_RATES.harmonyPerRoost,
@@ -592,6 +596,14 @@ function bindEvents() {
   elements.newGamePlus.addEventListener("click", () => {
     startNewGamePlus();
   });
+
+  elements.hatchSlider.addEventListener("input", (event) => {
+    const value = Number(event.target.value);
+    if (Number.isNaN(value)) return;
+    game.hatchUsagePercent = Math.min(100, Math.max(0, value));
+    updateUI();
+    saveGame();
+  });
 }
 
 function startLoops() {
@@ -617,7 +629,12 @@ function gameTick() {
   if (game.nests > 0) {
     game.eggs += game.nests * game.eggRatePerNest * multiplier * harmony * DELTA;
     const hatchPotential =
-      game.nests * game.hatchRatePerNest * multiplier * harmony * DELTA;
+      game.nests *
+      game.hatchRatePerNest *
+      multiplier *
+      harmony *
+      (game.hatchUsagePercent / 100) *
+      DELTA;
     const hatchAmount = Math.min(game.eggs, hatchPotential);
     if (hatchAmount > 0) {
       game.eggs -= hatchAmount;
@@ -678,6 +695,7 @@ function refreshUnlocks(isLoad = false) {
     elements.nestsRow.hidden = false;
     elements.buyNest.hidden = false;
     elements.eggsRow.hidden = false;
+    elements.hatchControl.hidden = false;
     game.eggsUnlocked = true;
     if (!isLoad) {
       addLog("Nests unlocked. The coop has formed a coup.");
@@ -749,6 +767,7 @@ function refreshUnlocks(isLoad = false) {
     elements.nestsRow.hidden = false;
     elements.buyNest.hidden = false;
     elements.eggsRow.hidden = false;
+    elements.hatchControl.hidden = false;
   }
 
   if (game.roostsUnlocked) {
@@ -788,7 +807,11 @@ function updateUI() {
   const harmony = getHarmonyMultiplier();
   const eggRate = game.nests * game.eggRatePerNest * game.ngMultiplier * harmony;
   const hatchRate =
-    game.nests * game.hatchRatePerNest * game.ngMultiplier * harmony;
+    game.nests *
+    game.hatchRatePerNest *
+    game.ngMultiplier *
+    harmony *
+    (game.hatchUsagePercent / 100);
   const netEggRate = eggRate - hatchRate;
   elements.seeds.textContent = formatNumber(game.seeds);
   elements.twigs.textContent = formatNumber(game.twigs);
@@ -840,6 +863,8 @@ function updateUI() {
       : 0,
     2
   );
+  elements.hatchSlider.value = Math.round(game.hatchUsagePercent);
+  elements.hatchUsage.textContent = formatNumber(game.hatchUsagePercent);
 
   elements.birdCost.textContent = formatNumber(game.birdCost);
   elements.nestCost.textContent = formatNumber(game.nestCost);
@@ -1479,6 +1504,7 @@ function saveGame() {
     twigRatePerBird: game.twigRatePerBird,
     eggRatePerNest: game.eggRatePerNest,
     hatchRatePerNest: game.hatchRatePerNest,
+    hatchUsagePercent: game.hatchUsagePercent,
     featherScienceRatePerNest: game.featherScienceRatePerNest,
     skyLoreRatePerAviary: game.skyLoreRatePerAviary,
     harmonyPerRoost: game.harmonyPerRoost,
@@ -1513,6 +1539,9 @@ function loadGame() {
     const data = JSON.parse(raw);
     const loaded = createDefaultGame();
     Object.assign(loaded, data);
+    if (typeof loaded.hatchUsagePercent !== "number") {
+      loaded.hatchUsagePercent = 100;
+    }
     if (!loaded.hatchRatePerNest && loaded.birdGrowthRatePerNest) {
       loaded.hatchRatePerNest = loaded.birdGrowthRatePerNest;
     }
@@ -1550,7 +1579,13 @@ function applyOfflineProgress(loaded) {
   const eggsBefore = loaded.eggs;
   if (loaded.nests > 0) {
     loaded.eggs += loaded.nests * loaded.eggRatePerNest * multiplier * harmony * deltaSeconds;
-    const hatchPotential = loaded.nests * loaded.hatchRatePerNest * multiplier * harmony * deltaSeconds;
+    const hatchPotential =
+      loaded.nests *
+      loaded.hatchRatePerNest *
+      multiplier *
+      harmony *
+      (loaded.hatchUsagePercent / 100) *
+      deltaSeconds;
     const hatchAmount = Math.min(loaded.eggs, hatchPotential);
     if (hatchAmount > 0) {
       loaded.eggs -= hatchAmount;
