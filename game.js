@@ -2,24 +2,45 @@ const TICK_MS = 100;
 const DELTA = TICK_MS / 1000;
 
 const BIRDS_FOR_NESTS = 15;
-const BIRDS_FOR_WORLD = 750;
-const STAR_TARGET = 80;
+const BIRDS_FOR_ROOSTS = 60;
+const FEATHER_FOR_AVIARIES = 120;
+const BIRDS_FOR_WORLD = 1200;
+const STAR_TARGET = 140;
 
 const COSTS = {
   birdBase: 12,
   birdMult: 1.14,
   nestBase: 180,
   nestMult: 1.15,
+  nestTwigBase: 25,
+  nestTwigMult: 1.17,
+  roostBase: 1400,
+  roostMult: 1.18,
+  roostTwigBase: 220,
+  roostTwigMult: 1.2,
+  aviaryBase: 8000,
+  aviaryMult: 1.2,
+  aviaryScienceBase: 120,
+  aviaryScienceMult: 1.22,
   starshipBase: 2_500_000,
   starshipMult: 1.32,
+  starshipLoreBase: 60,
+  starshipLoreMult: 1.25,
+  expeditionSeedCost: 2500,
+  expeditionTwigCost: 120,
 };
 
 const BASE_RATES = {
   seedRatePerBird: 1,
-  birdGrowthRatePerNest: 0.045,
+  twigRatePerBird: 0.35,
+  eggRatePerNest: 0.06,
+  hatchRatePerNest: 0.03,
   featherScienceRatePerNest: 0.18,
+  skyLoreRatePerAviary: 0.05,
+  harmonyPerRoost: 0.02,
   worldControlRateFactor: 8e-7,
   starshipColonizeRate: 0.08,
+  relicRatePerStarSystem: 0.002,
 };
 
 const MAX_OFFLINE_SECONDS = 6 * 60 * 60;
@@ -38,8 +59,11 @@ const milestoneFlags = {
   world75: false,
   world100: false,
   firstNest: false,
+  firstRoost: false,
+  firstAviary: false,
   firstStarship: false,
   firstStarSystem: false,
+  firstRelic: false,
   win: false,
 };
 
@@ -50,64 +74,124 @@ let saveTimer = null;
 const elements = {
   seeds: document.getElementById("seeds"),
   seedRate: document.getElementById("seed-rate"),
+  twigs: document.getElementById("twigs"),
+  twigRate: document.getElementById("twig-rate"),
+  eggs: document.getElementById("eggs"),
+  eggRate: document.getElementById("egg-rate"),
   birds: document.getElementById("birds"),
   birdRate: document.getElementById("bird-rate"),
   nests: document.getElementById("nests"),
+  roosts: document.getElementById("roosts"),
+  aviaries: document.getElementById("aviaries"),
+  harmonyMultiplier: document.getElementById("harmony-multiplier"),
   worldControl: document.getElementById("world-control"),
   worldRate: document.getElementById("world-rate"),
   starSystems: document.getElementById("star-systems"),
   starRate: document.getElementById("star-rate"),
   featherScience: document.getElementById("feather-science"),
   featherScienceRate: document.getElementById("feather-science-rate"),
+  skyLore: document.getElementById("sky-lore"),
+  loreRate: document.getElementById("lore-rate"),
+  relics: document.getElementById("relics"),
   nestsRow: document.getElementById("nests-row"),
+  twigsRow: document.getElementById("twigs-row"),
+  eggsRow: document.getElementById("eggs-row"),
+  roostsRow: document.getElementById("roosts-row"),
+  aviariesRow: document.getElementById("aviaries-row"),
+  loreRow: document.getElementById("lore-row"),
   worldRow: document.getElementById("world-row"),
   spaceRow: document.getElementById("space-row"),
+  relicRow: document.getElementById("relic-row"),
   ngRow: document.getElementById("ng-row"),
   ngPlus: document.getElementById("ng-plus"),
   ngMultiplier: document.getElementById("ng-multiplier"),
   peckButton: document.getElementById("peck-button"),
+  forageButton: document.getElementById("forage-button"),
+  incubateButton: document.getElementById("incubate-button"),
+  expeditionButton: document.getElementById("expedition-button"),
+  expeditionCost: document.getElementById("expedition-cost"),
+  expeditionTwigCost: document.getElementById("expedition-twig-cost"),
+  resetGame: document.getElementById("reset-game"),
   buyBird: document.getElementById("buy-bird"),
   birdCost: document.getElementById("bird-cost"),
   buyNest: document.getElementById("buy-nest"),
   nestCost: document.getElementById("nest-cost"),
+  nestTwigCost: document.getElementById("nest-twig-cost"),
+  buyRoost: document.getElementById("buy-roost"),
+  roostCost: document.getElementById("roost-cost"),
+  roostTwigCost: document.getElementById("roost-twig-cost"),
+  buyAviary: document.getElementById("buy-aviary"),
+  aviaryCost: document.getElementById("aviary-cost"),
+  aviaryScienceCost: document.getElementById("aviary-science-cost"),
   buyStarship: document.getElementById("buy-starship"),
   starshipCost: document.getElementById("starship-cost"),
+  starshipLoreCost: document.getElementById("starship-lore-cost"),
   newGamePlus: document.getElementById("new-game-plus"),
   upgradesPanel: document.getElementById("upgrades-panel"),
   upgrades: document.getElementById("upgrades"),
+  projectsPanel: document.getElementById("projects-panel"),
+  projects: document.getElementById("projects"),
   log: document.getElementById("log"),
   ending: document.getElementById("ending"),
   nextTargetTitle: document.getElementById("next-target-title"),
   nextTargetDetail: document.getElementById("next-target-detail"),
   nextTargetProgressBar: document.getElementById("next-target-progress-bar"),
   nextTargetProgressText: document.getElementById("next-target-progress-text"),
+  storyEra: document.getElementById("story-era"),
+  storyText: document.getElementById("story-text"),
 };
 
 function createDefaultGame() {
   return {
     seeds: 0,
+    twigs: 0,
+    eggs: 0,
     birds: 1,
     nests: 0,
+    roosts: 0,
+    aviaries: 0,
     starships: 0,
     worldControl: 0,
     starSystems: 0,
     featherScience: 0,
+    skyLore: 0,
+    relics: 0,
     birdFraction: 0,
     birdCost: COSTS.birdBase,
     nestCost: COSTS.nestBase,
+    nestTwigCost: COSTS.nestTwigBase,
+    roostCost: COSTS.roostBase,
+    roostTwigCost: COSTS.roostTwigBase,
+    aviaryCost: COSTS.aviaryBase,
+    aviaryScienceCost: COSTS.aviaryScienceBase,
     starshipCost: COSTS.starshipBase,
+    starshipLoreCost: COSTS.starshipLoreBase,
     peckPower: 1,
+    foragePower: 1,
     seedRatePerBird: BASE_RATES.seedRatePerBird,
-    birdGrowthRatePerNest: BASE_RATES.birdGrowthRatePerNest,
+    twigRatePerBird: BASE_RATES.twigRatePerBird,
+    eggRatePerNest: BASE_RATES.eggRatePerNest,
+    hatchRatePerNest: BASE_RATES.hatchRatePerNest,
     featherScienceRatePerNest: BASE_RATES.featherScienceRatePerNest,
+    skyLoreRatePerAviary: BASE_RATES.skyLoreRatePerAviary,
+    harmonyPerRoost: BASE_RATES.harmonyPerRoost,
     worldControlRateFactor: BASE_RATES.worldControlRateFactor,
     starshipColonizeRate: BASE_RATES.starshipColonizeRate,
+    relicRatePerStarSystem: BASE_RATES.relicRatePerStarSystem,
+    twigsUnlocked: false,
     nestsUnlocked: false,
+    eggsUnlocked: false,
+    roostsUnlocked: false,
+    aviariesUnlocked: false,
+    loreUnlocked: false,
     worldUnlocked: false,
     spaceUnlocked: false,
+    relicsUnlocked: false,
+    expeditionsUnlocked: false,
     ngPlusCount: 0,
     ngMultiplier: 1,
     upgrades: {},
+    projects: {},
     log: [],
     won: false,
     lastSavedAt: Date.now(),
@@ -148,10 +232,10 @@ const upgradesConfig = [
     cost: 600,
     unlockCondition: () => game.nests >= 1,
     applyEffect: () => {
-      game.birdGrowthRatePerNest *= 1.5;
+      game.hatchRatePerNest *= 1.5;
     },
     reapplyEffectForLoad: () => {
-      game.birdGrowthRatePerNest *= 1.5;
+      game.hatchRatePerNest *= 1.5;
     },
   },
   {
@@ -187,11 +271,65 @@ const upgradesConfig = [
     unlockCondition: () => game.birds >= 80,
     applyEffect: () => {
       game.seedRatePerBird *= 2;
-      game.birdGrowthRatePerNest *= 2;
+      game.hatchRatePerNest *= 2;
     },
     reapplyEffectForLoad: () => {
       game.seedRatePerBird *= 2;
-      game.birdGrowthRatePerNest *= 2;
+      game.hatchRatePerNest *= 2;
+    },
+  },
+  {
+    id: "twig-weaving",
+    name: "Twig Weaving",
+    desc: "Twigs per bird +75%. The flock learns artisanal carpentry.",
+    cost: 2200,
+    unlockCondition: () => game.twigsUnlocked && game.birds >= 40,
+    applyEffect: () => {
+      game.twigRatePerBird *= 1.75;
+    },
+    reapplyEffectForLoad: () => {
+      game.twigRatePerBird *= 1.75;
+    },
+  },
+  {
+    id: "incubator-fires",
+    name: "Incubator Fires",
+    desc: "Egg production and hatching +60%. Warmth with purpose.",
+    cost: 4200,
+    unlockCondition: () => game.eggsUnlocked && game.nests >= 6,
+    applyEffect: () => {
+      game.eggRatePerNest *= 1.6;
+      game.hatchRatePerNest *= 1.6;
+    },
+    reapplyEffectForLoad: () => {
+      game.eggRatePerNest *= 1.6;
+      game.hatchRatePerNest *= 1.6;
+    },
+  },
+  {
+    id: "roost-harmony",
+    name: "Roost Harmony",
+    desc: "Roost harmony bonus +50%. Every landing is a chorus.",
+    cost: 12_000,
+    unlockCondition: () => game.roosts >= 2,
+    applyEffect: () => {
+      game.harmonyPerRoost *= 1.5;
+    },
+    reapplyEffectForLoad: () => {
+      game.harmonyPerRoost *= 1.5;
+    },
+  },
+  {
+    id: "lorekeepers",
+    name: "Lorekeepers",
+    desc: "Sky Lore production +75%. Archivists with wings.",
+    costFeatherScience: 600,
+    unlockCondition: () => game.aviaries >= 1,
+    applyEffect: () => {
+      game.skyLoreRatePerAviary *= 1.75;
+    },
+    reapplyEffectForLoad: () => {
+      game.skyLoreRatePerAviary *= 1.75;
     },
   },
   {
@@ -261,6 +399,59 @@ const upgradesConfig = [
   },
 ];
 
+const projectsConfig = [
+  {
+    id: "sky-council",
+    name: "Sky Council",
+    desc: "Formalize flock governance. World control accelerates.",
+    costs: { seeds: 6000, twigs: 900, eggs: 30 },
+    unlockCondition: () => game.roosts >= 1,
+    applyEffect: () => {
+      game.worldControlRateFactor *= 1.6;
+    },
+  },
+  {
+    id: "aerie-archives",
+    name: "Aerie Archives",
+    desc: "Catalog every gust. Sky Lore generation increases.",
+    costs: { seeds: 15_000, featherScience: 900 },
+    unlockCondition: () => game.aviaries >= 1,
+    applyEffect: () => {
+      game.skyLoreRatePerAviary *= 1.8;
+    },
+  },
+  {
+    id: "mythic-chorus",
+    name: "Mythic Chorus",
+    desc: "A living anthem that lifts all production.",
+    costs: { twigs: 8000, eggs: 200, featherScience: 2400 },
+    unlockCondition: () => game.roosts >= 4,
+    applyEffect: () => {
+      game.harmonyPerRoost *= 2;
+    },
+  },
+  {
+    id: "wind-riders",
+    name: "Wind Riders",
+    desc: "Long-range gliders for starship crews. Colonization accelerates.",
+    costs: { seeds: 60_000, skyLore: 180, relics: 2 },
+    unlockCondition: () => game.spaceUnlocked,
+    applyEffect: () => {
+      game.starshipColonizeRate *= 1.35;
+    },
+  },
+  {
+    id: "relic-observatory",
+    name: "Relic Observatory",
+    desc: "Decode cosmic relics. Relic discovery improves.",
+    costs: { seeds: 120_000, skyLore: 260, relics: 4 },
+    unlockCondition: () => game.spaceUnlocked && game.starSystems >= 6,
+    applyEffect: () => {
+      game.relicRatePerStarSystem *= 1.8;
+    },
+  },
+];
+
 function initGame() {
   const saved = loadGame();
   if (saved) {
@@ -270,6 +461,7 @@ function initGame() {
   }
   restoreUpgrades();
   rebuildUpgradesUI();
+  rebuildProjectsUI();
   bindEvents();
   refreshUnlocks(true);
   if (saved && saved.offlineSummary) {
@@ -293,6 +485,37 @@ function bindEvents() {
     saveGame();
   });
 
+  elements.forageButton.addEventListener("click", () => {
+    if (game.won) return;
+    const gain = game.foragePower * game.ngMultiplier;
+    game.twigs += gain;
+    addLog(`Foraged +${formatNumber(gain)} twigs.`, false);
+    updateUI();
+    saveGame();
+  });
+
+  elements.incubateButton.addEventListener("click", () => {
+    if (game.won || game.eggs < 1) return;
+    game.eggs -= 1;
+    game.birds += 1;
+    addLog("An egg hatches. A new bird flutters out.");
+    refreshUnlocks();
+    updateUI();
+    saveGame();
+  });
+
+  elements.expeditionButton.addEventListener("click", () => {
+    if (game.won) return;
+    sendExpedition();
+  });
+
+  elements.resetGame.addEventListener("click", () => {
+    if (confirm("Hard reset? This will erase your save and restart the game.")) {
+      localStorage.removeItem("birdGameSave");
+      location.reload();
+    }
+  });
+
   elements.buyBird.addEventListener("click", () => {
     if (game.seeds < game.birdCost || game.won) return;
     game.seeds -= game.birdCost;
@@ -309,10 +532,13 @@ function bindEvents() {
   });
 
   elements.buyNest.addEventListener("click", () => {
-    if (game.seeds < game.nestCost || game.won) return;
+    if (game.seeds < game.nestCost || game.twigs < game.nestTwigCost || game.won)
+      return;
     game.seeds -= game.nestCost;
+    game.twigs -= game.nestTwigCost;
     game.nests += 1;
     game.nestCost = Math.ceil(game.nestCost * COSTS.nestMult);
+    game.nestTwigCost = Math.ceil(game.nestTwigCost * COSTS.nestTwigMult);
     if (!milestoneFlags.firstNest) {
       milestoneFlags.firstNest = true;
       addLog("First nest built. Soft tyranny begins.");
@@ -325,15 +551,66 @@ function bindEvents() {
   });
 
   elements.buyStarship.addEventListener("click", () => {
-    if (game.seeds < game.starshipCost || game.won) return;
+    if (
+      game.seeds < game.starshipCost ||
+      game.skyLore < game.starshipLoreCost ||
+      game.won
+    )
+      return;
     game.seeds -= game.starshipCost;
+    game.skyLore -= game.starshipLoreCost;
     game.starships += 1;
     game.starshipCost = Math.ceil(game.starshipCost * COSTS.starshipMult);
+    game.starshipLoreCost = Math.ceil(game.starshipLoreCost * COSTS.starshipLoreMult);
     if (!milestoneFlags.firstStarship) {
       milestoneFlags.firstStarship = true;
       addLog("First starship launched. The vacuum is now bird-friendly.");
     } else {
       addLog("Another starship departs. Galactic tourism begins.");
+    }
+    refreshUnlocks();
+    updateUI();
+    saveGame();
+  });
+
+  elements.buyRoost.addEventListener("click", () => {
+    if (game.seeds < game.roostCost || game.twigs < game.roostTwigCost || game.won)
+      return;
+    game.seeds -= game.roostCost;
+    game.twigs -= game.roostTwigCost;
+    game.roosts += 1;
+    game.roostCost = Math.ceil(game.roostCost * COSTS.roostMult);
+    game.roostTwigCost = Math.ceil(game.roostTwigCost * COSTS.roostTwigMult);
+    if (!milestoneFlags.firstRoost) {
+      milestoneFlags.firstRoost = true;
+      addLog("First roost raised. The flock discovers harmony.");
+    } else {
+      addLog("Roost expanded. Songs echo across the nests.");
+    }
+    refreshUnlocks();
+    updateUI();
+    saveGame();
+  });
+
+  elements.buyAviary.addEventListener("click", () => {
+    if (
+      game.seeds < game.aviaryCost ||
+      game.featherScience < game.aviaryScienceCost ||
+      game.won
+    )
+      return;
+    game.seeds -= game.aviaryCost;
+    game.featherScience -= game.aviaryScienceCost;
+    game.aviaries += 1;
+    game.aviaryCost = Math.ceil(game.aviaryCost * COSTS.aviaryMult);
+    game.aviaryScienceCost = Math.ceil(
+      game.aviaryScienceCost * COSTS.aviaryScienceMult
+    );
+    if (!milestoneFlags.firstAviary) {
+      milestoneFlags.firstAviary = true;
+      addLog("First aviary opens. Lore takes flight.");
+    } else {
+      addLog("Aviary expanded. Libraries of wind are stacked higher.");
     }
     refreshUnlocks();
     updateUI();
@@ -361,30 +638,52 @@ function stopLoops() {
 function gameTick() {
   if (game.won) return;
   const multiplier = game.ngMultiplier;
-  game.seeds += game.birds * game.seedRatePerBird * multiplier * DELTA;
+  const harmony = getHarmonyMultiplier();
+  game.seeds += game.birds * game.seedRatePerBird * multiplier * harmony * DELTA;
+  game.twigs += game.birds * game.twigRatePerBird * multiplier * harmony * DELTA;
 
   if (game.nests > 0) {
-    game.birdFraction += game.nests * game.birdGrowthRatePerNest * multiplier * DELTA;
-    while (game.birdFraction >= 1) {
-      game.birdFraction -= 1;
-      game.birds += 1;
+    game.eggs += game.nests * game.eggRatePerNest * multiplier * harmony * DELTA;
+    const hatchPotential =
+      game.nests * game.hatchRatePerNest * multiplier * harmony * DELTA;
+    const hatchAmount = Math.min(game.eggs, hatchPotential);
+    if (hatchAmount > 0) {
+      game.eggs -= hatchAmount;
+      game.birdFraction += hatchAmount;
+      while (game.birdFraction >= 1) {
+        game.birdFraction -= 1;
+        game.birds += 1;
+      }
     }
   }
 
   if (game.nests > 0) {
-    game.featherScience += game.nests * game.featherScienceRatePerNest * multiplier * DELTA;
+    game.featherScience +=
+      game.nests * game.featherScienceRatePerNest * multiplier * harmony * DELTA;
+  }
+
+  if (game.aviaries > 0) {
+    game.skyLore +=
+      game.aviaries * game.skyLoreRatePerAviary * multiplier * harmony * DELTA;
   }
 
   if (game.worldUnlocked && game.worldControl < 100) {
-    const rate = game.birds * game.worldControlRateFactor * multiplier * DELTA * 100;
+    const rate =
+      game.birds * game.worldControlRateFactor * multiplier * harmony * DELTA * 100;
     game.worldControl = Math.min(100, game.worldControl + rate);
   }
 
   if (game.spaceUnlocked && game.starSystems < STAR_TARGET) {
     game.starSystems = Math.min(
       STAR_TARGET,
-      game.starSystems + game.starships * game.starshipColonizeRate * multiplier * DELTA
+      game.starSystems +
+        game.starships * game.starshipColonizeRate * multiplier * harmony * DELTA
     );
+  }
+
+  if (game.spaceUnlocked && game.starSystems > 0) {
+    game.relics +=
+      game.starSystems * game.relicRatePerStarSystem * multiplier * harmony * DELTA;
   }
 
   refreshUnlocks();
@@ -394,13 +693,50 @@ function gameTick() {
 }
 
 function refreshUnlocks(isLoad = false) {
+  if (!game.twigsUnlocked && game.birds >= 5) {
+    game.twigsUnlocked = true;
+    elements.twigsRow.hidden = false;
+    elements.forageButton.hidden = false;
+    if (!isLoad) {
+      addLog("Twigs discovered. Every branch is an opportunity.");
+    }
+  }
+
   if (!game.nestsUnlocked && game.birds >= BIRDS_FOR_NESTS) {
     game.nestsUnlocked = true;
     elements.nestsRow.hidden = false;
     elements.buyNest.hidden = false;
+    elements.eggsRow.hidden = false;
+    elements.incubateButton.hidden = false;
+    game.eggsUnlocked = true;
     if (!isLoad) {
       addLog("Nests unlocked. The coop has formed a coup.");
     }
+  }
+
+  if (!game.roostsUnlocked && game.birds >= BIRDS_FOR_ROOSTS) {
+    game.roostsUnlocked = true;
+    elements.roostsRow.hidden = false;
+    elements.buyRoost.hidden = false;
+    if (!isLoad) {
+      addLog("Roosts unlocked. The flock learns to harmonize.");
+    }
+  }
+
+  if (!game.aviariesUnlocked && game.featherScience >= FEATHER_FOR_AVIARIES) {
+    game.aviariesUnlocked = true;
+    elements.aviariesRow.hidden = false;
+    elements.buyAviary.hidden = false;
+    elements.loreRow.hidden = false;
+    game.loreUnlocked = true;
+    if (!isLoad) {
+      addLog("Aviaries unlocked. The flock begins to catalog the sky.");
+    }
+  }
+
+  if (!game.loreUnlocked && game.skyLore > 0) {
+    game.loreUnlocked = true;
+    elements.loreRow.hidden = false;
   }
 
   if (!game.worldUnlocked && game.birds >= BIRDS_FOR_WORLD) {
@@ -420,9 +756,40 @@ function refreshUnlocks(isLoad = false) {
     }
   }
 
+  if (!game.expeditionsUnlocked && game.roosts >= 1) {
+    game.expeditionsUnlocked = true;
+    elements.expeditionButton.hidden = false;
+    if (!isLoad) {
+      addLog("Expeditions unlocked. Scouts map forgotten branches.");
+    }
+  }
+
+  if (!game.relicsUnlocked && (game.relics > 0 || game.starSystems > 0)) {
+    game.relicsUnlocked = true;
+    elements.relicRow.hidden = false;
+  }
+
+  if (game.twigsUnlocked) {
+    elements.twigsRow.hidden = false;
+    elements.forageButton.hidden = false;
+  }
+
   if (game.nestsUnlocked) {
     elements.nestsRow.hidden = false;
     elements.buyNest.hidden = false;
+    elements.eggsRow.hidden = false;
+    elements.incubateButton.hidden = false;
+  }
+
+  if (game.roostsUnlocked) {
+    elements.roostsRow.hidden = false;
+    elements.buyRoost.hidden = false;
+  }
+
+  if (game.aviariesUnlocked) {
+    elements.aviariesRow.hidden = false;
+    elements.buyAviary.hidden = false;
+    elements.loreRow.hidden = false;
   }
 
   if (game.worldUnlocked) {
@@ -434,51 +801,108 @@ function refreshUnlocks(isLoad = false) {
     elements.buyStarship.hidden = false;
   }
 
+  if (game.expeditionsUnlocked) {
+    elements.expeditionButton.hidden = false;
+  }
+
+  if (game.relicsUnlocked) {
+    elements.relicRow.hidden = false;
+  }
+
   updateUpgradesAvailability();
+  updateProjectsAvailability();
 }
 
 function updateUI() {
+  const harmony = getHarmonyMultiplier();
   elements.seeds.textContent = formatNumber(game.seeds);
+  elements.twigs.textContent = formatNumber(game.twigs);
+  elements.eggs.textContent = formatNumber(game.eggs, 2);
   elements.birds.textContent = formatNumber(game.birds);
   elements.nests.textContent = formatNumber(game.nests);
+  elements.roosts.textContent = formatNumber(game.roosts);
+  elements.aviaries.textContent = formatNumber(game.aviaries);
+  elements.harmonyMultiplier.textContent = formatNumber(harmony, 2);
   elements.worldControl.textContent = `${formatNumber(game.worldControl, 2)}%`;
   elements.starSystems.textContent = `${formatNumber(game.starSystems, 2)} / ${STAR_TARGET}`;
   elements.ngPlus.textContent = game.ngPlusCount;
   elements.ngMultiplier.textContent = formatNumber(game.ngMultiplier);
   elements.ngRow.hidden = game.ngPlusCount === 0 && !game.won;
   elements.featherScience.textContent = formatNumber(game.featherScience, 2);
+  elements.skyLore.textContent = formatNumber(game.skyLore, 2);
+  elements.relics.textContent = formatNumber(game.relics, 2);
   elements.seedRate.textContent = formatNumber(
-    game.birds * game.seedRatePerBird * game.ngMultiplier,
+    game.birds * game.seedRatePerBird * game.ngMultiplier * harmony,
+    2
+  );
+  elements.twigRate.textContent = formatNumber(
+    game.birds * game.twigRatePerBird * game.ngMultiplier * harmony,
+    2
+  );
+  elements.eggRate.textContent = formatNumber(
+    game.nests * game.eggRatePerNest * game.ngMultiplier * harmony,
     2
   );
   elements.birdRate.textContent = formatNumber(
-    game.nests * game.birdGrowthRatePerNest * game.ngMultiplier,
+    game.nests * game.hatchRatePerNest * game.ngMultiplier * harmony,
     2
   );
   elements.featherScienceRate.textContent = formatNumber(
-    game.nests * game.featherScienceRatePerNest * game.ngMultiplier,
+    game.nests * game.featherScienceRatePerNest * game.ngMultiplier * harmony,
+    2
+  );
+  elements.loreRate.textContent = formatNumber(
+    game.aviaries * game.skyLoreRatePerAviary * game.ngMultiplier * harmony,
     2
   );
   elements.worldRate.textContent = formatNumber(
-    game.worldUnlocked ? game.birds * game.worldControlRateFactor * game.ngMultiplier * 100 : 0,
+    game.worldUnlocked
+      ? game.birds * game.worldControlRateFactor * game.ngMultiplier * harmony * 100
+      : 0,
     2
   );
   elements.starRate.textContent = formatNumber(
-    game.spaceUnlocked ? game.starships * game.starshipColonizeRate * game.ngMultiplier : 0,
+    game.spaceUnlocked
+      ? game.starships * game.starshipColonizeRate * game.ngMultiplier * harmony
+      : 0,
     2
   );
 
   elements.birdCost.textContent = formatNumber(game.birdCost);
   elements.nestCost.textContent = formatNumber(game.nestCost);
+  elements.nestTwigCost.textContent = formatNumber(game.nestTwigCost);
+  elements.roostCost.textContent = formatNumber(game.roostCost);
+  elements.roostTwigCost.textContent = formatNumber(game.roostTwigCost);
+  elements.aviaryCost.textContent = formatNumber(game.aviaryCost);
+  elements.aviaryScienceCost.textContent = formatNumber(game.aviaryScienceCost);
   elements.starshipCost.textContent = formatNumber(game.starshipCost);
+  elements.starshipLoreCost.textContent = formatNumber(game.starshipLoreCost);
+  elements.expeditionCost.textContent = formatNumber(COSTS.expeditionSeedCost);
+  elements.expeditionTwigCost.textContent = formatNumber(COSTS.expeditionTwigCost);
 
   elements.buyBird.disabled = game.seeds < game.birdCost || game.won;
-  elements.buyNest.disabled = game.seeds < game.nestCost || game.won;
-  elements.buyStarship.disabled = game.seeds < game.starshipCost || game.won;
+  elements.buyNest.disabled =
+    game.seeds < game.nestCost || game.twigs < game.nestTwigCost || game.won;
+  elements.buyRoost.disabled =
+    game.seeds < game.roostCost || game.twigs < game.roostTwigCost || game.won;
+  elements.buyAviary.disabled =
+    game.seeds < game.aviaryCost ||
+    game.featherScience < game.aviaryScienceCost ||
+    game.won;
+  elements.buyStarship.disabled =
+    game.seeds < game.starshipCost || game.skyLore < game.starshipLoreCost || game.won;
   elements.peckButton.disabled = game.won;
+  elements.forageButton.disabled = game.won;
+  elements.incubateButton.disabled = game.eggs < 1 || game.won;
+  elements.expeditionButton.disabled =
+    game.seeds < COSTS.expeditionSeedCost ||
+    game.twigs < COSTS.expeditionTwigCost ||
+    game.won;
 
   updateUpgradesButtons();
+  updateProjectsButtons();
   updateNextTarget();
+  updateStory();
 }
 
 function updateNextTarget() {
@@ -489,13 +913,96 @@ function updateNextTarget() {
   elements.nextTargetProgressBar.style.width = `${(target.progress * 100).toFixed(1)}%`;
 }
 
+function getHarmonyMultiplier() {
+  return 1 + game.roosts * game.harmonyPerRoost;
+}
+
+function updateStory() {
+  const story = getStoryState();
+  elements.storyEra.textContent = story.era;
+  elements.storyText.textContent = story.text;
+}
+
+function getStoryState() {
+  if (!game.nestsUnlocked) {
+    return {
+      era: "Era of Seeds",
+      text: "The first birds learn that seeds are leverage, not just lunch.",
+    };
+  }
+  if (!game.roostsUnlocked) {
+    return {
+      era: "Era of Nests",
+      text: "Nests rise in every courtyard. The flock begins to dream together.",
+    };
+  }
+  if (!game.aviariesUnlocked) {
+    return {
+      era: "Era of Song",
+      text: "Roosts hum with harmony. The air itself bends to the chorus.",
+    };
+  }
+  if (!game.worldUnlocked) {
+    return {
+      era: "Era of Lore",
+      text: "Aviaries stack with scrolls of wind. The ground looks negotiable.",
+    };
+  }
+  if (!game.spaceUnlocked) {
+    return {
+      era: "Era of Dominion",
+      text: "Governments are nests now. The horizon is just another perch.",
+    };
+  }
+  if (game.starSystems < STAR_TARGET) {
+    return {
+      era: "Era of Starlight",
+      text: "Starships glide between suns. Relics whisper about older flocks.",
+    };
+  }
+  return {
+    era: "Era of Eternal Flight",
+    text: "The flock owns the galaxy. Every myth is feathered now.",
+  };
+}
+
 function getNextTarget() {
+  if (!game.twigsUnlocked) {
+    const progress = Math.min(1, game.birds / 5);
+    return {
+      title: "Discover Twigs",
+      detail: "Reach 5 birds to begin gathering twigs.",
+      progressText: `${formatNumber(game.birds)} / 5 birds`,
+      progress,
+    };
+  }
+
   if (!game.nestsUnlocked) {
     const progress = Math.min(1, game.birds / BIRDS_FOR_NESTS);
     return {
       title: "Unlock Nests",
       detail: `Reach ${BIRDS_FOR_NESTS} birds to build nests.`,
       progressText: `${formatNumber(game.birds)} / ${BIRDS_FOR_NESTS} birds`,
+      progress,
+    };
+  }
+
+  if (!game.roostsUnlocked) {
+    const progress = Math.min(1, game.birds / BIRDS_FOR_ROOSTS);
+    return {
+      title: "Raise Roosts",
+      detail: `Reach ${BIRDS_FOR_ROOSTS} birds to harmonize the flock.`,
+      progressText: `${formatNumber(game.birds)} / ${BIRDS_FOR_ROOSTS} birds`,
+      progress,
+    };
+  }
+
+  if (!game.aviariesUnlocked) {
+    const progress = Math.min(1, game.featherScience / FEATHER_FOR_AVIARIES);
+    return {
+      title: "Open Aviaries",
+      detail: `Gather ${FEATHER_FOR_AVIARIES} feather science to open aviaries.`,
+      progressText: `${formatNumber(game.featherScience, 2)} / ${FEATHER_FOR_AVIARIES} science`,
       progress,
     };
   }
@@ -552,6 +1059,20 @@ function updateUpgradesAvailability() {
   elements.upgradesPanel.hidden = !anyAvailable;
 }
 
+function updateProjectsAvailability() {
+  let anyAvailable = false;
+  projectsConfig.forEach((project) => {
+    const state = ensureProjectState(project.id);
+    if (project.unlockCondition()) {
+      state.unlocked = true;
+      if (!state.completed) {
+        anyAvailable = true;
+      }
+    }
+  });
+  elements.projectsPanel.hidden = !anyAvailable;
+}
+
 function updateUpgradesButtons() {
   upgradesConfig.forEach((upgrade) => {
     const state = ensureUpgradeState(upgrade.id);
@@ -586,6 +1107,31 @@ function updateUpgradesButtons() {
   });
 }
 
+function updateProjectsButtons() {
+  projectsConfig.forEach((project) => {
+    const state = ensureProjectState(project.id);
+    const button = document.getElementById(`project-${project.id}`);
+    const wrapper = document.getElementById(`project-wrapper-${project.id}`);
+    if (!button) return;
+
+    if (state.completed) {
+      if (wrapper) wrapper.hidden = true;
+      return;
+    }
+
+    if (state.unlocked) {
+      if (wrapper) wrapper.hidden = false;
+      button.hidden = false;
+      const affordable = canAffordCosts(project.costs);
+      button.disabled = !affordable || game.won;
+      button.textContent = `${project.name} (${formatCostList(project.costs)})`;
+    } else {
+      if (wrapper) wrapper.hidden = true;
+      button.hidden = true;
+    }
+  });
+}
+
 function rebuildUpgradesUI() {
   elements.upgrades.innerHTML = "";
   upgradesConfig.forEach((upgrade) => {
@@ -605,6 +1151,28 @@ function rebuildUpgradesUI() {
     wrapper.appendChild(button);
     wrapper.appendChild(desc);
     elements.upgrades.appendChild(wrapper);
+  });
+}
+
+function rebuildProjectsUI() {
+  elements.projects.innerHTML = "";
+  projectsConfig.forEach((project) => {
+    ensureProjectState(project.id);
+    const wrapper = document.createElement("div");
+    wrapper.id = `project-wrapper-${project.id}`;
+    wrapper.className = "project";
+    const button = document.createElement("button");
+    button.id = `project-${project.id}`;
+    button.hidden = true;
+    button.addEventListener("click", () => purchaseProject(project));
+
+    const desc = document.createElement("div");
+    desc.className = "project-desc";
+    desc.textContent = project.desc;
+
+    wrapper.appendChild(button);
+    wrapper.appendChild(desc);
+    elements.projects.appendChild(wrapper);
   });
 }
 
@@ -630,6 +1198,110 @@ function purchaseUpgrade(upgrade) {
   saveGame();
 }
 
+function purchaseProject(project) {
+  const state = ensureProjectState(project.id);
+  if (!state.unlocked || state.completed || game.won) return;
+  if (!canAffordCosts(project.costs)) return;
+  spendCosts(project.costs);
+  state.completed = true;
+  project.applyEffect();
+  addLog(`Major project completed: ${project.name}.`);
+  updateProjectsAvailability();
+  updateUI();
+  saveGame();
+}
+
+function sendExpedition() {
+  if (
+    game.seeds < COSTS.expeditionSeedCost ||
+    game.twigs < COSTS.expeditionTwigCost ||
+    game.won
+  )
+    return;
+  game.seeds -= COSTS.expeditionSeedCost;
+  game.twigs -= COSTS.expeditionTwigCost;
+  const roll = Math.random();
+  if (roll < 0.4) {
+    const loreGain = 6 + Math.random() * 8;
+    game.skyLore += loreGain;
+    addLog(`Expedition returns with sky lore: +${formatNumber(loreGain, 2)}.`);
+  } else if (roll < 0.7) {
+    const seedGain = 1200 + Math.random() * 1600;
+    game.seeds += seedGain;
+    addLog(`Expedition uncovers hidden granaries: +${formatNumber(seedGain)} seeds.`);
+  } else {
+    const relicGain = 0.4 + Math.random() * 0.8;
+    game.relics += relicGain;
+    addLog(`Expedition finds an ancient relic: +${formatNumber(relicGain, 2)} relics.`);
+  }
+  refreshUnlocks();
+  updateUI();
+  saveGame();
+}
+
+function canAffordCosts(costs) {
+  const entries = Object.entries(costs);
+  return entries.every(([key, value]) => {
+    switch (key) {
+      case "seeds":
+        return game.seeds >= value;
+      case "twigs":
+        return game.twigs >= value;
+      case "eggs":
+        return game.eggs >= value;
+      case "featherScience":
+        return game.featherScience >= value;
+      case "skyLore":
+        return game.skyLore >= value;
+      case "relics":
+        return game.relics >= value;
+      default:
+        return true;
+    }
+  });
+}
+
+function spendCosts(costs) {
+  Object.entries(costs).forEach(([key, value]) => {
+    switch (key) {
+      case "seeds":
+        game.seeds -= value;
+        break;
+      case "twigs":
+        game.twigs -= value;
+        break;
+      case "eggs":
+        game.eggs -= value;
+        break;
+      case "featherScience":
+        game.featherScience -= value;
+        break;
+      case "skyLore":
+        game.skyLore -= value;
+        break;
+      case "relics":
+        game.relics -= value;
+        break;
+      default:
+        break;
+    }
+  });
+}
+
+function formatCostList(costs) {
+  const labels = {
+    seeds: "seeds",
+    twigs: "twigs",
+    eggs: "eggs",
+    featherScience: "feather science",
+    skyLore: "lore",
+    relics: "relics",
+  };
+  return Object.entries(costs)
+    .map(([key, value]) => `${formatNumber(value)} ${labels[key] ?? key}`)
+    .join(", ");
+}
+
 function handleMilestones() {
   if (game.worldUnlocked) {
     if (game.worldControl >= 25 && !milestoneFlags.world25) {
@@ -648,6 +1320,11 @@ function handleMilestones() {
       milestoneFlags.world100 = true;
       addLog("World control 100%. Earth is officially a nest.");
     }
+  }
+
+  if (game.relics >= 1 && !milestoneFlags.firstRelic) {
+    milestoneFlags.firstRelic = true;
+    addLog("First relic decoded. The flock learns older secrets.");
   }
 
   if (game.starSystems >= 1 && !milestoneFlags.firstStarSystem) {
@@ -676,10 +1353,16 @@ function showWinState() {
   elements.ending.hidden = false;
   elements.ngRow.hidden = false;
   elements.peckButton.disabled = true;
+  elements.forageButton.disabled = true;
+  elements.incubateButton.disabled = true;
+  elements.expeditionButton.disabled = true;
   elements.buyBird.disabled = true;
   elements.buyNest.disabled = true;
+  elements.buyRoost.disabled = true;
+  elements.buyAviary.disabled = true;
   elements.buyStarship.disabled = true;
   updateUpgradesButtons();
+  updateProjectsButtons();
 }
 
 function startNewGamePlus() {
@@ -692,6 +1375,7 @@ function startNewGamePlus() {
   game.log = [];
   resetMilestones();
   rebuildUpgradesUI();
+  rebuildProjectsUI();
   refreshUnlocks(true);
   elements.log.innerHTML = "";
   addLog(`New Game+ begun. Feathered multiplier now x${formatNumber(multiplier)}.`);
@@ -744,28 +1428,54 @@ function formatNumber(value, decimals = 0) {
 function saveGame() {
   const payload = {
     seeds: game.seeds,
+    twigs: game.twigs,
+    eggs: game.eggs,
     birds: game.birds,
     nests: game.nests,
+    roosts: game.roosts,
+    aviaries: game.aviaries,
     starships: game.starships,
     worldControl: game.worldControl,
     starSystems: game.starSystems,
     featherScience: game.featherScience,
+    skyLore: game.skyLore,
+    relics: game.relics,
     birdFraction: game.birdFraction,
     birdCost: game.birdCost,
     nestCost: game.nestCost,
+    nestTwigCost: game.nestTwigCost,
+    roostCost: game.roostCost,
+    roostTwigCost: game.roostTwigCost,
+    aviaryCost: game.aviaryCost,
+    aviaryScienceCost: game.aviaryScienceCost,
     starshipCost: game.starshipCost,
+    starshipLoreCost: game.starshipLoreCost,
     peckPower: game.peckPower,
+    foragePower: game.foragePower,
     seedRatePerBird: game.seedRatePerBird,
-    birdGrowthRatePerNest: game.birdGrowthRatePerNest,
+    twigRatePerBird: game.twigRatePerBird,
+    eggRatePerNest: game.eggRatePerNest,
+    hatchRatePerNest: game.hatchRatePerNest,
     featherScienceRatePerNest: game.featherScienceRatePerNest,
+    skyLoreRatePerAviary: game.skyLoreRatePerAviary,
+    harmonyPerRoost: game.harmonyPerRoost,
     worldControlRateFactor: game.worldControlRateFactor,
     starshipColonizeRate: game.starshipColonizeRate,
+    relicRatePerStarSystem: game.relicRatePerStarSystem,
+    twigsUnlocked: game.twigsUnlocked,
     nestsUnlocked: game.nestsUnlocked,
+    eggsUnlocked: game.eggsUnlocked,
+    roostsUnlocked: game.roostsUnlocked,
+    aviariesUnlocked: game.aviariesUnlocked,
+    loreUnlocked: game.loreUnlocked,
     worldUnlocked: game.worldUnlocked,
     spaceUnlocked: game.spaceUnlocked,
+    relicsUnlocked: game.relicsUnlocked,
+    expeditionsUnlocked: game.expeditionsUnlocked,
     ngPlusCount: game.ngPlusCount,
     ngMultiplier: game.ngMultiplier,
     upgrades: game.upgrades,
+    projects: game.projects,
     log: game.log,
     won: game.won,
     lastSavedAt: Date.now(),
@@ -780,6 +1490,9 @@ function loadGame() {
     const data = JSON.parse(raw);
     const loaded = createDefaultGame();
     Object.assign(loaded, data);
+    if (!loaded.hatchRatePerNest && loaded.birdGrowthRatePerNest) {
+      loaded.hatchRatePerNest = loaded.birdGrowthRatePerNest;
+    }
     const offlineSummary = applyOfflineProgress(loaded);
     return { game: loaded, offlineSummary };
   } catch (error) {
@@ -804,22 +1517,45 @@ function applyOfflineProgress(loaded) {
   }
 
   const multiplier = loaded.ngMultiplier;
-  const seedsGain = loaded.birds * loaded.seedRatePerBird * multiplier * deltaSeconds;
+  const harmony = 1 + loaded.roosts * loaded.harmonyPerRoost;
+  const seedsGain = loaded.birds * loaded.seedRatePerBird * multiplier * harmony * deltaSeconds;
+  const twigsGain = loaded.birds * loaded.twigRatePerBird * multiplier * harmony * deltaSeconds;
   loaded.seeds += seedsGain;
+  loaded.twigs += twigsGain;
 
   const birdsBefore = loaded.birds;
+  const eggsBefore = loaded.eggs;
   if (loaded.nests > 0) {
-    loaded.birdFraction += loaded.nests * loaded.birdGrowthRatePerNest * multiplier * deltaSeconds;
-    const newBirds = Math.floor(loaded.birdFraction);
-    if (newBirds > 0) {
-      loaded.birdFraction -= newBirds;
-      loaded.birds += newBirds;
+    loaded.eggs += loaded.nests * loaded.eggRatePerNest * multiplier * harmony * deltaSeconds;
+    const hatchPotential = loaded.nests * loaded.hatchRatePerNest * multiplier * harmony * deltaSeconds;
+    const hatchAmount = Math.min(loaded.eggs, hatchPotential);
+    if (hatchAmount > 0) {
+      loaded.eggs -= hatchAmount;
+      loaded.birdFraction += hatchAmount;
+      const newBirds = Math.floor(loaded.birdFraction);
+      if (newBirds > 0) {
+        loaded.birdFraction -= newBirds;
+        loaded.birds += newBirds;
+      }
     }
+  }
+
+  const scienceBefore = loaded.featherScience;
+  if (loaded.nests > 0) {
+    loaded.featherScience +=
+      loaded.nests * loaded.featherScienceRatePerNest * multiplier * harmony * deltaSeconds;
+  }
+
+  const loreBefore = loaded.skyLore;
+  if (loaded.aviaries > 0) {
+    loaded.skyLore +=
+      loaded.aviaries * loaded.skyLoreRatePerAviary * multiplier * harmony * deltaSeconds;
   }
 
   const worldBefore = loaded.worldControl;
   if (loaded.worldUnlocked && loaded.worldControl < 100) {
-    const rate = loaded.birds * loaded.worldControlRateFactor * multiplier * deltaSeconds * 100;
+    const rate =
+      loaded.birds * loaded.worldControlRateFactor * multiplier * harmony * deltaSeconds * 100;
     loaded.worldControl = Math.min(100, loaded.worldControl + rate);
   }
 
@@ -827,23 +1563,47 @@ function applyOfflineProgress(loaded) {
   if (loaded.spaceUnlocked && loaded.starSystems < STAR_TARGET) {
     loaded.starSystems = Math.min(
       STAR_TARGET,
-      loaded.starSystems + loaded.starships * loaded.starshipColonizeRate * multiplier * deltaSeconds
+      loaded.starSystems +
+        loaded.starships * loaded.starshipColonizeRate * multiplier * harmony * deltaSeconds
     );
+  }
+
+  const relicBefore = loaded.relics;
+  if (loaded.spaceUnlocked && loaded.starSystems > 0) {
+    loaded.relics +=
+      loaded.starSystems *
+      loaded.relicRatePerStarSystem *
+      multiplier *
+      harmony *
+      deltaSeconds;
   }
 
   loaded.lastSavedAt = now;
 
   const birdsGain = loaded.birds - birdsBefore;
+  const eggsGain = loaded.eggs - eggsBefore;
+  const scienceGain = loaded.featherScience - scienceBefore;
+  const loreGain = loaded.skyLore - loreBefore;
   const worldGain = loaded.worldControl - worldBefore;
   const starGain = loaded.starSystems - starBefore;
+  const relicGain = loaded.relics - relicBefore;
 
   return `Offline gains (${formatNumber(deltaSeconds, 1)}s): +${formatNumber(
     seedsGain,
     2
-  )} seeds, +${formatNumber(birdsGain)} birds, +${formatNumber(
+  )} seeds, +${formatNumber(twigsGain, 2)} twigs, +${formatNumber(
+    eggsGain,
+    2
+  )} eggs, +${formatNumber(birdsGain)} birds, +${formatNumber(
+    scienceGain,
+    2
+  )} science, +${formatNumber(loreGain, 2)} lore, +${formatNumber(
     worldGain,
     2
-  )}% world control, +${formatNumber(starGain, 2)} systems.`;
+  )}% world control, +${formatNumber(starGain, 2)} systems, +${formatNumber(
+    relicGain,
+    2
+  )} relics.`;
 }
 
 function restoreUpgrades() {
@@ -851,11 +1611,17 @@ function restoreUpgrades() {
     game.upgrades = {};
   }
   game.peckPower = 1;
+  game.foragePower = 1;
   game.seedRatePerBird = BASE_RATES.seedRatePerBird;
-  game.birdGrowthRatePerNest = BASE_RATES.birdGrowthRatePerNest;
+  game.twigRatePerBird = BASE_RATES.twigRatePerBird;
+  game.eggRatePerNest = BASE_RATES.eggRatePerNest;
+  game.hatchRatePerNest = BASE_RATES.hatchRatePerNest;
   game.featherScienceRatePerNest = BASE_RATES.featherScienceRatePerNest;
+  game.skyLoreRatePerAviary = BASE_RATES.skyLoreRatePerAviary;
+  game.harmonyPerRoost = BASE_RATES.harmonyPerRoost;
   game.worldControlRateFactor = BASE_RATES.worldControlRateFactor;
   game.starshipColonizeRate = BASE_RATES.starshipColonizeRate;
+  game.relicRatePerStarSystem = BASE_RATES.relicRatePerStarSystem;
   upgradesConfig.forEach((upgrade) => {
     ensureUpgradeState(upgrade.id);
     if (game.upgrades[upgrade.id].purchased) {
@@ -873,6 +1639,16 @@ function ensureUpgradeState(upgradeId) {
     game.upgrades[upgradeId] = { unlocked: false, purchased: false };
   }
   return game.upgrades[upgradeId];
+}
+
+function ensureProjectState(projectId) {
+  if (!game.projects || typeof game.projects !== "object") {
+    game.projects = {};
+  }
+  if (!game.projects[projectId]) {
+    game.projects[projectId] = { unlocked: false, completed: false };
+  }
+  return game.projects[projectId];
 }
 
 function loadLog() {
