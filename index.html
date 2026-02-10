@@ -37,8 +37,11 @@
         <div class="resource-line" id="nests-row" hidden>Nests: <span id="nests">0</span></div>
         <div class="resource-line" id="roosts-row" hidden>Roosts: <span id="roosts">0</span> <span class="rate">(Harmony x<span id="harmony-multiplier">1</span>)</span></div>
         <div class="resource-line" id="aviaries-row" hidden>Aviaries: <span id="aviaries">0</span></div>
-        <div class="resource-line">Feather Science: <span id="feather-science">0</span> <span class="rate">(+<span id="feather-science-rate">0</span>/s)</span></div>
+        <div class="resource-line" id="feather-row" hidden>Feather Science: <span id="feather-science">0</span> <span class="rate">(+<span id="feather-science-rate">0</span>/s)</span></div>
         <div class="resource-line" id="lore-row" hidden>Sky Lore: <span id="sky-lore">0</span> <span class="rate">(+<span id="lore-rate">0</span>/s)</span></div>
+        <div class="resource-line" id="neighborhood-row" hidden>Neighborhood Influence: <span id="neighborhood-influence">0%</span> <span class="rate">(+<span id="neighborhood-rate">0</span>%/s)</span></div>
+        <div class="resource-line" id="town-row" hidden>Town Influence: <span id="town-influence">0%</span> <span class="rate">(+<span id="town-rate">0</span>%/s)</span></div>
+        <div class="resource-line" id="country-row" hidden>Country Influence: <span id="country-influence">0%</span> <span class="rate">(+<span id="country-rate">0</span>%/s)</span></div>
         <div class="resource-line" id="world-row" hidden>World Control: <span id="world-control">0%</span> <span class="rate">(+<span id="world-rate">0</span>%/s)</span></div>
         <div class="resource-line" id="space-row" hidden>Star Systems: <span id="star-systems">0 / 140</span> <span class="rate">(+<span id="star-rate">0</span>/s)</span></div>
         <div class="resource-line" id="relic-row" hidden>Relics: <span id="relics">0</span></div>
@@ -48,6 +51,9 @@
       <div class="panel" id="actions-panel" hidden>
         <h2>Actions</h2>
         <button id="expedition-button" hidden>Send Expedition (<span id="expedition-cost">2500</span> seeds, <span id="expedition-twig-cost">120</span> twigs)</button>
+        <button id="neighborhood-rally" hidden>Host Neighborhood Rally (<span id="neighborhood-cost">0</span>)</button>
+        <button id="town-summit" hidden>Hold Town Summit (<span id="town-cost">0</span>)</button>
+        <button id="country-charter" hidden>Draft Country Charter (<span id="country-cost">0</span>)</button>
       </div>
 
       <div class="panel">
