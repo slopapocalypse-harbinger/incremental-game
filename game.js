@@ -4,7 +4,10 @@ const DELTA = TICK_MS / 1000;
 const BIRDS_FOR_NESTS = 15;
 const BIRDS_FOR_ROOSTS = 60;
 const FEATHER_FOR_AVIARIES = 120;
-const BIRDS_FOR_WORLD = 1200;
+const BIRDS_FOR_NEIGHBORHOOD = 260;
+const NEIGHBORHOOD_TARGET = 100;
+const TOWN_TARGET = 100;
+const COUNTRY_TARGET = 100;
 const STAR_TARGET = 140;
 
 const COSTS = {
@@ -28,6 +31,12 @@ const COSTS = {
   starshipLoreMult: 1.25,
   expeditionSeedCost: 2500,
   expeditionTwigCost: 120,
+  neighborhoodRallySeedCost: 4200,
+  neighborhoodRallyTwigCost: 260,
+  townSummitSeedCost: 18_000,
+  townSummitEggCost: 45,
+  countryCharterSeedCost: 85_000,
+  countryCharterLoreCost: 18,
 };
 
 const BASE_RATES = {
@@ -38,7 +47,10 @@ const BASE_RATES = {
   featherScienceRatePerNest: 0.18,
   skyLoreRatePerAviary: 0.05,
   harmonyPerRoost: 0.02,
-  worldControlRateFactor: 8e-7,
+  neighborhoodInfluenceRateFactor: 2.3e-6,
+  townInfluenceRateFactor: 1.6e-6,
+  countryInfluenceRateFactor: 1.1e-6,
+  worldControlRateFactor: 5.5e-7,
   starshipColonizeRate: 0.08,
   relicRatePerStarSystem: 0.002,
 };
@@ -63,6 +75,9 @@ const birdChatterLines = [
 ];
 
 const milestoneFlags = {
+  neighborhood100: false,
+  town100: false,
+  country100: false,
   world25: false,
   world50: false,
   world75: false,
@@ -100,6 +115,12 @@ const elements = {
   starRate: document.getElementById("star-rate"),
   featherScience: document.getElementById("feather-science"),
   featherScienceRate: document.getElementById("feather-science-rate"),
+  neighborhoodInfluence: document.getElementById("neighborhood-influence"),
+  neighborhoodRate: document.getElementById("neighborhood-rate"),
+  townInfluence: document.getElementById("town-influence"),
+  townRate: document.getElementById("town-rate"),
+  countryInfluence: document.getElementById("country-influence"),
+  countryRate: document.getElementById("country-rate"),
   skyLore: document.getElementById("sky-lore"),
   loreRate: document.getElementById("lore-rate"),
   relics: document.getElementById("relics"),
@@ -111,7 +132,11 @@ const elements = {
   hatchUsage: document.getElementById("hatch-usage"),
   roostsRow: document.getElementById("roosts-row"),
   aviariesRow: document.getElementById("aviaries-row"),
+  featherRow: document.getElementById("feather-row"),
   loreRow: document.getElementById("lore-row"),
+  neighborhoodRow: document.getElementById("neighborhood-row"),
+  townRow: document.getElementById("town-row"),
+  countryRow: document.getElementById("country-row"),
   worldRow: document.getElementById("world-row"),
   spaceRow: document.getElementById("space-row"),
   relicRow: document.getElementById("relic-row"),
@@ -121,6 +146,12 @@ const elements = {
   expeditionButton: document.getElementById("expedition-button"),
   expeditionCost: document.getElementById("expedition-cost"),
   expeditionTwigCost: document.getElementById("expedition-twig-cost"),
+  neighborhoodRally: document.getElementById("neighborhood-rally"),
+  neighborhoodCost: document.getElementById("neighborhood-cost"),
+  townSummit: document.getElementById("town-summit"),
+  townCost: document.getElementById("town-cost"),
+  countryCharter: document.getElementById("country-charter"),
+  countryCost: document.getElementById("country-cost"),
   actionsPanel: document.getElementById("actions-panel"),
   heroBirds: document.getElementById("hero-birds"),
   heroUpgrades: document.getElementById("hero-upgrades"),
@@ -175,6 +206,9 @@ function createDefaultGame() {
     aviaries: 0,
     starships: 0,
     worldControl: 0,
+    neighborhoodInfluence: 0,
+    townInfluence: 0,
+    countryInfluence: 0,
     starSystems: 0,
     featherScience: 0,
     skyLore: 0,
@@ -199,6 +233,9 @@ function createDefaultGame() {
     featherScienceRatePerNest: BASE_RATES.featherScienceRatePerNest,
     skyLoreRatePerAviary: BASE_RATES.skyLoreRatePerAviary,
     harmonyPerRoost: BASE_RATES.harmonyPerRoost,
+    neighborhoodInfluenceRateFactor: BASE_RATES.neighborhoodInfluenceRateFactor,
+    townInfluenceRateFactor: BASE_RATES.townInfluenceRateFactor,
+    countryInfluenceRateFactor: BASE_RATES.countryInfluenceRateFactor,
     worldControlRateFactor: BASE_RATES.worldControlRateFactor,
     starshipColonizeRate: BASE_RATES.starshipColonizeRate,
     relicRatePerStarSystem: BASE_RATES.relicRatePerStarSystem,
@@ -208,6 +245,9 @@ function createDefaultGame() {
     roostsUnlocked: false,
     aviariesUnlocked: false,
     loreUnlocked: false,
+    neighborhoodUnlocked: false,
+    townUnlocked: false,
+    countryUnlocked: false,
     worldUnlocked: false,
     spaceUnlocked: false,
     relicsUnlocked: false,
@@ -357,6 +397,45 @@ const upgradesConfig = [
     },
   },
   {
+    id: "block-party",
+    name: "Block Parties",
+    desc: "Neighborhood influence grows 60% faster. Every stoop is a perch.",
+    cost: 9000,
+    unlockCondition: () => game.neighborhoodUnlocked,
+    applyEffect: () => {
+      game.neighborhoodInfluenceRateFactor *= 1.6;
+    },
+    reapplyEffectForLoad: () => {
+      game.neighborhoodInfluenceRateFactor *= 1.6;
+    },
+  },
+  {
+    id: "town-criers",
+    name: "Town Criers",
+    desc: "Town influence grows 50% faster. News travels on wings.",
+    cost: 26_000,
+    unlockCondition: () => game.townUnlocked,
+    applyEffect: () => {
+      game.townInfluenceRateFactor *= 1.5;
+    },
+    reapplyEffectForLoad: () => {
+      game.townInfluenceRateFactor *= 1.5;
+    },
+  },
+  {
+    id: "national-perches",
+    name: "National Perches",
+    desc: "Country influence grows 45% faster. The flock writes its charter.",
+    costFeatherScience: 950,
+    unlockCondition: () => game.countryUnlocked,
+    applyEffect: () => {
+      game.countryInfluenceRateFactor *= 1.45;
+    },
+    reapplyEffectForLoad: () => {
+      game.countryInfluenceRateFactor *= 1.45;
+    },
+  },
+  {
     id: "bird-propaganda",
     name: "Bird Propaganda",
     desc: "World control doubles. The United Nests approve this message.",
@@ -455,6 +534,36 @@ const projectsConfig = [
     },
   },
   {
+    id: "neighborhood-canopies",
+    name: "Neighborhood Canopies",
+    desc: "Rooftop gardens and alley perches. Neighborhood influence +70%.",
+    costs: { seeds: 24_000, twigs: 2400, eggs: 60 },
+    unlockCondition: () => game.neighborhoodUnlocked,
+    applyEffect: () => {
+      game.neighborhoodInfluenceRateFactor *= 1.7;
+    },
+  },
+  {
+    id: "civic-roost-network",
+    name: "Civic Roost Network",
+    desc: "Transit hubs for the flock. Town influence +65%.",
+    costs: { seeds: 75_000, eggs: 160, featherScience: 1800 },
+    unlockCondition: () => game.townUnlocked,
+    applyEffect: () => {
+      game.townInfluenceRateFactor *= 1.65;
+    },
+  },
+  {
+    id: "continental-charters",
+    name: "Continental Charters",
+    desc: "Global treaties, but feathered. Country influence +60%.",
+    costs: { seeds: 140_000, skyLore: 80, featherScience: 2600 },
+    unlockCondition: () => game.countryUnlocked,
+    applyEffect: () => {
+      game.countryInfluenceRateFactor *= 1.6;
+    },
+  },
+  {
     id: "wind-riders",
     name: "Wind Riders",
     desc: "Long-range gliders for crews. Colonization rate +35%.",
@@ -503,6 +612,21 @@ function bindEvents() {
   elements.expeditionButton.addEventListener("click", () => {
     if (game.won) return;
     sendExpedition();
+  });
+
+  elements.neighborhoodRally.addEventListener("click", () => {
+    if (game.won) return;
+    hostNeighborhoodRally();
+  });
+
+  elements.townSummit.addEventListener("click", () => {
+    if (game.won) return;
+    holdTownSummit();
+  });
+
+  elements.countryCharter.addEventListener("click", () => {
+    if (game.won) return;
+    draftCountryCharter();
   });
 
   elements.resetGame.addEventListener("click", () => {
@@ -639,6 +763,37 @@ function stopLoops() {
   saveTimer = null;
 }
 
+function getInfluenceRates() {
+  const harmony = getHarmonyMultiplier();
+  const multiplier = game.ngMultiplier;
+  return {
+    neighborhood:
+      (game.birds + game.nests * 4) *
+      game.neighborhoodInfluenceRateFactor *
+      multiplier *
+      harmony *
+      100,
+    town:
+      (game.birds + game.roosts * 30) *
+      game.townInfluenceRateFactor *
+      multiplier *
+      harmony *
+      100,
+    country:
+      (game.birds + game.aviaries * 50) *
+      game.countryInfluenceRateFactor *
+      multiplier *
+      harmony *
+      100,
+    world:
+      (game.birds + game.roosts * 25 + game.aviaries * 45) *
+      game.worldControlRateFactor *
+      multiplier *
+      harmony *
+      100,
+  };
+}
+
 function gameTick() {
   if (game.won) return;
   const multiplier = game.ngMultiplier;
@@ -678,10 +833,34 @@ function gameTick() {
       game.aviaries * game.skyLoreRatePerAviary * multiplier * harmony * DELTA;
   }
 
+  const influenceRates = getInfluenceRates();
+
+  if (game.neighborhoodUnlocked && game.neighborhoodInfluence < NEIGHBORHOOD_TARGET) {
+    game.neighborhoodInfluence = Math.min(
+      NEIGHBORHOOD_TARGET,
+      game.neighborhoodInfluence + influenceRates.neighborhood * DELTA
+    );
+  }
+
+  if (game.townUnlocked && game.townInfluence < TOWN_TARGET) {
+    game.townInfluence = Math.min(
+      TOWN_TARGET,
+      game.townInfluence + influenceRates.town * DELTA
+    );
+  }
+
+  if (game.countryUnlocked && game.countryInfluence < COUNTRY_TARGET) {
+    game.countryInfluence = Math.min(
+      COUNTRY_TARGET,
+      game.countryInfluence + influenceRates.country * DELTA
+    );
+  }
+
   if (game.worldUnlocked && game.worldControl < 100) {
-    const rate =
-      game.birds * game.worldControlRateFactor * multiplier * harmony * DELTA * 100;
-    game.worldControl = Math.min(100, game.worldControl + rate);
+    game.worldControl = Math.min(
+      100,
+      game.worldControl + influenceRates.world * DELTA
+    );
   }
 
   if (game.spaceUnlocked && game.starSystems < STAR_TARGET) {
@@ -717,7 +896,7 @@ function refreshUnlocks(isLoad = false) {
     elements.nestsRow.hidden = false;
     elements.buyNest.hidden = false;
     elements.eggsRow.hidden = false;
-    elements.hatchControl.hidden = false;
+    elements.hatchControl.hidden = true;
     game.eggsUnlocked = true;
     if (!isLoad) {
       addLog("Nests unlocked. The coop has formed a coup.");
@@ -749,7 +928,34 @@ function refreshUnlocks(isLoad = false) {
     elements.loreRow.hidden = false;
   }
 
-  if (!game.worldUnlocked && game.birds >= BIRDS_FOR_WORLD) {
+  if (!game.neighborhoodUnlocked && game.birds >= BIRDS_FOR_NEIGHBORHOOD) {
+    game.neighborhoodUnlocked = true;
+    elements.neighborhoodRow.hidden = false;
+    if (!isLoad) {
+      addLog("Neighborhood influence begins. Every rooftop is a stage.");
+    }
+  }
+
+  if (
+    !game.townUnlocked &&
+    game.neighborhoodInfluence >= NEIGHBORHOOD_TARGET
+  ) {
+    game.townUnlocked = true;
+    elements.townRow.hidden = false;
+    if (!isLoad) {
+      addLog("Town influence secured. The plazas belong to the flock.");
+    }
+  }
+
+  if (!game.countryUnlocked && game.townInfluence >= TOWN_TARGET) {
+    game.countryUnlocked = true;
+    elements.countryRow.hidden = false;
+    if (!isLoad) {
+      addLog("Country influence ignites. National perches are claimed.");
+    }
+  }
+
+  if (!game.worldUnlocked && game.countryInfluence >= COUNTRY_TARGET) {
     game.worldUnlocked = true;
     elements.worldRow.hidden = false;
     if (!isLoad) {
@@ -787,7 +993,7 @@ function refreshUnlocks(isLoad = false) {
     elements.nestsRow.hidden = false;
     elements.buyNest.hidden = false;
     elements.eggsRow.hidden = false;
-    elements.hatchControl.hidden = false;
+    elements.hatchControl.hidden = game.nests === 0;
   }
 
   if (game.roostsUnlocked) {
@@ -799,6 +1005,22 @@ function refreshUnlocks(isLoad = false) {
     elements.aviariesRow.hidden = false;
     elements.buyAviary.hidden = false;
     elements.loreRow.hidden = false;
+  }
+
+  if (game.nests > 0 || game.featherScience > 0) {
+    elements.featherRow.hidden = false;
+  }
+
+  if (game.neighborhoodUnlocked) {
+    elements.neighborhoodRow.hidden = false;
+  }
+
+  if (game.townUnlocked) {
+    elements.townRow.hidden = false;
+  }
+
+  if (game.countryUnlocked) {
+    elements.countryRow.hidden = false;
   }
 
   if (game.worldUnlocked) {
@@ -819,7 +1041,12 @@ function refreshUnlocks(isLoad = false) {
     elements.relicRow.hidden = false;
   }
 
-  elements.actionsPanel.hidden = !game.expeditionsUnlocked;
+  const hasActionUnlock =
+    game.expeditionsUnlocked ||
+    game.neighborhoodUnlocked ||
+    game.townUnlocked ||
+    game.countryUnlocked;
+  elements.actionsPanel.hidden = !hasActionUnlock;
 
   updateUpgradesAvailability();
   updateProjectsAvailability();
@@ -827,6 +1054,7 @@ function refreshUnlocks(isLoad = false) {
 
 function updateUI() {
   const harmony = getHarmonyMultiplier();
+  const influenceRates = getInfluenceRates();
   const eggRate = game.nests * game.eggRatePerNest * game.ngMultiplier * harmony;
   const hatchRate =
     game.nests *
@@ -843,6 +1071,15 @@ function updateUI() {
   elements.roosts.textContent = formatNumber(game.roosts);
   elements.aviaries.textContent = formatNumber(game.aviaries);
   elements.harmonyMultiplier.textContent = formatNumber(harmony, 2);
+  elements.neighborhoodInfluence.textContent = `${formatNumber(
+    game.neighborhoodInfluence,
+    2
+  )}%`;
+  elements.townInfluence.textContent = `${formatNumber(game.townInfluence, 2)}%`;
+  elements.countryInfluence.textContent = `${formatNumber(
+    game.countryInfluence,
+    2
+  )}%`;
   elements.worldControl.textContent = `${formatNumber(game.worldControl, 2)}%`;
   elements.starSystems.textContent = `${formatNumber(game.starSystems, 2)} / ${STAR_TARGET}`;
   elements.ngPlus.textContent = game.ngPlusCount;
@@ -875,10 +1112,20 @@ function updateUI() {
     game.aviaries * game.skyLoreRatePerAviary * game.ngMultiplier * harmony,
     2
   );
+  elements.neighborhoodRate.textContent = formatNumber(
+    game.neighborhoodUnlocked ? influenceRates.neighborhood : 0,
+    2
+  );
+  elements.townRate.textContent = formatNumber(
+    game.townUnlocked ? influenceRates.town : 0,
+    2
+  );
+  elements.countryRate.textContent = formatNumber(
+    game.countryUnlocked ? influenceRates.country : 0,
+    2
+  );
   elements.worldRate.textContent = formatNumber(
-    game.worldUnlocked
-      ? game.birds * game.worldControlRateFactor * game.ngMultiplier * harmony * 100
-      : 0,
+    game.worldUnlocked ? influenceRates.world : 0,
     2
   );
   elements.starRate.textContent = formatNumber(
@@ -889,6 +1136,8 @@ function updateUI() {
   );
   elements.hatchSlider.value = Math.round(game.hatchUsagePercent);
   elements.hatchUsage.textContent = formatNumber(game.hatchUsagePercent);
+  elements.hatchControl.hidden = game.nests === 0;
+  elements.featherRow.hidden = game.nests === 0 && game.featherScience <= 0;
 
   elements.birdCost.textContent = formatNumber(game.birdCost);
   elements.nestCost.textContent = formatNumber(game.nestCost);
@@ -901,6 +1150,15 @@ function updateUI() {
   elements.starshipLoreCost.textContent = formatNumber(game.starshipLoreCost);
   elements.expeditionCost.textContent = formatNumber(COSTS.expeditionSeedCost);
   elements.expeditionTwigCost.textContent = formatNumber(COSTS.expeditionTwigCost);
+  elements.neighborhoodCost.textContent = `${formatNumber(
+    COSTS.neighborhoodRallySeedCost
+  )} seeds, ${formatNumber(COSTS.neighborhoodRallyTwigCost)} twigs`;
+  elements.townCost.textContent = `${formatNumber(
+    COSTS.townSummitSeedCost
+  )} seeds, ${formatNumber(COSTS.townSummitEggCost)} eggs`;
+  elements.countryCost.textContent = `${formatNumber(
+    COSTS.countryCharterSeedCost
+  )} seeds, ${formatNumber(COSTS.countryCharterLoreCost)} lore`;
 
   elements.buyBird.disabled = game.seeds < game.birdCost || game.won;
   elements.buyNest.disabled =
@@ -917,6 +1175,25 @@ function updateUI() {
     game.seeds < COSTS.expeditionSeedCost ||
     game.twigs < COSTS.expeditionTwigCost ||
     game.won;
+  elements.neighborhoodRally.disabled =
+    game.seeds < COSTS.neighborhoodRallySeedCost ||
+    game.twigs < COSTS.neighborhoodRallyTwigCost ||
+    game.won;
+  elements.townSummit.disabled =
+    game.seeds < COSTS.townSummitSeedCost ||
+    game.eggs < COSTS.townSummitEggCost ||
+    game.won;
+  elements.countryCharter.disabled =
+    game.seeds < COSTS.countryCharterSeedCost ||
+    game.skyLore < COSTS.countryCharterLoreCost ||
+    game.won;
+
+  elements.neighborhoodRally.hidden =
+    !game.neighborhoodUnlocked || game.neighborhoodInfluence >= NEIGHBORHOOD_TARGET;
+  elements.townSummit.hidden =
+    !game.townUnlocked || game.townInfluence >= TOWN_TARGET;
+  elements.countryCharter.hidden =
+    !game.countryUnlocked || game.countryInfluence >= COUNTRY_TARGET;
 
   updateStructureDescriptions();
   updateUpgradesButtons();
@@ -1013,10 +1290,28 @@ function getStoryState() {
       text: "Roosts hum with harmony. The air itself bends to the chorus.",
     };
   }
-  if (!game.worldUnlocked) {
+  if (!game.neighborhoodUnlocked) {
     return {
       era: "Era of Lore",
       text: "Aviaries stack with scrolls of wind. The ground looks negotiable.",
+    };
+  }
+  if (!game.townUnlocked) {
+    return {
+      era: "Era of Blocks",
+      text: "Neighborhoods sway to the flutter. Every corner is a chorus line.",
+    };
+  }
+  if (!game.countryUnlocked) {
+    return {
+      era: "Era of Towns",
+      text: "Town squares fill with feathers. Councils schedule daily feedings.",
+    };
+  }
+  if (!game.worldUnlocked) {
+    return {
+      era: "Era of Nations",
+      text: "Countries align under wing. Treaties are signed in the sky.",
     };
   }
   if (!game.spaceUnlocked) {
@@ -1078,12 +1373,61 @@ function getNextTarget() {
     };
   }
 
-  if (!game.worldUnlocked) {
-    const progress = Math.min(1, game.birds / BIRDS_FOR_WORLD);
+  if (!game.neighborhoodUnlocked) {
+    const progress = Math.min(1, game.birds / BIRDS_FOR_NEIGHBORHOOD);
     return {
-      title: "Start World Control",
-      detail: `Reach ${BIRDS_FOR_WORLD} birds to begin the takeover.`,
-      progressText: `${formatNumber(game.birds)} / ${BIRDS_FOR_WORLD} birds`,
+      title: "Rally the Neighborhood",
+      detail: `Reach ${BIRDS_FOR_NEIGHBORHOOD} birds to start neighborhood influence.`,
+      progressText: `${formatNumber(game.birds)} / ${BIRDS_FOR_NEIGHBORHOOD} birds`,
+      progress,
+    };
+  }
+
+  if (game.neighborhoodInfluence < NEIGHBORHOOD_TARGET) {
+    const progress = Math.min(1, game.neighborhoodInfluence / NEIGHBORHOOD_TARGET);
+    return {
+      title: "Win the Neighborhood",
+      detail: "Reach 100% neighborhood influence to unlock the town stage.",
+      progressText: `${formatNumber(
+        game.neighborhoodInfluence,
+        2
+      )}% / ${NEIGHBORHOOD_TARGET}%`,
+      progress,
+    };
+  }
+
+  if (game.townInfluence < TOWN_TARGET) {
+    const progress = Math.min(1, game.townInfluence / TOWN_TARGET);
+    return {
+      title: "Secure the Town",
+      detail: "Push town influence to 100% to reach country negotiations.",
+      progressText: `${formatNumber(game.townInfluence, 2)}% / ${TOWN_TARGET}%`,
+      progress,
+    };
+  }
+
+  if (game.countryInfluence < COUNTRY_TARGET) {
+    const progress = Math.min(1, game.countryInfluence / COUNTRY_TARGET);
+    return {
+      title: "Unify the Country",
+      detail: "Complete country influence to start world control.",
+      progressText: `${formatNumber(
+        game.countryInfluence,
+        2
+      )}% / ${COUNTRY_TARGET}%`,
+      progress,
+    };
+  }
+
+  if (!game.worldUnlocked) {
+    const progress = Math.min(1, game.countryInfluence / COUNTRY_TARGET);
+    return {
+      title: "Launch World Control",
+      detail: "Finalize the charters to unlock global influence.",
+      progressText: `${formatNumber(
+        game.countryInfluence,
+        2
+      )}% / ${COUNTRY_TARGET}%`,
       progress,
     };
   }
@@ -1182,6 +1526,7 @@ function updateProjectsButtons() {
 
     if (state.completed) {
       if (wrapper) wrapper.hidden = true;
+      if (button) button.hidden = true;
       if (desc) desc.hidden = true;
       return;
     }
@@ -1233,6 +1578,7 @@ function rebuildProjectsUI() {
     const wrapper = document.createElement("div");
     wrapper.id = `project-wrapper-${project.id}`;
     wrapper.className = "project";
+    wrapper.hidden = true;
     const button = document.createElement("button");
     button.id = `project-${project.id}`;
     button.hidden = true;
@@ -1315,6 +1661,66 @@ function sendExpedition() {
   saveGame();
 }
 
+function hostNeighborhoodRally() {
+  if (
+    !game.neighborhoodUnlocked ||
+    game.neighborhoodInfluence >= NEIGHBORHOOD_TARGET ||
+    game.seeds < COSTS.neighborhoodRallySeedCost ||
+    game.twigs < COSTS.neighborhoodRallyTwigCost ||
+    game.won
+  )
+    return;
+  game.seeds -= COSTS.neighborhoodRallySeedCost;
+  game.twigs -= COSTS.neighborhoodRallyTwigCost;
+  const gain = 2.5 + Math.random() * 3.5;
+  game.neighborhoodInfluence = Math.min(
+    NEIGHBORHOOD_TARGET,
+    game.neighborhoodInfluence + gain
+  );
+  addLog(`Neighborhood rally boosts influence by ${formatNumber(gain, 2)}%.`);
+  refreshUnlocks();
+  updateUI();
+  saveGame();
+}
+
+function holdTownSummit() {
+  if (
+    !game.townUnlocked ||
+    game.townInfluence >= TOWN_TARGET ||
+    game.seeds < COSTS.townSummitSeedCost ||
+    game.eggs < COSTS.townSummitEggCost ||
+    game.won
+  )
+    return;
+  game.seeds -= COSTS.townSummitSeedCost;
+  game.eggs -= COSTS.townSummitEggCost;
+  const gain = 2 + Math.random() * 3;
+  game.townInfluence = Math.min(TOWN_TARGET, game.townInfluence + gain);
+  addLog(`Town summit sways voters: +${formatNumber(gain, 2)}% influence.`);
+  refreshUnlocks();
+  updateUI();
+  saveGame();
+}
+
+function draftCountryCharter() {
+  if (
+    !game.countryUnlocked ||
+    game.countryInfluence >= COUNTRY_TARGET ||
+    game.seeds < COSTS.countryCharterSeedCost ||
+    game.skyLore < COSTS.countryCharterLoreCost ||
+    game.won
+  )
+    return;
+  game.seeds -= COSTS.countryCharterSeedCost;
+  game.skyLore -= COSTS.countryCharterLoreCost;
+  const gain = 1.5 + Math.random() * 2.5;
+  game.countryInfluence = Math.min(COUNTRY_TARGET, game.countryInfluence + gain);
+  addLog(`Country charter ratified: +${formatNumber(gain, 2)}% influence.`);
+  refreshUnlocks();
+  updateUI();
+  saveGame();
+}
+
 function canAffordCosts(costs) {
   const entries = Object.entries(costs);
   return entries.every(([key, value]) => {
@@ -1379,6 +1785,27 @@ function formatCostList(costs) {
 }
 
 function handleMilestones() {
+  if (game.neighborhoodUnlocked) {
+    if (game.neighborhoodInfluence >= NEIGHBORHOOD_TARGET && !milestoneFlags.neighborhood100) {
+      milestoneFlags.neighborhood100 = true;
+      addLog("Neighborhood influence 100%. The block parties are permanent.");
+    }
+  }
+
+  if (game.townUnlocked) {
+    if (game.townInfluence >= TOWN_TARGET && !milestoneFlags.town100) {
+      milestoneFlags.town100 = true;
+      addLog("Town influence 100%. The mayor now answers to the roost.");
+    }
+  }
+
+  if (game.countryUnlocked) {
+    if (game.countryInfluence >= COUNTRY_TARGET && !milestoneFlags.country100) {
+      milestoneFlags.country100 = true;
+      addLog("Country influence 100%. The anthem is a chorus of wings.");
+    }
+  }
+
   if (game.worldUnlocked) {
     if (game.worldControl >= 25 && !milestoneFlags.world25) {
       milestoneFlags.world25 = true;
@@ -1488,17 +1915,26 @@ function addLog(message, shouldSave = true) {
 function formatNumber(value, decimals = 0) {
   const num = Number(value);
   if (Number.isNaN(num)) return "0";
+  const getDisplayDecimals = (scaled) => {
+    if (decimals === 0 && Math.abs(scaled) < 10) {
+      return 1;
+    }
+    return decimals;
+  };
   if (Math.abs(num) < 1e3) {
     return num.toFixed(decimals);
   }
   if (Math.abs(num) < 1e6) {
-    return `${(num / 1e3).toFixed(decimals)}K`;
+    const scaled = num / 1e3;
+    return `${scaled.toFixed(getDisplayDecimals(scaled))}K`;
   }
   if (Math.abs(num) < 1e9) {
-    return `${(num / 1e6).toFixed(decimals)}M`;
+    const scaled = num / 1e6;
+    return `${scaled.toFixed(getDisplayDecimals(scaled))}M`;
   }
   if (Math.abs(num) < 1e12) {
-    return `${(num / 1e9).toFixed(decimals)}B`;
+    const scaled = num / 1e9;
+    return `${scaled.toFixed(getDisplayDecimals(scaled))}B`;
   }
   return num.toExponential(2);
 }
@@ -1519,6 +1955,9 @@ function saveGame() {
     aviaries: game.aviaries,
     starships: game.starships,
     worldControl: game.worldControl,
+    neighborhoodInfluence: game.neighborhoodInfluence,
+    townInfluence: game.townInfluence,
+    countryInfluence: game.countryInfluence,
     starSystems: game.starSystems,
     featherScience: game.featherScience,
     skyLore: game.skyLore,
@@ -1543,6 +1982,9 @@ function saveGame() {
     featherScienceRatePerNest: game.featherScienceRatePerNest,
     skyLoreRatePerAviary: game.skyLoreRatePerAviary,
     harmonyPerRoost: game.harmonyPerRoost,
+    neighborhoodInfluenceRateFactor: game.neighborhoodInfluenceRateFactor,
+    townInfluenceRateFactor: game.townInfluenceRateFactor,
+    countryInfluenceRateFactor: game.countryInfluenceRateFactor,
     worldControlRateFactor: game.worldControlRateFactor,
     starshipColonizeRate: game.starshipColonizeRate,
     relicRatePerStarSystem: game.relicRatePerStarSystem,
@@ -1552,6 +1994,9 @@ function saveGame() {
     roostsUnlocked: game.roostsUnlocked,
     aviariesUnlocked: game.aviariesUnlocked,
     loreUnlocked: game.loreUnlocked,
+    neighborhoodUnlocked: game.neighborhoodUnlocked,
+    townUnlocked: game.townUnlocked,
+    countryUnlocked: game.countryUnlocked,
     worldUnlocked: game.worldUnlocked,
     spaceUnlocked: game.spaceUnlocked,
     relicsUnlocked: game.relicsUnlocked,
@@ -1647,10 +2092,57 @@ function applyOfflineProgress(loaded) {
       loaded.aviaries * loaded.skyLoreRatePerAviary * multiplier * harmony * deltaSeconds;
   }
 
+  const neighborhoodBefore = loaded.neighborhoodInfluence;
+  if (loaded.neighborhoodUnlocked && loaded.neighborhoodInfluence < NEIGHBORHOOD_TARGET) {
+    const neighborhoodRate =
+      (loaded.birds + loaded.nests * 4) *
+      loaded.neighborhoodInfluenceRateFactor *
+      multiplier *
+      harmony *
+      100;
+    loaded.neighborhoodInfluence = Math.min(
+      NEIGHBORHOOD_TARGET,
+      loaded.neighborhoodInfluence + neighborhoodRate * deltaSeconds
+    );
+  }
+
+  const townBefore = loaded.townInfluence;
+  if (loaded.townUnlocked && loaded.townInfluence < TOWN_TARGET) {
+    const townRate =
+      (loaded.birds + loaded.roosts * 30) *
+      loaded.townInfluenceRateFactor *
+      multiplier *
+      harmony *
+      100;
+    loaded.townInfluence = Math.min(
+      TOWN_TARGET,
+      loaded.townInfluence + townRate * deltaSeconds
+    );
+  }
+
+  const countryBefore = loaded.countryInfluence;
+  if (loaded.countryUnlocked && loaded.countryInfluence < COUNTRY_TARGET) {
+    const countryRate =
+      (loaded.birds + loaded.aviaries * 50) *
+      loaded.countryInfluenceRateFactor *
+      multiplier *
+      harmony *
+      100;
+    loaded.countryInfluence = Math.min(
+      COUNTRY_TARGET,
+      loaded.countryInfluence + countryRate * deltaSeconds
+    );
+  }
+
   const worldBefore = loaded.worldControl;
   if (loaded.worldUnlocked && loaded.worldControl < 100) {
     const rate =
-      loaded.birds * loaded.worldControlRateFactor * multiplier * harmony * deltaSeconds * 100;
+      (loaded.birds + loaded.roosts * 25 + loaded.aviaries * 45) *
+      loaded.worldControlRateFactor *
+      multiplier *
+      harmony *
+      deltaSeconds *
+      100;
     loaded.worldControl = Math.min(100, loaded.worldControl + rate);
   }
 
@@ -1679,6 +2171,9 @@ function applyOfflineProgress(loaded) {
   const eggsGain = loaded.eggs - eggsBefore;
   const scienceGain = loaded.featherScience - scienceBefore;
   const loreGain = loaded.skyLore - loreBefore;
+  const neighborhoodGain = loaded.neighborhoodInfluence - neighborhoodBefore;
+  const townGain = loaded.townInfluence - townBefore;
+  const countryGain = loaded.countryInfluence - countryBefore;
   const worldGain = loaded.worldControl - worldBefore;
   const starGain = loaded.starSystems - starBefore;
   const relicGain = loaded.relics - relicBefore;
@@ -1693,12 +2188,15 @@ function applyOfflineProgress(loaded) {
     scienceGain,
     2
   )} science, +${formatNumber(loreGain, 2)} lore, +${formatNumber(
-    worldGain,
+    neighborhoodGain,
     2
-  )}% world control, +${formatNumber(starGain, 2)} systems, +${formatNumber(
-    relicGain,
+  )}% neighborhood, +${formatNumber(townGain, 2)}% town, +${formatNumber(
+    countryGain,
     2
-  )} relics.`;
+  )}% country, +${formatNumber(worldGain, 2)}% world control, +${formatNumber(
+    starGain,
+    2
+  )} systems, +${formatNumber(relicGain, 2)} relics.`;
 }
 
 function restoreUpgrades() {
@@ -1714,6 +2212,9 @@ function restoreUpgrades() {
   game.featherScienceRatePerNest = BASE_RATES.featherScienceRatePerNest;
   game.skyLoreRatePerAviary = BASE_RATES.skyLoreRatePerAviary;
   game.harmonyPerRoost = BASE_RATES.harmonyPerRoost;
+  game.neighborhoodInfluenceRateFactor = BASE_RATES.neighborhoodInfluenceRateFactor;
+  game.townInfluenceRateFactor = BASE_RATES.townInfluenceRateFactor;
+  game.countryInfluenceRateFactor = BASE_RATES.countryInfluenceRateFactor;
   game.worldControlRateFactor = BASE_RATES.worldControlRateFactor;
   game.starshipColonizeRate = BASE_RATES.starshipColonizeRate;
   game.relicRatePerStarSystem = BASE_RATES.relicRatePerStarSystem;
@@ -1768,11 +2269,17 @@ function updateHeroArt() {
     game.roostsUnlocked,
     game.aviariesUnlocked,
     game.spaceUnlocked,
+    game.neighborhoodUnlocked,
+    game.townUnlocked,
+    game.countryUnlocked,
     game.worldUnlocked,
     game.nests,
     game.roosts,
     game.aviaries,
     game.starships,
+    Math.round(game.neighborhoodInfluence),
+    Math.round(game.townInfluence),
+    Math.round(game.countryInfluence),
     Math.round(game.worldControl),
     game.projects && Object.values(game.projects).some((p) => p.completed),
   ].join("|");
@@ -1813,19 +2320,32 @@ function renderHeroUpgrades() {
   if (game.nestsUnlocked) badges.push({ icon: "🪺", label: game.nests });
   if (game.roostsUnlocked) badges.push({ icon: "🏡", label: game.roosts });
   if (game.aviariesUnlocked) badges.push({ icon: "🏞️", label: game.aviaries });
-  if (game.worldUnlocked) badges.push({ icon: "🌍", label: `${formatNumber(game.worldControl, 0)}%` });
+  if (game.neighborhoodUnlocked) {
+    badges.push({
+      icon: "🏘️",
+      label: `${formatNumber(game.neighborhoodInfluence, 0)}%`,
+    });
+  }
+  if (game.townUnlocked) {
+    badges.push({ icon: "🏙️", label: `${formatNumber(game.townInfluence, 0)}%` });
+  }
+  if (game.countryUnlocked) {
+    badges.push({
+      icon: "🏛️",
+      label: `${formatNumber(game.countryInfluence, 0)}%`,
+    });
+  }
+  if (game.worldUnlocked) {
+    badges.push({ icon: "🌍", label: `${formatNumber(game.worldControl, 0)}%` });
+  }
   if (game.spaceUnlocked) badges.push({ icon: "🚀", label: game.starships });
   if (game.projects && Object.values(game.projects).some((p) => p.completed)) {
     badges.push({ icon: "📜", label: "Projects" });
   }
 
-  const baseLeft = 10;
-  const baseBottom = 6;
-  badges.slice(0, 5).forEach((badge, index) => {
+  badges.slice(0, 8).forEach((badge) => {
     const span = document.createElement("div");
     span.className = "hero-upgrade-icon";
-    span.style.left = `${baseLeft + index * 52}px`;
-    span.style.bottom = `${baseBottom}px`;
     span.textContent = badge.icon;
     const label = document.createElement("span");
     label.textContent = badge.label;
