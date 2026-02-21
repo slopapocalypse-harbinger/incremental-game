@@ -34,6 +34,11 @@
           <input id="hatch-slider" type="range" min="0" max="100" step="5" value="100" />
         </div>
         <div class="resource-line">Birds: <span id="birds">1</span> <span class="rate">(+<span id="bird-rate">0</span>/s)</span></div>
+
+        <div class="resource-control">
+          <button id="forage-burst">Forage Burst (+<span id="forage-burst-gain">0</span> seeds)</button>
+          <div class="resource-detail" id="forage-burst-status">Ready</div>
+        </div>
         <div class="resource-line" id="nests-row" hidden>Nests: <span id="nests">0</span></div>
         <div class="resource-line" id="roosts-row" hidden>Roosts: <span id="roosts">0</span> <span class="rate">(Harmony x<span id="harmony-multiplier">1</span>)</span></div>
         <div class="resource-line" id="aviaries-row" hidden>Aviaries: <span id="aviaries">0</span></div>
@@ -59,15 +64,15 @@
       <div class="panel">
         <h2>Structures</h2>
         <div class="structure-option">
-          <button id="buy-bird">Buy 1 Bird (<span id="bird-cost">10</span> seeds)</button>
+          <button id="buy-bird">Buy 1 Bird (<span id="bird-cost">12</span> seeds)</button>
           <div class="structure-desc" id="bird-desc"></div>
         </div>
         <div class="structure-option">
-          <button id="buy-nest" hidden>Build 1 Nest (<span id="nest-cost">100</span> seeds, <span id="nest-twig-cost">25</span> twigs)</button>
+          <button id="buy-nest" hidden>Build 1 Nest (<span id="nest-cost">180</span> seeds, <span id="nest-twig-cost">25</span> twigs)</button>
           <div class="structure-desc" id="nest-desc" hidden></div>
         </div>
         <div class="structure-option">
-          <button id="buy-roost" hidden>Build 1 Roost (<span id="roost-cost">1200</span> seeds, <span id="roost-twig-cost">220</span> twigs)</button>
+          <button id="buy-roost" hidden>Build 1 Roost (<span id="roost-cost">1400</span> seeds, <span id="roost-twig-cost">220</span> twigs)</button>
           <div class="structure-desc" id="roost-desc" hidden></div>
         </div>
         <div class="structure-option">
@@ -75,7 +80,7 @@
           <div class="structure-desc" id="aviary-desc" hidden></div>
         </div>
         <div class="structure-option">
-          <button id="buy-starship" hidden>Build 1 Starship (<span id="starship-cost">1000000</span> seeds, <span id="starship-lore-cost">60</span> lore)</button>
+          <button id="buy-starship" hidden>Build 1 Starship (<span id="starship-cost">2500000</span> seeds, <span id="starship-lore-cost">60</span> lore)</button>
           <div class="structure-desc" id="starship-desc" hidden></div>
         </div>
         <button id="new-game-plus" class="win-button" hidden>New Game+</button>
@@ -99,6 +104,54 @@
       <div class="panel" id="projects-panel" hidden>
         <h2>Major Projects</h2>
         <div id="projects"></div>
+      </div>
+
+      <div class="panel" id="achievements-panel">
+        <h2>Achievements</h2>
+        <div class="resource-detail">
+          Unlocked: <span id="achievement-count">0</span>/<span id="achievement-total">0</span>
+          · Global production bonus x<span id="achievement-multiplier">1</span>
+        </div>
+        <div id="achievements" class="achievements"></div>
+      </div>
+
+      <div class="panel" id="automation-panel" hidden>
+        <h2>Automation</h2>
+        <p class="resource-detail">Enable auto-managers to keep the flock scaling while you sleep.</p>
+        <label class="toggle-line"><input type="checkbox" id="auto-birds" /> Auto-buy birds</label>
+        <label class="toggle-line"><input type="checkbox" id="auto-nests" /> Auto-buy nests</label>
+        <label class="toggle-line"><input type="checkbox" id="auto-roosts" /> Auto-buy roosts</label>
+        <label class="toggle-line"><input type="checkbox" id="auto-aviaries" /> Auto-buy aviaries</label>
+        <label class="toggle-line"><input type="checkbox" id="auto-starships" /> Auto-buy starships</label>
+        <label class="toggle-line"><input type="checkbox" id="auto-actions" /> Auto-run influence actions</label>
+      </div>
+
+
+      <div class="panel" id="directives-panel" hidden>
+        <h2>Directives</h2>
+        <p class="resource-detail">High-level objectives that refresh when completed. Earn Command Points for meta progression.</p>
+        <div class="resource-detail">Command Points: <span id="command-points">0</span></div>
+        <div id="directives" class="directives"></div>
+      </div>
+
+      <div class="panel" id="command-panel" hidden>
+        <h2>Command Center</h2>
+        <p class="resource-detail">Spend Command Points on permanent talent levels that survive New Game+.</p>
+        <div id="command-talents" class="command-talents"></div>
+      </div>
+
+
+      <div class="panel" id="event-panel" hidden>
+        <h2>Sky Events</h2>
+        <div class="resource-detail" id="event-name">Calm skies</div>
+        <div class="resource-detail" id="event-detail">No active event.</div>
+        <div class="resource-detail" id="event-timer">Next event check in 0s</div>
+      </div>
+
+      <div class="panel" id="relic-lab-panel" hidden>
+        <h2>Relic Lab</h2>
+        <p class="resource-detail">Spend relics and lore on permanent systems that persist through New Game+.</p>
+        <div id="relic-lab-upgrades" class="command-talents"></div>
       </div>
     </section>
 
