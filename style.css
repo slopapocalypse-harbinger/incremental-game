@@ -362,3 +362,82 @@ button:disabled {
     font-size: 0.95rem;
   }
 }
+
+
+.achievements {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.achievement {
+  border: 1px dashed var(--border);
+  padding: 0.45rem 0.55rem;
+  background: #f4f1e8;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.achievement.unlocked {
+  border-style: solid;
+  border-color: var(--accent);
+  background: #e9f7ef;
+  color: var(--ink);
+}
+
+.toggle-line {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.45rem;
+  font-size: 0.95rem;
+}
+
+.toggle-line input {
+  accent-color: var(--accent);
+}
+
+
+.directives,
+.command-talents {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.directive,
+.command-talent {
+  border: 1px dashed var(--border);
+  background: #f9f7f1;
+  padding: 0.5rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.directive-title,
+.command-talent-title {
+  font-weight: bold;
+  font-size: 0.92rem;
+}
+
+.directive-progress {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.directive .progress {
+  margin: 0.2rem 0 0.15rem;
+}
+
+.command-talent button {
+  margin-bottom: 0;
+}
+
+
+#event-panel {
+  border-color: #4c7bb5;
+  background: linear-gradient(180deg, #eef6ff, #f9fcff);
+}
+
+#relic-lab-panel {
+  border-color: #7a5a2b;
+  background: linear-gradient(180deg, #fff8ec, #fffdf8);
+}

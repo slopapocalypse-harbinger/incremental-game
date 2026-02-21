@@ -56,6 +56,8 @@ const BASE_RATES = {
 };
 
 const MAX_OFFLINE_SECONDS = 6 * 60 * 60;
+const AUTO_BUY_INTERVAL_SECONDS = 0.75;
+const EVENT_CHECK_INTERVAL_SECONDS = 45;
 
 const philosophyLines = [
   "A seed today, a galaxy tomorrow.",
@@ -130,6 +132,9 @@ const elements = {
   hatchControl: document.getElementById("hatch-control"),
   hatchSlider: document.getElementById("hatch-slider"),
   hatchUsage: document.getElementById("hatch-usage"),
+  forageBurst: document.getElementById("forage-burst"),
+  forageBurstGain: document.getElementById("forage-burst-gain"),
+  forageBurstStatus: document.getElementById("forage-burst-status"),
   roostsRow: document.getElementById("roosts-row"),
   aviariesRow: document.getElementById("aviaries-row"),
   featherRow: document.getElementById("feather-row"),
@@ -180,6 +185,29 @@ const elements = {
   upgrades: document.getElementById("upgrades"),
   projectsPanel: document.getElementById("projects-panel"),
   projects: document.getElementById("projects"),
+  achievementsPanel: document.getElementById("achievements-panel"),
+  achievements: document.getElementById("achievements"),
+  achievementCount: document.getElementById("achievement-count"),
+  achievementTotal: document.getElementById("achievement-total"),
+  achievementMultiplier: document.getElementById("achievement-multiplier"),
+  automationPanel: document.getElementById("automation-panel"),
+  autoBirds: document.getElementById("auto-birds"),
+  autoNests: document.getElementById("auto-nests"),
+  autoRoosts: document.getElementById("auto-roosts"),
+  autoAviaries: document.getElementById("auto-aviaries"),
+  autoStarships: document.getElementById("auto-starships"),
+  autoActions: document.getElementById("auto-actions"),
+  directivesPanel: document.getElementById("directives-panel"),
+  directives: document.getElementById("directives"),
+  commandPanel: document.getElementById("command-panel"),
+  commandPoints: document.getElementById("command-points"),
+  commandTalents: document.getElementById("command-talents"),
+  eventPanel: document.getElementById("event-panel"),
+  eventName: document.getElementById("event-name"),
+  eventDetail: document.getElementById("event-detail"),
+  eventTimer: document.getElementById("event-timer"),
+  relicLabPanel: document.getElementById("relic-lab-panel"),
+  relicLabUpgrades: document.getElementById("relic-lab-upgrades"),
   log: document.getElementById("log"),
   ending: document.getElementById("ending"),
   nextTargetTitle: document.getElementById("next-target-title"),
@@ -214,6 +242,7 @@ function createDefaultGame() {
     skyLore: 0,
     relics: 0,
     birdFraction: 0,
+    forageBurstCooldown: 0,
     birdCost: COSTS.birdBase,
     nestCost: COSTS.nestBase,
     nestTwigCost: COSTS.nestTwigBase,
@@ -254,6 +283,33 @@ function createDefaultGame() {
     expeditionsUnlocked: false,
     ngPlusCount: 0,
     ngMultiplier: 1,
+    achievementBonus: 1,
+    automation: {
+      autoBirds: false,
+      autoNests: false,
+      autoRoosts: false,
+      autoAviaries: false,
+      autoStarships: false,
+      autoActions: false,
+    },
+    autoBuyTimer: 0,
+    achievements: {},
+    commandPoints: 0,
+    directives: {},
+    commandTalents: {
+      thrift: 0,
+      broodcare: 0,
+      diplomacy: 0,
+      astro: 0,
+    },
+    relicLab: {
+      efficiency: 0,
+      weatherproofing: 0,
+      archives: 0,
+    },
+    activeEvent: null,
+    eventTimeRemaining: 0,
+    eventCooldown: EVENT_CHECK_INTERVAL_SECONDS,
     upgrades: {},
     projects: {},
     log: [],
@@ -585,6 +641,175 @@ const projectsConfig = [
   },
 ];
 
+const achievementsConfig = [
+  {
+    id: "seed-collector",
+    name: "Seed Collector",
+    desc: "Gather 10,000 total seeds.",
+    isUnlocked: () => game.seeds >= 10_000,
+  },
+  {
+    id: "flock-rising",
+    name: "Flock Rising",
+    desc: "Reach 150 birds.",
+    isUnlocked: () => game.birds >= 150,
+  },
+  {
+    id: "nest-architect",
+    name: "Nest Architect",
+    desc: "Build 25 nests.",
+    isUnlocked: () => game.nests >= 25,
+  },
+  {
+    id: "harmony-engine",
+    name: "Harmony Engine",
+    desc: "Build 10 roosts.",
+    isUnlocked: () => game.roosts >= 10,
+  },
+  {
+    id: "lore-machine",
+    name: "Lore Machine",
+    desc: "Accumulate 1,000 sky lore.",
+    isUnlocked: () => game.skyLore >= 1_000,
+  },
+  {
+    id: "urban-skyline",
+    name: "Urban Skyline",
+    desc: "Reach 100% town influence.",
+    isUnlocked: () => game.townInfluence >= 100,
+  },
+  {
+    id: "planetary-perch",
+    name: "Planetary Perch",
+    desc: "Reach 100% world control.",
+    isUnlocked: () => game.worldControl >= 100,
+  },
+  {
+    id: "stellar-feathers",
+    name: "Stellar Feathers",
+    desc: "Colonize 140 star systems.",
+    isUnlocked: () => game.starSystems >= STAR_TARGET,
+  },
+];
+
+
+const directivesConfig = [
+  {
+    id: "seed-hoard",
+    name: "Seed Hoard",
+    desc: "Accumulate a large seed reserve.",
+    metric: () => game.seeds,
+    baseTarget: 60_000,
+    scale: 1.6,
+    reward: 1,
+  },
+  {
+    id: "nest-program",
+    name: "Nest Program",
+    desc: "Expand infrastructure with more nests.",
+    metric: () => game.nests,
+    baseTarget: 10,
+    scale: 1.45,
+    reward: 1,
+  },
+  {
+    id: "influence-drive",
+    name: "Influence Drive",
+    desc: "Push civilization influence further.",
+    metric: () => game.worldControl + game.countryInfluence + game.townInfluence,
+    baseTarget: 110,
+    scale: 1.5,
+    reward: 2,
+  },
+];
+
+const commandTalentConfig = [
+  {
+    id: "thrift",
+    name: "Procurement Algorithms",
+    desc: "Bird, nest, and roost costs are reduced by 2.5% per level.",
+    maxLevel: 12,
+    costForLevel: (nextLevel) => nextLevel,
+  },
+  {
+    id: "broodcare",
+    name: "Broodcare Protocols",
+    desc: "Hatching and egg production increase by 6% per level.",
+    maxLevel: 10,
+    costForLevel: (nextLevel) => 1 + Math.floor(nextLevel * 1.2),
+  },
+  {
+    id: "diplomacy",
+    name: "Sky Diplomacy",
+    desc: "All influence growth rates increase by 7% per level.",
+    maxLevel: 10,
+    costForLevel: (nextLevel) => 2 + Math.floor(nextLevel * 1.3),
+  },
+  {
+    id: "astro",
+    name: "Astro Logistics",
+    desc: "Star colonization and relic gain increase by 8% per level.",
+    maxLevel: 10,
+    costForLevel: (nextLevel) => 2 + Math.floor(nextLevel * 1.4),
+  },
+];
+
+
+const relicLabConfig = [
+  {
+    id: "efficiency",
+    name: "Relic Turbines",
+    desc: "Seeds, twigs, and feather science +5% per level.",
+    maxLevel: 15,
+    costForLevel: (nextLevel) => ({ relics: 2 + nextLevel, skyLore: 80 + nextLevel * 35 }),
+  },
+  {
+    id: "weatherproofing",
+    name: "Storm Canopies",
+    desc: "All influence rates +8% per level.",
+    maxLevel: 12,
+    costForLevel: (nextLevel) => ({ relics: 3 + nextLevel, skyLore: 120 + nextLevel * 40 }),
+  },
+  {
+    id: "archives",
+    name: "Void Archives",
+    desc: "Lore and relic gain +10% per level.",
+    maxLevel: 12,
+    costForLevel: (nextLevel) => ({ relics: 4 + nextLevel, skyLore: 180 + nextLevel * 55 }),
+  },
+];
+
+const skyEventsConfig = [
+  {
+    id: "meteor-harvest",
+    name: "Meteor Harvest",
+    duration: 30,
+    detail: "Seed and twig output surges.",
+    multipliers: { seed: 1.45, twig: 1.45 },
+  },
+  {
+    id: "chorus-season",
+    name: "Chorus Season",
+    duration: 35,
+    detail: "Egg hatching and influence accelerate.",
+    multipliers: { hatch: 1.4, influence: 1.25 },
+  },
+  {
+    id: "ion-squall",
+    name: "Ion Squall",
+    duration: 26,
+    detail: "Star colonization and relic decoding spike.",
+    multipliers: { star: 1.5, relic: 1.35 },
+  },
+  {
+    id: "cold-front",
+    name: "Cold Front",
+    duration: 22,
+    detail: "Production slows temporarily.",
+    multipliers: { seed: 0.8, twig: 0.8, hatch: 0.82 },
+  },
+];
+
 function initGame() {
   const saved = loadGame();
   if (saved) {
@@ -595,11 +820,17 @@ function initGame() {
   restoreUpgrades();
   rebuildUpgradesUI();
   rebuildProjectsUI();
+  rebuildAchievementsUI();
+  rebuildDirectivesUI();
+  rebuildCommandTalentsUI();
+  rebuildRelicLabUI();
   bindEvents();
   refreshUnlocks(true);
   if (saved && saved.offlineSummary) {
     addLog(saved.offlineSummary);
   }
+  initDirectives();
+  checkAchievements();
   updateUI();
   if (!game.won) {
     startLoops();
@@ -748,7 +979,50 @@ function bindEvents() {
     updateUI();
     saveGame();
   });
+
+  elements.forageBurst.addEventListener("click", () => {
+    if (game.won || game.forageBurstCooldown > 0) return;
+    const base = 14 + game.birds * 0.65;
+    const harmony = getHarmonyMultiplier();
+    const totalMultiplier = game.ngMultiplier * game.achievementBonus;
+    const labEfficiencyMultiplier = 1 + getLabLevel("efficiency") * 0.05;
+    const gain = base * totalMultiplier * harmony * labEfficiencyMultiplier * getEventMultiplier("seed");
+    game.seeds += gain;
+    game.forageBurstCooldown = 2.25;
+    addLog(`Forage burst gathered ${formatNumber(gain)} seeds.`, false);
+    updateUI();
+    saveGame();
+  });
+
+  ["autoBirds", "autoNests", "autoRoosts", "autoAviaries", "autoStarships", "autoActions"].forEach(
+    (key) => {
+      const input = elements[key];
+      if (!input) return;
+      input.addEventListener("change", (event) => {
+        game.automation[key] = Boolean(event.target.checked);
+        addLog(`${event.target.checked ? "Enabled" : "Disabled"} ${key.replace("auto", "auto ").toLowerCase()}.`, false);
+        saveGame();
+      });
+    }
+  );
+
+  if (elements.commandTalents) {
+    elements.commandTalents.addEventListener("click", (event) => {
+      const button = event.target.closest("button[data-talent-id]");
+      if (!button) return;
+      purchaseCommandTalent(button.dataset.talentId);
+    });
+  }
+
+  if (elements.relicLabUpgrades) {
+    elements.relicLabUpgrades.addEventListener("click", (event) => {
+      const button = event.target.closest("button[data-lab-id]");
+      if (!button) return;
+      purchaseRelicLabUpgrade(button.dataset.labId);
+    });
+  }
 }
+
 
 function startLoops() {
   stopLoops();
@@ -765,52 +1039,80 @@ function stopLoops() {
 
 function getInfluenceRates() {
   const harmony = getHarmonyMultiplier();
-  const multiplier = game.ngMultiplier;
+  const multiplier = game.ngMultiplier * game.achievementBonus;
+  const diplomacyMultiplier = 1 + (game.commandTalents?.diplomacy || 0) * 0.07;
+  const labInfluenceMultiplier = 1 + getLabLevel("weatherproofing") * 0.08;
+  const eventInfluenceMultiplier = getEventMultiplier("influence");
   return {
     neighborhood:
       (game.birds + game.nests * 4) *
       game.neighborhoodInfluenceRateFactor *
       multiplier *
       harmony *
+      diplomacyMultiplier *
+      labInfluenceMultiplier *
+      eventInfluenceMultiplier *
       100,
     town:
       (game.birds + game.roosts * 30) *
       game.townInfluenceRateFactor *
       multiplier *
       harmony *
+      diplomacyMultiplier *
+      labInfluenceMultiplier *
+      eventInfluenceMultiplier *
       100,
     country:
       (game.birds + game.aviaries * 50) *
       game.countryInfluenceRateFactor *
       multiplier *
       harmony *
+      diplomacyMultiplier *
+      labInfluenceMultiplier *
+      eventInfluenceMultiplier *
       100,
     world:
       (game.birds + game.roosts * 25 + game.aviaries * 45) *
       game.worldControlRateFactor *
       multiplier *
       harmony *
+      diplomacyMultiplier *
+      labInfluenceMultiplier *
+      eventInfluenceMultiplier *
       100,
   };
 }
 
 function gameTick() {
   if (game.won) return;
-  const multiplier = game.ngMultiplier;
+  game.forageBurstCooldown = Math.max(0, (game.forageBurstCooldown || 0) - DELTA);
+  const multiplier = game.ngMultiplier * game.achievementBonus;
   const harmony = getHarmonyMultiplier();
-  game.seeds += game.birds * game.seedRatePerBird * multiplier * harmony * DELTA;
+  processSkyEvents();
+  const broodMultiplier = 1 + (game.commandTalents?.broodcare || 0) * 0.06;
+  const astroMultiplier = 1 + (game.commandTalents?.astro || 0) * 0.08;
+  const labEfficiencyMultiplier = 1 + getLabLevel("efficiency") * 0.05;
+  const labArchiveMultiplier = 1 + getLabLevel("archives") * 0.1;
+  const seedEventMultiplier = getEventMultiplier("seed");
+  const twigEventMultiplier = getEventMultiplier("twig");
+  const hatchEventMultiplier = getEventMultiplier("hatch");
+  const starEventMultiplier = getEventMultiplier("star");
+  const relicEventMultiplier = getEventMultiplier("relic");
+  game.seeds += game.birds * game.seedRatePerBird * multiplier * harmony * labEfficiencyMultiplier * seedEventMultiplier * DELTA;
   if (game.twigsUnlocked) {
-    game.twigs += game.birds * game.twigRatePerBird * multiplier * harmony * DELTA;
+    game.twigs += game.birds * game.twigRatePerBird * multiplier * harmony * labEfficiencyMultiplier * twigEventMultiplier * DELTA;
   }
 
   if (game.nests > 0) {
-    game.eggs += game.nests * game.eggRatePerNest * multiplier * harmony * DELTA;
+    game.eggs += game.nests * game.eggRatePerNest * multiplier * harmony * broodMultiplier * hatchEventMultiplier * DELTA;
     const hatchPotential =
       game.nests *
       game.hatchRatePerNest *
       multiplier *
+      broodMultiplier *
       harmony *
       (game.hatchUsagePercent / 100) *
+      hatchEventMultiplier *
       DELTA;
     const hatchAmount = Math.min(game.eggs, hatchPotential);
     if (hatchAmount > 0) {
@@ -825,12 +1127,12 @@ function gameTick() {
 
   if (game.nests > 0) {
     game.featherScience +=
-      game.nests * game.featherScienceRatePerNest * multiplier * harmony * DELTA;
+      game.nests * game.featherScienceRatePerNest * multiplier * harmony * broodMultiplier * labEfficiencyMultiplier * DELTA;
   }
 
   if (game.aviaries > 0) {
     game.skyLore +=
-      game.aviaries * game.skyLoreRatePerAviary * multiplier * harmony * DELTA;
+      game.aviaries * game.skyLoreRatePerAviary * multiplier * harmony * labArchiveMultiplier * DELTA;
   }
 
   const influenceRates = getInfluenceRates();
@@ -867,19 +1169,378 @@ function gameTick() {
     game.starSystems = Math.min(
       STAR_TARGET,
       game.starSystems +
-        game.starships * game.starshipColonizeRate * multiplier * harmony * DELTA
+        game.starships * game.starshipColonizeRate * multiplier * harmony * astroMultiplier * starEventMultiplier * DELTA
     );
   }
 
   if (game.spaceUnlocked && game.starSystems > 0) {
     game.relics +=
-      game.starSystems * game.relicRatePerStarSystem * multiplier * harmony * DELTA;
+      game.starSystems * game.relicRatePerStarSystem * multiplier * harmony * astroMultiplier * labArchiveMultiplier * relicEventMultiplier * DELTA;
   }
 
+  runAutoManager();
   refreshUnlocks();
   handleMilestones();
+  checkAchievements();
+  checkDirectives();
   checkWin();
   updateUI();
+}
+
+function runAutoManager() {
+  if (!game.automation) return;
+  game.autoBuyTimer += DELTA;
+  if (game.autoBuyTimer < AUTO_BUY_INTERVAL_SECONDS) return;
+  game.autoBuyTimer = 0;
+
+  if (game.automation.autoBirds) {
+    while (game.seeds >= game.birdCost && !game.won) {
+      game.seeds -= game.birdCost;
+      game.birds += 1;
+      game.birdCost = Math.ceil(game.birdCost * COSTS.birdMult);
+    }
+  }
+
+  if (game.automation.autoNests) {
+    while (game.seeds >= game.nestCost && game.twigs >= game.nestTwigCost && !game.won) {
+      game.seeds -= game.nestCost;
+      game.twigs -= game.nestTwigCost;
+      game.nests += 1;
+      game.nestCost = Math.ceil(game.nestCost * COSTS.nestMult);
+      game.nestTwigCost = Math.ceil(game.nestTwigCost * COSTS.nestTwigMult);
+    }
+  }
+
+  if (game.automation.autoRoosts) {
+    while (game.seeds >= game.roostCost && game.twigs >= game.roostTwigCost && !game.won) {
+      game.seeds -= game.roostCost;
+      game.twigs -= game.roostTwigCost;
+      game.roosts += 1;
+      game.roostCost = Math.ceil(game.roostCost * COSTS.roostMult);
+      game.roostTwigCost = Math.ceil(game.roostTwigCost * COSTS.roostTwigMult);
+    }
+  }
+
+  if (game.automation.autoAviaries) {
+    while (game.seeds >= game.aviaryCost && game.featherScience >= game.aviaryScienceCost && !game.won) {
+      game.seeds -= game.aviaryCost;
+      game.featherScience -= game.aviaryScienceCost;
+      game.aviaries += 1;
+      game.aviaryCost = Math.ceil(game.aviaryCost * COSTS.aviaryMult);
+      game.aviaryScienceCost = Math.ceil(game.aviaryScienceCost * COSTS.aviaryScienceMult);
+    }
+  }
+
+  if (game.automation.autoStarships) {
+    while (game.seeds >= game.starshipCost && game.skyLore >= game.starshipLoreCost && !game.won) {
+      game.seeds -= game.starshipCost;
+      game.skyLore -= game.starshipLoreCost;
+      game.starships += 1;
+      game.starshipCost = Math.ceil(game.starshipCost * COSTS.starshipMult);
+      game.starshipLoreCost = Math.ceil(game.starshipLoreCost * COSTS.starshipLoreMult);
+    }
+  }
+
+  if (game.automation.autoActions) {
+    if (game.neighborhoodUnlocked && game.neighborhoodInfluence < NEIGHBORHOOD_TARGET) {
+      hostNeighborhoodRally();
+    }
+    if (game.townUnlocked && game.townInfluence < TOWN_TARGET) {
+      holdTownSummit();
+    }
+    if (game.countryUnlocked && game.countryInfluence < COUNTRY_TARGET) {
+      draftCountryCharter();
+    }
+  }
+}
+
+function ensureAchievementState(achievementId) {
+  if (!game.achievements || typeof game.achievements !== "object") {
+    game.achievements = {};
+  }
+  if (!game.achievements[achievementId]) {
+    game.achievements[achievementId] = { unlocked: false };
+  }
+  return game.achievements[achievementId];
+}
+
+function getUnlockedAchievementCount() {
+  return achievementsConfig.filter((achievement) => ensureAchievementState(achievement.id).unlocked).length;
+}
+
+function checkAchievements() {
+  let changed = false;
+  achievementsConfig.forEach((achievement) => {
+    const state = ensureAchievementState(achievement.id);
+    if (!state.unlocked && achievement.isUnlocked()) {
+      state.unlocked = true;
+      changed = true;
+      addLog(`Achievement unlocked: ${achievement.name}.`);
+    }
+  });
+  if (changed) {
+    game.achievementBonus = 1 + getUnlockedAchievementCount() * 0.03;
+    saveGame();
+  }
+}
+
+function rebuildAchievementsUI() {
+  if (!elements.achievements) return;
+  elements.achievements.innerHTML = "";
+  achievementsConfig.forEach((achievement) => {
+    const state = ensureAchievementState(achievement.id);
+    const card = document.createElement("div");
+    card.className = `achievement${state.unlocked ? " unlocked" : ""}`;
+    card.textContent = `${state.unlocked ? "✅" : "⬜"} ${achievement.name} — ${achievement.desc}`;
+    elements.achievements.appendChild(card);
+  });
+}
+
+
+function ensureDirectiveState(directiveId) {
+  if (!game.directives || typeof game.directives !== "object") {
+    game.directives = {};
+  }
+  if (!game.relicLab || typeof game.relicLab !== "object") {
+    game.relicLab = { efficiency: 0, weatherproofing: 0, archives: 0 };
+  }
+  if (typeof game.eventTimeRemaining !== "number") {
+    game.eventTimeRemaining = 0;
+  }
+  if (typeof game.eventCooldown !== "number") {
+    game.eventCooldown = EVENT_CHECK_INTERVAL_SECONDS;
+  }
+  if (typeof game.forageBurstCooldown !== "number") {
+    game.forageBurstCooldown = 0;
+  }
+  if (!game.directives[directiveId]) {
+    game.directives[directiveId] = { tier: 1, target: 0, completed: 0 };
+  }
+  return game.directives[directiveId];
+}
+
+function computeDirectiveTarget(directive, tier) {
+  return Math.ceil(directive.baseTarget * directive.scale ** (tier - 1));
+}
+
+function initDirectives() {
+  directivesConfig.forEach((directive) => {
+    const state = ensureDirectiveState(directive.id);
+    if (!state.target || state.target <= 0) {
+      state.target = computeDirectiveTarget(directive, state.tier || 1);
+    }
+  });
+}
+
+function checkDirectives() {
+  let changed = false;
+  directivesConfig.forEach((directive) => {
+    const state = ensureDirectiveState(directive.id);
+    const progress = directive.metric();
+    if (progress >= state.target) {
+      state.completed += 1;
+      state.tier += 1;
+      state.target = computeDirectiveTarget(directive, state.tier);
+      game.commandPoints += directive.reward;
+      changed = true;
+      addLog(`Directive complete: ${directive.name}. +${directive.reward} command points.`);
+    }
+  });
+  if (changed) {
+    rebuildDirectivesUI();
+    rebuildCommandTalentsUI();
+    saveGame();
+  }
+}
+
+function rebuildDirectivesUI() {
+  if (!elements.directives) return;
+  elements.directives.innerHTML = "";
+  directivesConfig.forEach((directive) => {
+    const state = ensureDirectiveState(directive.id);
+    const progress = directive.metric();
+    const ratio = Math.max(0, Math.min(1, progress / state.target));
+
+    const card = document.createElement("div");
+    card.className = "directive";
+
+    const title = document.createElement("div");
+    title.className = "directive-title";
+    title.textContent = `${directive.name} · Tier ${state.tier}`;
+
+    const desc = document.createElement("div");
+    desc.className = "directive-progress";
+    desc.textContent = directive.desc;
+
+    const progressLine = document.createElement("div");
+    progressLine.className = "directive-progress";
+    progressLine.textContent = `${formatNumber(progress, 2)} / ${formatNumber(state.target, 2)} · Completed ${state.completed}`;
+
+    const barWrap = document.createElement("div");
+    barWrap.className = "progress";
+    const bar = document.createElement("div");
+    bar.className = "progress-bar";
+    bar.style.width = `${(ratio * 100).toFixed(1)}%`;
+    barWrap.appendChild(bar);
+
+    card.appendChild(title);
+    card.appendChild(desc);
+    card.appendChild(barWrap);
+    card.appendChild(progressLine);
+    elements.directives.appendChild(card);
+  });
+}
+
+function getTalentLevel(id) {
+  if (!game.commandTalents || typeof game.commandTalents !== "object") {
+    game.commandTalents = { thrift: 0, broodcare: 0, diplomacy: 0, astro: 0 };
+  }
+  return game.commandTalents[id] || 0;
+}
+
+function rebuildCommandTalentsUI() {
+  if (!elements.commandTalents) return;
+  elements.commandTalents.innerHTML = "";
+  commandTalentConfig.forEach((talent) => {
+    const level = getTalentLevel(talent.id);
+    const nextLevel = level + 1;
+    const isMaxed = level >= talent.maxLevel;
+    const cost = talent.costForLevel(nextLevel);
+
+    const card = document.createElement("div");
+    card.className = "command-talent";
+
+    const title = document.createElement("div");
+    title.className = "command-talent-title";
+    title.textContent = `${talent.name} · Lv ${level}/${talent.maxLevel}`;
+
+    const desc = document.createElement("div");
+    desc.className = "directive-progress";
+    desc.textContent = talent.desc;
+
+    const button = document.createElement("button");
+    button.dataset.talentId = talent.id;
+    button.textContent = isMaxed ? "Maxed" : `Upgrade (${cost} CP)`;
+    button.disabled = isMaxed || game.commandPoints < cost || game.won;
+
+    card.appendChild(title);
+    card.appendChild(desc);
+    card.appendChild(button);
+    elements.commandTalents.appendChild(card);
+  });
+}
+
+function purchaseCommandTalent(talentId) {
+  const talent = commandTalentConfig.find((item) => item.id === talentId);
+  if (!talent || game.won) return;
+  const level = getTalentLevel(talent.id);
+  if (level >= talent.maxLevel) return;
+  const cost = talent.costForLevel(level + 1);
+  if (game.commandPoints < cost) return;
+
+  game.commandPoints -= cost;
+  game.commandTalents[talent.id] = level + 1;
+  if (talent.id === "thrift") {
+    applyThriftDiscount();
+  }
+  addLog(`Command talent upgraded: ${talent.name} to level ${level + 1}.`);
+  rebuildCommandTalentsUI();
+  updateUI();
+  saveGame();
+}
+
+function applyThriftDiscount() {
+  const thriftLevel = getTalentLevel("thrift");
+  const discount = Math.max(0.45, 1 - thriftLevel * 0.025);
+  game.birdCost = Math.max(1, Math.ceil(game.birdCost * discount));
+  game.nestCost = Math.max(1, Math.ceil(game.nestCost * discount));
+  game.roostCost = Math.max(1, Math.ceil(game.roostCost * discount));
+}
+
+
+function getLabLevel(id) {
+  if (!game.relicLab || typeof game.relicLab !== "object") {
+    game.relicLab = { efficiency: 0, weatherproofing: 0, archives: 0 };
+  }
+  return game.relicLab[id] || 0;
+}
+
+function rebuildRelicLabUI() {
+  if (!elements.relicLabUpgrades) return;
+  elements.relicLabUpgrades.innerHTML = "";
+  relicLabConfig.forEach((upgrade) => {
+    const level = getLabLevel(upgrade.id);
+    const nextLevel = level + 1;
+    const maxed = level >= upgrade.maxLevel;
+    const cost = upgrade.costForLevel(nextLevel);
+
+    const card = document.createElement("div");
+    card.className = "command-talent";
+    const title = document.createElement("div");
+    title.className = "command-talent-title";
+    title.textContent = `${upgrade.name} · Lv ${level}/${upgrade.maxLevel}`;
+
+    const desc = document.createElement("div");
+    desc.className = "directive-progress";
+    desc.textContent = upgrade.desc;
+
+    const button = document.createElement("button");
+    button.dataset.labId = upgrade.id;
+    button.textContent = maxed
+      ? "Maxed"
+      : `Upgrade (${formatNumber(cost.relics)} relics, ${formatNumber(cost.skyLore)} lore)`;
+    button.disabled = maxed || game.relics < cost.relics || game.skyLore < cost.skyLore || game.won;
+
+    card.appendChild(title);
+    card.appendChild(desc);
+    card.appendChild(button);
+    elements.relicLabUpgrades.appendChild(card);
+  });
+}
+
+function purchaseRelicLabUpgrade(id) {
+  const upgrade = relicLabConfig.find((item) => item.id === id);
+  if (!upgrade || game.won) return;
+  const level = getLabLevel(id);
+  if (level >= upgrade.maxLevel) return;
+  const cost = upgrade.costForLevel(level + 1);
+  if (game.relics < cost.relics || game.skyLore < cost.skyLore) return;
+
+  game.relics -= cost.relics;
+  game.skyLore -= cost.skyLore;
+  game.relicLab[id] = level + 1;
+  addLog(`Relic Lab upgraded: ${upgrade.name} level ${level + 1}.`);
+  rebuildRelicLabUI();
+  updateUI();
+  saveGame();
+}
+
+function getEventMultiplier(key) {
+  if (!game.activeEvent) return 1;
+  return game.activeEvent.multipliers[key] || 1;
+}
+
+function processSkyEvents() {
+  if (game.activeEvent) {
+    game.eventTimeRemaining = Math.max(0, game.eventTimeRemaining - DELTA);
+    if (game.eventTimeRemaining <= 0) {
+      addLog(`Sky event ended: ${game.activeEvent.name}.`);
+      game.activeEvent = null;
+      game.eventCooldown = EVENT_CHECK_INTERVAL_SECONDS;
+    }
+    return;
+  }
+
+  game.eventCooldown = Math.max(0, game.eventCooldown - DELTA);
+  if (game.eventCooldown > 0) return;
+
+  game.eventCooldown = EVENT_CHECK_INTERVAL_SECONDS;
+  if (Math.random() < 0.45) {
+    const event = skyEventsConfig[Math.floor(Math.random() * skyEventsConfig.length)];
+    game.activeEvent = event;
+    game.eventTimeRemaining = event.duration;
+    addLog(`Sky event started: ${event.name}. ${event.detail}`);
+  }
 }
 
 function refreshUnlocks(isLoad = false) {
@@ -1030,11 +1691,16 @@ function refreshUnlocks(isLoad = false) {
   if (game.spaceUnlocked) {
     elements.spaceRow.hidden = false;
     elements.buyStarship.hidden = false;
+    elements.eventPanel.hidden = false;
+    elements.relicLabPanel.hidden = false;
   }
 
   if (game.expeditionsUnlocked) {
     elements.expeditionButton.hidden = false;
     elements.actionsPanel.hidden = false;
+    elements.automationPanel.hidden = false;
+    elements.directivesPanel.hidden = false;
+    elements.commandPanel.hidden = false;
   }
 
   if (game.relicsUnlocked) {
@@ -1054,13 +1720,24 @@ function refreshUnlocks(isLoad = false) {
 
 function updateUI() {
   const harmony = getHarmonyMultiplier();
+  const totalMultiplier = game.ngMultiplier * game.achievementBonus;
+  const broodMultiplier = 1 + getTalentLevel("broodcare") * 0.06;
+  const astroMultiplier = 1 + getTalentLevel("astro") * 0.08;
+  const labEfficiencyMultiplier = 1 + getLabLevel("efficiency") * 0.05;
+  const labArchiveMultiplier = 1 + getLabLevel("archives") * 0.1;
   const influenceRates = getInfluenceRates();
-  const eggRate = game.nests * game.eggRatePerNest * game.ngMultiplier * harmony;
+  const eventSeedMultiplier = getEventMultiplier("seed");
+  const eventTwigMultiplier = getEventMultiplier("twig");
+  const eventHatchMultiplier = getEventMultiplier("hatch");
+  const eventStarMultiplier = getEventMultiplier("star");
+  const eggRate = game.nests * game.eggRatePerNest * totalMultiplier * harmony * broodMultiplier * eventHatchMultiplier;
   const hatchRate =
     game.nests *
     game.hatchRatePerNest *
-    game.ngMultiplier *
+    totalMultiplier *
     harmony *
+    broodMultiplier *
+    eventHatchMultiplier *
     (game.hatchUsagePercent / 100);
   const netEggRate = eggRate - hatchRate;
   elements.seeds.textContent = formatNumber(game.seeds);
@@ -1083,18 +1760,22 @@ function updateUI() {
   elements.worldControl.textContent = `${formatNumber(game.worldControl, 2)}%`;
   elements.starSystems.textContent = `${formatNumber(game.starSystems, 2)} / ${STAR_TARGET}`;
   elements.ngPlus.textContent = game.ngPlusCount;
-  elements.ngMultiplier.textContent = formatNumber(game.ngMultiplier);
+  elements.ngMultiplier.textContent = formatNumber(totalMultiplier, 2);
+  elements.achievementTotal.textContent = achievementsConfig.length;
+  elements.achievementCount.textContent = getUnlockedAchievementCount();
+  elements.achievementMultiplier.textContent = formatNumber(game.achievementBonus, 2);
+  elements.commandPoints.textContent = formatNumber(game.commandPoints);
   elements.ngRow.hidden = game.ngPlusCount === 0 && !game.won;
   elements.featherScience.textContent = formatNumber(game.featherScience, 2);
   elements.skyLore.textContent = formatNumber(game.skyLore, 2);
   elements.relics.textContent = formatNumber(game.relics, 2);
   elements.seedRate.textContent = formatNumber(
-    game.birds * game.seedRatePerBird * game.ngMultiplier * harmony,
+    game.birds * game.seedRatePerBird * totalMultiplier * harmony * labEfficiencyMultiplier * eventSeedMultiplier,
     2
   );
   elements.twigRate.textContent = formatNumber(
     game.twigsUnlocked
-      ? game.birds * game.twigRatePerBird * game.ngMultiplier * harmony
+      ? game.birds * game.twigRatePerBird * totalMultiplier * harmony * labEfficiencyMultiplier * eventTwigMultiplier
       : 0,
     2
   );
@@ -1105,11 +1786,11 @@ function updateUI() {
     2
   );
   elements.featherScienceRate.textContent = formatNumber(
-    game.nests * game.featherScienceRatePerNest * game.ngMultiplier * harmony,
+    game.nests * game.featherScienceRatePerNest * totalMultiplier * harmony * broodMultiplier * labEfficiencyMultiplier,
     2
   );
   elements.loreRate.textContent = formatNumber(
-    game.aviaries * game.skyLoreRatePerAviary * game.ngMultiplier * harmony,
+    game.aviaries * game.skyLoreRatePerAviary * totalMultiplier * harmony * labArchiveMultiplier,
     2
   );
   elements.neighborhoodRate.textContent = formatNumber(
@@ -1130,12 +1811,39 @@ function updateUI() {
   );
   elements.starRate.textContent = formatNumber(
     game.spaceUnlocked
-      ? game.starships * game.starshipColonizeRate * game.ngMultiplier * harmony
+      ? game.starships * game.starshipColonizeRate * totalMultiplier * harmony * astroMultiplier * eventStarMultiplier
       : 0,
     2
   );
   elements.hatchSlider.value = Math.round(game.hatchUsagePercent);
   elements.hatchUsage.textContent = formatNumber(game.hatchUsagePercent);
+  const burstGainPreview = (14 + game.birds * 0.65) * totalMultiplier * harmony * labEfficiencyMultiplier * eventSeedMultiplier;
+  elements.forageBurstGain.textContent = formatNumber(burstGainPreview, 0);
+  if ((game.forageBurstCooldown || 0) > 0) {
+    elements.forageBurstStatus.textContent = `Recharging: ${formatNumber(game.forageBurstCooldown, 1)}s`;
+    elements.forageBurst.disabled = true;
+  } else {
+    elements.forageBurstStatus.textContent = "Ready";
+    elements.forageBurst.disabled = game.won;
+  }
+  if (game.activeEvent) {
+    elements.eventName.textContent = game.activeEvent.name;
+    elements.eventDetail.textContent = game.activeEvent.detail;
+    elements.eventTimer.textContent = `${formatNumber(game.eventTimeRemaining, 1)}s remaining`;
+  } else {
+    elements.eventName.textContent = "Calm skies";
+    elements.eventDetail.textContent = "No active event.";
+    elements.eventTimer.textContent = `Next event check in ${formatNumber(game.eventCooldown, 1)}s`;
+  }
+
+  if (game.automation) {
+    elements.autoBirds.checked = Boolean(game.automation.autoBirds);
+    elements.autoNests.checked = Boolean(game.automation.autoNests);
+    elements.autoRoosts.checked = Boolean(game.automation.autoRoosts);
+    elements.autoAviaries.checked = Boolean(game.automation.autoAviaries);
+    elements.autoStarships.checked = Boolean(game.automation.autoStarships);
+    elements.autoActions.checked = Boolean(game.automation.autoActions);
+  }
   elements.hatchControl.hidden = game.nests === 0;
   elements.featherRow.hidden = game.nests === 0 && game.featherScience <= 0;
 
@@ -1198,6 +1906,10 @@ function updateUI() {
   updateStructureDescriptions();
   updateUpgradesButtons();
   updateProjectsButtons();
+  rebuildAchievementsUI();
+  rebuildDirectivesUI();
+  rebuildCommandTalentsUI();
+  rebuildRelicLabUI();
   updateNextTarget();
   updateStory();
   updateHeroArt();
@@ -1874,13 +2586,28 @@ function startNewGamePlus() {
   game.ngPlusCount += 1;
   game.ngMultiplier *= 2;
   const multiplier = game.ngMultiplier;
+  const ngPlusCount = game.ngPlusCount;
+  const previousAchievements = game.achievements;
+  const previousAutomation = game.automation;
+  const previousCommandTalents = game.commandTalents;
+  const previousCommandPoints = game.commandPoints;
+  const previousRelicLab = game.relicLab;
   game = createDefaultGame();
-  game.ngPlusCount = game.ngPlusCount || 0;
+  game.ngPlusCount = ngPlusCount;
   game.ngMultiplier = multiplier;
+  game.achievements = previousAchievements || {};
+  game.automation = previousAutomation || game.automation;
+  game.commandTalents = previousCommandTalents || game.commandTalents;
+  game.commandPoints = previousCommandPoints || 0;
+  game.relicLab = previousRelicLab || game.relicLab;
+  game.achievementBonus = 1 + getUnlockedAchievementCount() * 0.03;
   game.log = [];
   resetMilestones();
   rebuildUpgradesUI();
   rebuildProjectsUI();
+  rebuildDirectivesUI();
+  rebuildCommandTalentsUI();
+  rebuildRelicLabUI();
   refreshUnlocks(true);
   elements.log.innerHTML = "";
   addLog(`New Game+ begun. Feathered multiplier now x${formatNumber(multiplier)}.`);
@@ -1963,6 +2690,7 @@ function saveGame() {
     skyLore: game.skyLore,
     relics: game.relics,
     birdFraction: game.birdFraction,
+    forageBurstCooldown: game.forageBurstCooldown,
     birdCost: game.birdCost,
     nestCost: game.nestCost,
     nestTwigCost: game.nestTwigCost,
@@ -2003,6 +2731,17 @@ function saveGame() {
     expeditionsUnlocked: game.expeditionsUnlocked,
     ngPlusCount: game.ngPlusCount,
     ngMultiplier: game.ngMultiplier,
+    achievementBonus: game.achievementBonus,
+    automation: game.automation,
+    autoBuyTimer: game.autoBuyTimer,
+    achievements: game.achievements,
+    commandPoints: game.commandPoints,
+    directives: game.directives,
+    commandTalents: game.commandTalents,
+    relicLab: game.relicLab,
+    activeEvent: game.activeEvent,
+    eventTimeRemaining: game.eventTimeRemaining,
+    eventCooldown: game.eventCooldown,
     upgrades: game.upgrades,
     projects: game.projects,
     log: game.log,
@@ -2024,6 +2763,9 @@ function loadGame() {
     }
     if (!loaded.hatchRatePerNest && loaded.birdGrowthRatePerNest) {
       loaded.hatchRatePerNest = loaded.birdGrowthRatePerNest;
+    }
+    if (typeof loaded.forageBurstCooldown !== "number") {
+      loaded.forageBurstCooldown = 0;
     }
     const offlineSummary = applyOfflineProgress(loaded);
     return { game: loaded, offlineSummary };
@@ -2048,11 +2790,17 @@ function applyOfflineProgress(loaded) {
     return null;
   }
 
-  const multiplier = loaded.ngMultiplier;
+  const multiplier = loaded.ngMultiplier * (loaded.achievementBonus || 1);
   const harmony = 1 + loaded.roosts * loaded.harmonyPerRoost;
-  const seedsGain = loaded.birds * loaded.seedRatePerBird * multiplier * harmony * deltaSeconds;
+  const broodMultiplier = 1 + ((loaded.commandTalents && loaded.commandTalents.broodcare) || 0) * 0.06;
+  const astroMultiplier = 1 + ((loaded.commandTalents && loaded.commandTalents.astro) || 0) * 0.08;
+  const diplomacyMultiplier = 1 + ((loaded.commandTalents && loaded.commandTalents.diplomacy) || 0) * 0.07;
+  const labEfficiencyMultiplier = 1 + ((loaded.relicLab && loaded.relicLab.efficiency) || 0) * 0.05;
+  const labArchiveMultiplier = 1 + ((loaded.relicLab && loaded.relicLab.archives) || 0) * 0.1;
+  const labInfluenceMultiplier = 1 + ((loaded.relicLab && loaded.relicLab.weatherproofing) || 0) * 0.08;
+  const seedsGain = loaded.birds * loaded.seedRatePerBird * multiplier * harmony * labEfficiencyMultiplier * deltaSeconds;
   const twigsGain = loaded.twigsUnlocked
-    ? loaded.birds * loaded.twigRatePerBird * multiplier * harmony * deltaSeconds
+    ? loaded.birds * loaded.twigRatePerBird * multiplier * harmony * labEfficiencyMultiplier * deltaSeconds
     : 0;
   loaded.seeds += seedsGain;
   loaded.twigs += twigsGain;
@@ -2060,12 +2808,13 @@ function applyOfflineProgress(loaded) {
   const birdsBefore = loaded.birds;
   const eggsBefore = loaded.eggs;
   if (loaded.nests > 0) {
-    loaded.eggs += loaded.nests * loaded.eggRatePerNest * multiplier * harmony * deltaSeconds;
+    loaded.eggs += loaded.nests * loaded.eggRatePerNest * multiplier * harmony * broodMultiplier * deltaSeconds;
     const hatchPotential =
       loaded.nests *
       loaded.hatchRatePerNest *
       multiplier *
       harmony *
+      broodMultiplier *
       (loaded.hatchUsagePercent / 100) *
       deltaSeconds;
     const hatchAmount = Math.min(loaded.eggs, hatchPotential);
@@ -2083,13 +2832,13 @@ function applyOfflineProgress(loaded) {
   const scienceBefore = loaded.featherScience;
   if (loaded.nests > 0) {
     loaded.featherScience +=
-      loaded.nests * loaded.featherScienceRatePerNest * multiplier * harmony * deltaSeconds;
+      loaded.nests * loaded.featherScienceRatePerNest * multiplier * harmony * broodMultiplier * labEfficiencyMultiplier * deltaSeconds;
   }
 
   const loreBefore = loaded.skyLore;
   if (loaded.aviaries > 0) {
     loaded.skyLore +=
-      loaded.aviaries * loaded.skyLoreRatePerAviary * multiplier * harmony * deltaSeconds;
+      loaded.aviaries * loaded.skyLoreRatePerAviary * multiplier * harmony * labArchiveMultiplier * deltaSeconds;
   }
 
   const neighborhoodBefore = loaded.neighborhoodInfluence;
@@ -2099,6 +2848,8 @@ function applyOfflineProgress(loaded) {
       loaded.neighborhoodInfluenceRateFactor *
       multiplier *
       harmony *
+      diplomacyMultiplier *
+      labInfluenceMultiplier *
       100;
     loaded.neighborhoodInfluence = Math.min(
       NEIGHBORHOOD_TARGET,
@@ -2113,6 +2864,8 @@ function applyOfflineProgress(loaded) {
       loaded.townInfluenceRateFactor *
       multiplier *
       harmony *
+      diplomacyMultiplier *
+      labInfluenceMultiplier *
       100;
     loaded.townInfluence = Math.min(
       TOWN_TARGET,
@@ -2127,6 +2880,8 @@ function applyOfflineProgress(loaded) {
       loaded.countryInfluenceRateFactor *
       multiplier *
       harmony *
+      diplomacyMultiplier *
+      labInfluenceMultiplier *
       100;
     loaded.countryInfluence = Math.min(
       COUNTRY_TARGET,
@@ -2141,6 +2896,8 @@ function applyOfflineProgress(loaded) {
       loaded.worldControlRateFactor *
       multiplier *
       harmony *
+      diplomacyMultiplier *
+      labInfluenceMultiplier *
       deltaSeconds *
       100;
     loaded.worldControl = Math.min(100, loaded.worldControl + rate);
@@ -2151,7 +2908,7 @@ function applyOfflineProgress(loaded) {
     loaded.starSystems = Math.min(
       STAR_TARGET,
       loaded.starSystems +
-        loaded.starships * loaded.starshipColonizeRate * multiplier * harmony * deltaSeconds
+        loaded.starships * loaded.starshipColonizeRate * multiplier * harmony * astroMultiplier * deltaSeconds
     );
   }
 
@@ -2162,6 +2919,8 @@ function applyOfflineProgress(loaded) {
       loaded.relicRatePerStarSystem *
       multiplier *
       harmony *
+      astroMultiplier *
+      labArchiveMultiplier *
       deltaSeconds;
   }
 
@@ -2218,6 +2977,44 @@ function restoreUpgrades() {
   game.worldControlRateFactor = BASE_RATES.worldControlRateFactor;
   game.starshipColonizeRate = BASE_RATES.starshipColonizeRate;
   game.relicRatePerStarSystem = BASE_RATES.relicRatePerStarSystem;
+  if (typeof game.achievementBonus !== "number") {
+    game.achievementBonus = 1;
+  }
+  if (!game.automation || typeof game.automation !== "object") {
+    game.automation = {
+      autoBirds: false,
+      autoNests: false,
+      autoRoosts: false,
+      autoAviaries: false,
+      autoStarships: false,
+      autoActions: false,
+    };
+  }
+  if (typeof game.commandPoints !== "number") {
+    game.commandPoints = 0;
+  }
+  if (!game.commandTalents || typeof game.commandTalents !== "object") {
+    game.commandTalents = { thrift: 0, broodcare: 0, diplomacy: 0, astro: 0 };
+  }
+  if (!game.directives || typeof game.directives !== "object") {
+    game.directives = {};
+  }
+  if (!game.relicLab || typeof game.relicLab !== "object") {
+    game.relicLab = { efficiency: 0, weatherproofing: 0, archives: 0 };
+  }
+  if (typeof game.eventTimeRemaining !== "number") {
+    game.eventTimeRemaining = 0;
+  }
+  if (typeof game.eventCooldown !== "number") {
+    game.eventCooldown = EVENT_CHECK_INTERVAL_SECONDS;
+  }
+  if (typeof game.forageBurstCooldown !== "number") {
+    game.forageBurstCooldown = 0;
+  }
+  achievementsConfig.forEach((achievement) => ensureAchievementState(achievement.id));
+  directivesConfig.forEach((directive) => ensureDirectiveState(directive.id));
+  initDirectives();
+  game.achievementBonus = 1 + getUnlockedAchievementCount() * 0.03;
   upgradesConfig.forEach((upgrade) => {
     ensureUpgradeState(upgrade.id);
     if (game.upgrades[upgrade.id].purchased) {
