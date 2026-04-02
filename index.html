@@ -141,11 +141,32 @@
       </div>
 
 
+      
+
+      <div class="panel" id="specialization-panel" hidden>
+        <h2>Flight Doctrine</h2>
+        <p class="resource-detail" id="specialization-status">Choose a doctrine to shape your midgame strategy.</p>
+        <div id="specialization-options" class="doctrine-grid"></div>
+      </div>
+
+      <div class="panel" id="tactics-panel" hidden>
+        <h2>Tactics</h2>
+        <button id="flock-formation" hidden>Flock Formation</button>
+        <div class="resource-detail" id="flock-formation-status">Locked</div>
+        <button id="scout-route" hidden>Scout Route</button>
+        <div class="resource-detail" id="scout-route-status">Locked</div>
+      </div>
+
       <div class="panel" id="event-panel" hidden>
         <h2>Sky Events</h2>
         <div class="resource-detail" id="event-name">Calm skies</div>
         <div class="resource-detail" id="event-detail">No active event.</div>
         <div class="resource-detail" id="event-timer">Next event check in 0s</div>
+        <div class="event-actions" id="event-actions" hidden>
+          <button id="event-harvest">Harvest</button>
+          <button id="event-stabilize">Stabilize</button>
+          <button id="event-ignore">Ignore</button>
+        </div>
       </div>
 
       <div class="panel" id="relic-lab-panel" hidden>

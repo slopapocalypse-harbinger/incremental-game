@@ -58,6 +58,7 @@ const BASE_RATES = {
 const MAX_OFFLINE_SECONDS = 6 * 60 * 60;
 const AUTO_BUY_INTERVAL_SECONDS = 0.75;
 const EVENT_CHECK_INTERVAL_SECONDS = 45;
+const DOCTRINE_UNLOCK_BIRDS = 220;
 
 const philosophyLines = [
   "A seed today, a galaxy tomorrow.",
@@ -206,6 +207,18 @@ const elements = {
   eventName: document.getElementById("event-name"),
   eventDetail: document.getElementById("event-detail"),
   eventTimer: document.getElementById("event-timer"),
+  eventActions: document.getElementById("event-actions"),
+  eventHarvest: document.getElementById("event-harvest"),
+  eventStabilize: document.getElementById("event-stabilize"),
+  eventIgnore: document.getElementById("event-ignore"),
+  tacticsPanel: document.getElementById("tactics-panel"),
+  flockFormation: document.getElementById("flock-formation"),
+  flockFormationStatus: document.getElementById("flock-formation-status"),
+  scoutRoute: document.getElementById("scout-route"),
+  scoutRouteStatus: document.getElementById("scout-route-status"),
+  specializationPanel: document.getElementById("specialization-panel"),
+  specializationStatus: document.getElementById("specialization-status"),
+  specializationOptions: document.getElementById("specialization-options"),
   relicLabPanel: document.getElementById("relic-lab-panel"),
   relicLabUpgrades: document.getElementById("relic-lab-upgrades"),
   log: document.getElementById("log"),
@@ -243,6 +256,13 @@ function createDefaultGame() {
     relics: 0,
     birdFraction: 0,
     forageBurstCooldown: 0,
+    doctrine: null,
+    doctrineActionCooldown: 0,
+    eventHeat: 0,
+    currentRouteFocus: "balanced",
+    scoutRouteTimer: 0,
+    flockFormationTimer: 0,
+    earlyActions: { flockFormationUsed: false, scoutRouteUsed: false },
     birdCost: COSTS.birdBase,
     nestCost: COSTS.nestBase,
     nestTwigCost: COSTS.nestTwigBase,
@@ -641,18 +661,48 @@ const projectsConfig = [
   },
 ];
 
+
+const doctrineConfig = [
+  {
+    id: "industry",
+    name: "Industry Doctrine",
+    desc: "High raw production, lower influence finesse.",
+    modifiers: { seed: 1.3, twig: 1.3, influence: 0.92, star: 1.05 },
+    actionName: "Assembly Surge",
+    actionDesc: "Spend eggs to gain a short production surge.",
+  },
+  {
+    id: "diplomacy",
+    name: "Diplomacy Doctrine",
+    desc: "Influence and events become easier to control.",
+    modifiers: { influence: 1.32, hatch: 1.1, eventHeat: 0.88 },
+    actionName: "Grand Summit",
+    actionDesc: "Spend lore to immediately push all influence tracks.",
+  },
+  {
+    id: "exploration",
+    name: "Exploration Doctrine",
+    desc: "Space and relic acceleration at the cost of early throughput.",
+    modifiers: { star: 1.35, relic: 1.35, seed: 0.95, influence: 0.95 },
+    actionName: "Deep Scan",
+    actionDesc: "Spend relics for a star colonization burst.",
+  },
+];
+
 const achievementsConfig = [
   {
     id: "seed-collector",
     name: "Seed Collector",
-    desc: "Gather 10,000 total seeds.",
+    desc: "Gather 10,000 total seeds. Unlocks stronger forage burst.",
     isUnlocked: () => game.seeds >= 10_000,
+    reward: () => { game.foragePower *= 1.35; addLog("Achievement reward: Forage Burst output increased."); },
   },
   {
     id: "flock-rising",
     name: "Flock Rising",
-    desc: "Reach 150 birds.",
+    desc: "Reach 150 birds. Grants +1 command point cache.",
     isUnlocked: () => game.birds >= 150,
+    reward: () => { game.commandPoints += 1; addLog("Achievement reward: +1 command point."); },
   },
   {
     id: "nest-architect",
@@ -702,6 +752,7 @@ const directivesConfig = [
     baseTarget: 60_000,
     scale: 1.6,
     reward: 1,
+    rewardType: "points",
   },
   {
     id: "nest-program",
@@ -711,6 +762,7 @@ const directivesConfig = [
     baseTarget: 10,
     scale: 1.45,
     reward: 1,
+    rewardType: "points",
   },
   {
     id: "influence-drive",
@@ -720,6 +772,7 @@ const directivesConfig = [
     baseTarget: 110,
     scale: 1.5,
     reward: 2,
+    rewardType: "hybrid",
   },
 ];
 
@@ -824,6 +877,7 @@ function initGame() {
   rebuildDirectivesUI();
   rebuildCommandTalentsUI();
   rebuildRelicLabUI();
+  rebuildDoctrineUI();
   bindEvents();
   refreshUnlocks(true);
   if (saved && saved.offlineSummary) {
@@ -986,13 +1040,34 @@ function bindEvents() {
     const harmony = getHarmonyMultiplier();
     const totalMultiplier = game.ngMultiplier * game.achievementBonus;
     const labEfficiencyMultiplier = 1 + getLabLevel("efficiency") * 0.05;
-    const gain = base * totalMultiplier * harmony * labEfficiencyMultiplier * getEventMultiplier("seed");
+    const gain = base * game.foragePower * totalMultiplier * harmony * labEfficiencyMultiplier * getEventMultiplier("seed");
     game.seeds += gain;
     game.forageBurstCooldown = 2.25;
     addLog(`Forage burst gathered ${formatNumber(gain)} seeds.`, false);
     updateUI();
     saveGame();
   });
+
+  if (elements.flockFormation) {
+    elements.flockFormation.addEventListener("click", useFlockFormation);
+  }
+
+  if (elements.scoutRoute) {
+    elements.scoutRoute.addEventListener("click", useScoutRoute);
+  }
+
+  if (elements.eventHarvest) elements.eventHarvest.addEventListener("click", () => resolveEventChoice("harvest"));
+  if (elements.eventStabilize) elements.eventStabilize.addEventListener("click", () => resolveEventChoice("stabilize"));
+  if (elements.eventIgnore) elements.eventIgnore.addEventListener("click", () => resolveEventChoice("ignore"));
+
+  if (elements.specializationOptions) {
+    elements.specializationOptions.addEventListener("click", (event) => {
+      const button = event.target.closest("button[data-doctrine-id]");
+      if (!button) return;
+      chooseDoctrine(button.dataset.doctrineId);
+    });
+  }
+
 
   ["autoBirds", "autoNests", "autoRoosts", "autoAviaries", "autoStarships", "autoActions"].forEach(
     (key) => {
@@ -1086,6 +1161,10 @@ function getInfluenceRates() {
 function gameTick() {
   if (game.won) return;
   game.forageBurstCooldown = Math.max(0, (game.forageBurstCooldown || 0) - DELTA);
+  game.doctrineActionCooldown = Math.max(0, (game.doctrineActionCooldown || 0) - DELTA);
+  game.scoutRouteTimer = Math.max(0, (game.scoutRouteTimer || 0) - DELTA);
+  game.flockFormationTimer = Math.max(0, (game.flockFormationTimer || 0) - DELTA);
+  if (game.scoutRouteTimer <= 0) game.currentRouteFocus = "balanced";
   const multiplier = game.ngMultiplier * game.achievementBonus;
   const harmony = getHarmonyMultiplier();
   processSkyEvents();
@@ -1098,13 +1177,16 @@ function gameTick() {
   const hatchEventMultiplier = getEventMultiplier("hatch");
   const starEventMultiplier = getEventMultiplier("star");
   const relicEventMultiplier = getEventMultiplier("relic");
-  game.seeds += game.birds * game.seedRatePerBird * multiplier * harmony * labEfficiencyMultiplier * seedEventMultiplier * DELTA;
+  const doctrineMult = getDoctrineMultipliers();
+  const routeMult = getRouteMultipliers();
+  const formationMult = game.flockFormationTimer > 0 ? 1.45 : 1;
+  game.seeds += game.birds * game.seedRatePerBird * multiplier * harmony * labEfficiencyMultiplier * seedEventMultiplier * doctrineMult.seed * routeMult.seed * formationMult * DELTA;
   if (game.twigsUnlocked) {
-    game.twigs += game.birds * game.twigRatePerBird * multiplier * harmony * labEfficiencyMultiplier * twigEventMultiplier * DELTA;
+    game.twigs += game.birds * game.twigRatePerBird * multiplier * harmony * labEfficiencyMultiplier * twigEventMultiplier * doctrineMult.twig * routeMult.twig * formationMult * DELTA;
   }
 
   if (game.nests > 0) {
-    game.eggs += game.nests * game.eggRatePerNest * multiplier * harmony * broodMultiplier * hatchEventMultiplier * DELTA;
+    game.eggs += game.nests * game.eggRatePerNest * multiplier * harmony * broodMultiplier * hatchEventMultiplier * doctrineMult.hatch * DELTA;
     const hatchPotential =
       game.nests *
       game.hatchRatePerNest *
@@ -1113,6 +1195,7 @@ function gameTick() {
       harmony *
       (game.hatchUsagePercent / 100) *
       hatchEventMultiplier *
+      doctrineMult.hatch *
       DELTA;
     const hatchAmount = Math.min(game.eggs, hatchPotential);
     if (hatchAmount > 0) {
@@ -1140,28 +1223,28 @@ function gameTick() {
   if (game.neighborhoodUnlocked && game.neighborhoodInfluence < NEIGHBORHOOD_TARGET) {
     game.neighborhoodInfluence = Math.min(
       NEIGHBORHOOD_TARGET,
-      game.neighborhoodInfluence + influenceRates.neighborhood * DELTA
+      game.neighborhoodInfluence + influenceRates.neighborhood * doctrineMult.influence * DELTA
     );
   }
 
   if (game.townUnlocked && game.townInfluence < TOWN_TARGET) {
     game.townInfluence = Math.min(
       TOWN_TARGET,
-      game.townInfluence + influenceRates.town * DELTA
+      game.townInfluence + influenceRates.town * doctrineMult.influence * DELTA
     );
   }
 
   if (game.countryUnlocked && game.countryInfluence < COUNTRY_TARGET) {
     game.countryInfluence = Math.min(
       COUNTRY_TARGET,
-      game.countryInfluence + influenceRates.country * DELTA
+      game.countryInfluence + influenceRates.country * doctrineMult.influence * DELTA
     );
   }
 
   if (game.worldUnlocked && game.worldControl < 100) {
     game.worldControl = Math.min(
       100,
-      game.worldControl + influenceRates.world * DELTA
+      game.worldControl + influenceRates.world * doctrineMult.influence * DELTA
     );
   }
 
@@ -1169,13 +1252,13 @@ function gameTick() {
     game.starSystems = Math.min(
       STAR_TARGET,
       game.starSystems +
-        game.starships * game.starshipColonizeRate * multiplier * harmony * astroMultiplier * starEventMultiplier * DELTA
+        game.starships * game.starshipColonizeRate * multiplier * harmony * astroMultiplier * starEventMultiplier * doctrineMult.star * DELTA
     );
   }
 
   if (game.spaceUnlocked && game.starSystems > 0) {
     game.relics +=
-      game.starSystems * game.relicRatePerStarSystem * multiplier * harmony * astroMultiplier * labArchiveMultiplier * relicEventMultiplier * DELTA;
+      game.starSystems * game.relicRatePerStarSystem * multiplier * harmony * astroMultiplier * labArchiveMultiplier * relicEventMultiplier * doctrineMult.relic * DELTA;
   }
 
   runAutoManager();
@@ -1276,6 +1359,7 @@ function checkAchievements() {
       state.unlocked = true;
       changed = true;
       addLog(`Achievement unlocked: ${achievement.name}.`);
+      if (typeof achievement.reward === "function") achievement.reward();
     }
   });
   if (changed) {
@@ -1313,6 +1397,12 @@ function ensureDirectiveState(directiveId) {
   if (typeof game.forageBurstCooldown !== "number") {
     game.forageBurstCooldown = 0;
   }
+  if (typeof game.doctrineActionCooldown !== "number") game.doctrineActionCooldown = 0;
+  if (typeof game.eventHeat !== "number") game.eventHeat = 0;
+  if (typeof game.scoutRouteTimer !== "number") game.scoutRouteTimer = 0;
+  if (typeof game.flockFormationTimer !== "number") game.flockFormationTimer = 0;
+  if (!game.currentRouteFocus) game.currentRouteFocus = "balanced";
+  if (!game.earlyActions || typeof game.earlyActions !== "object") game.earlyActions = { flockFormationUsed: false, scoutRouteUsed: false };
   if (!game.directives[directiveId]) {
     game.directives[directiveId] = { tier: 1, target: 0, completed: 0 };
   }
@@ -1342,8 +1432,9 @@ function checkDirectives() {
       state.tier += 1;
       state.target = computeDirectiveTarget(directive, state.tier);
       game.commandPoints += directive.reward;
+      if (directive.rewardType === "hybrid") { game.relics += 0.5; }
       changed = true;
-      addLog(`Directive complete: ${directive.name}. +${directive.reward} command points.`);
+      addLog(`Directive complete: ${directive.name}. +${directive.reward} command points${directive.rewardType === "hybrid" ? " and +0.5 relics" : ""}.`);
     }
   });
   if (changed) {
@@ -1511,6 +1602,7 @@ function purchaseRelicLabUpgrade(id) {
   game.relicLab[id] = level + 1;
   addLog(`Relic Lab upgraded: ${upgrade.name} level ${level + 1}.`);
   rebuildRelicLabUI();
+  rebuildDoctrineUI();
   updateUI();
   saveGame();
 }
@@ -1535,8 +1627,12 @@ function processSkyEvents() {
   if (game.eventCooldown > 0) return;
 
   game.eventCooldown = EVENT_CHECK_INTERVAL_SECONDS;
-  if (Math.random() < 0.45) {
+  const doctrine = doctrineConfig.find((d) => d.id === game.doctrine);
+  const heatDamp = doctrine?.modifiers?.eventHeat || 1;
+  const eventChance = Math.min(0.85, 0.45 + game.eventHeat * 0.1) * heatDamp;
+  if (Math.random() < eventChance) {
     const event = skyEventsConfig[Math.floor(Math.random() * skyEventsConfig.length)];
+    game.eventHeat = Math.min(1.5, game.eventHeat + 0.06);
     game.activeEvent = event;
     game.eventTimeRemaining = event.duration;
     addLog(`Sky event started: ${event.name}. ${event.detail}`);
@@ -1702,6 +1798,12 @@ function refreshUnlocks(isLoad = false) {
     elements.directivesPanel.hidden = false;
     elements.commandPanel.hidden = false;
   }
+  if (game.birds >= 3) {
+    elements.tacticsPanel.hidden = false;
+  }
+  if (game.birds >= DOCTRINE_UNLOCK_BIRDS) {
+    elements.specializationPanel.hidden = false;
+  }
 
   if (game.relicsUnlocked) {
     elements.relicRow.hidden = false;
@@ -1836,6 +1938,33 @@ function updateUI() {
     elements.eventTimer.textContent = `Next event check in ${formatNumber(game.eventCooldown, 1)}s`;
   }
 
+  if (game.activeEvent && elements.eventActions) {
+    elements.eventActions.hidden = false;
+  } else if (elements.eventActions) {
+    elements.eventActions.hidden = true;
+  }
+
+  if (elements.tacticsPanel) {
+    const tacticsUnlocked = game.birds >= 3;
+    elements.tacticsPanel.hidden = !tacticsUnlocked;
+    elements.flockFormation.hidden = !tacticsUnlocked;
+    elements.scoutRoute.hidden = !tacticsUnlocked;
+    const ffReady = game.doctrineActionCooldown <= 0;
+    elements.flockFormation.disabled = !ffReady || game.won;
+    elements.scoutRoute.disabled = !ffReady || game.won;
+    elements.flockFormationStatus.textContent = ffReady ? "Ready: +45% seed/twig for 8s, then cooldown." : `Cooldown ${formatNumber(game.doctrineActionCooldown, 1)}s`;
+    elements.scoutRouteStatus.textContent = game.scoutRouteTimer > 0 ? `Route focus: ${game.currentRouteFocus} (${formatNumber(game.scoutRouteTimer,1)}s)` : "Ready: random focus route for 20s.";
+  }
+
+  if (elements.specializationPanel) {
+    const doctrineUnlocked = game.birds >= DOCTRINE_UNLOCK_BIRDS;
+    elements.specializationPanel.hidden = !doctrineUnlocked;
+    const chosen = doctrineConfig.find((d) => d.id === game.doctrine);
+    elements.specializationStatus.textContent = chosen
+      ? `${chosen.name} active. Doctrine action: ${chosen.actionName}.`
+      : "Choose one doctrine. This choice defines your midgame bonus profile.";
+  }
+
   if (game.automation) {
     elements.autoBirds.checked = Boolean(game.automation.autoBirds);
     elements.autoNests.checked = Boolean(game.automation.autoNests);
@@ -1910,6 +2039,7 @@ function updateUI() {
   rebuildDirectivesUI();
   rebuildCommandTalentsUI();
   rebuildRelicLabUI();
+  rebuildDoctrineUI();
   updateNextTarget();
   updateStory();
   updateHeroArt();
@@ -2001,8 +2131,7 @@ function getStoryState() {
       era: "Era of Song",
       text: "Roosts hum with harmony. The air itself bends to the chorus.",
     };
-  }
-  if (!game.neighborhoodUnlocked) {
+  }  if (!game.neighborhoodUnlocked) {
     return {
       era: "Era of Lore",
       text: "Aviaries stack with scrolls of wind. The ground looks negotiable.",
@@ -2082,6 +2211,15 @@ function getNextTarget() {
       detail: `Gather ${FEATHER_FOR_AVIARIES} feather science to open aviaries.`,
       progressText: `${formatNumber(game.featherScience, 2)} / ${FEATHER_FOR_AVIARIES} science`,
       progress,
+    };
+  }
+
+  if (game.birds >= DOCTRINE_UNLOCK_BIRDS && !game.doctrine) {
+    return {
+      title: "Choose Flight Doctrine",
+      detail: "Select Industry, Diplomacy, or Exploration to unlock doctrine action and branch bonuses.",
+      progressText: "Doctrine pending",
+      progress: 0.2,
     };
   }
 
@@ -2433,6 +2571,114 @@ function draftCountryCharter() {
   saveGame();
 }
 
+
+function getDoctrineMultipliers() {
+  const base = { seed: 1, twig: 1, hatch: 1, influence: 1, star: 1, relic: 1 };
+  const doctrine = doctrineConfig.find((d) => d.id === game.doctrine);
+  if (!doctrine) return base;
+  return {
+    seed: doctrine.modifiers.seed || 1,
+    twig: doctrine.modifiers.twig || 1,
+    hatch: doctrine.modifiers.hatch || 1,
+    influence: doctrine.modifiers.influence || 1,
+    star: doctrine.modifiers.star || 1,
+    relic: doctrine.modifiers.relic || 1,
+  };
+}
+
+function getRouteMultipliers() {
+  if (game.scoutRouteTimer <= 0) return { seed: 1, twig: 1 };
+  if (game.currentRouteFocus === "seed") return { seed: 1.4, twig: 0.8 };
+  if (game.currentRouteFocus === "twig") return { seed: 0.8, twig: 1.4 };
+  return { seed: 1.15, twig: 1.15 };
+}
+
+function useFlockFormation() {
+  if (game.won || game.doctrineActionCooldown > 0 || game.birds < 3) return;
+  game.flockFormationTimer = 8;
+  game.doctrineActionCooldown = 20;
+  game.earlyActions.flockFormationUsed = true;
+  addLog("Flock Formation activated: output surges briefly.");
+}
+
+function useScoutRoute() {
+  if (game.won || game.doctrineActionCooldown > 0 || game.birds < 3) return;
+  const rolls = ["seed", "twig", "balanced"];
+  game.currentRouteFocus = rolls[Math.floor(Math.random() * rolls.length)];
+  game.scoutRouteTimer = 20;
+  game.doctrineActionCooldown = 20;
+  game.earlyActions.scoutRouteUsed = true;
+  addLog(`Scout Route set to ${game.currentRouteFocus} focus.`);
+}
+
+function resolveEventChoice(choice) {
+  if (!game.activeEvent || game.won) return;
+  if (choice === "harvest") {
+    const gain = 1800 + game.birds * 4;
+    game.seeds += gain;
+    game.eventHeat += 0.2;
+    addLog(`Event harvested aggressively: +${formatNumber(gain)} seeds, heat rises.`);
+  } else if (choice === "stabilize") {
+    const loreCost = 20;
+    if (game.skyLore >= loreCost) {
+      game.skyLore -= loreCost;
+      game.eventHeat = Math.max(0, game.eventHeat - 0.35);
+      game.eventTimeRemaining = Math.max(3, game.eventTimeRemaining - 8);
+      addLog("Event stabilized using lore. Duration reduced and heat lowered.");
+    } else {
+      addLog("Need 20 lore to stabilize this event.", false);
+    }
+  } else {
+    game.eventHeat = Math.max(0, game.eventHeat - 0.05);
+    addLog("Event ignored. The flock observes from afar.", false);
+  }
+  updateUI();
+  saveGame();
+}
+
+function chooseDoctrine(id) {
+  if (game.doctrine || game.birds < DOCTRINE_UNLOCK_BIRDS) return;
+  const doctrine = doctrineConfig.find((d) => d.id === id);
+  if (!doctrine) return;
+  game.doctrine = doctrine.id;
+  addLog(`Doctrine chosen: ${doctrine.name}. ${doctrine.actionDesc}`);
+  rebuildDoctrineUI();
+  updateUI();
+  saveGame();
+}
+
+function rebuildDoctrineUI() {
+  if (!elements.specializationOptions) return;
+  elements.specializationOptions.innerHTML = "";
+  doctrineConfig.forEach((doctrine) => {
+    const card = document.createElement("div");
+    card.className = `doctrine-card${game.doctrine === doctrine.id ? " active" : ""}`;
+
+    const title = document.createElement("div");
+    title.className = "command-talent-title";
+    title.textContent = doctrine.name;
+
+    const desc = document.createElement("div");
+    desc.className = "directive-progress";
+    desc.textContent = doctrine.desc;
+
+    const action = document.createElement("div");
+    action.className = "directive-progress";
+    action.textContent = `${doctrine.actionName}: ${doctrine.actionDesc}`;
+
+    const button = document.createElement("button");
+    button.dataset.doctrineId = doctrine.id;
+    button.textContent = game.doctrine === doctrine.id ? "Selected" : "Adopt Doctrine";
+    button.disabled = Boolean(game.doctrine) || game.won;
+
+    card.appendChild(title);
+    card.appendChild(desc);
+    card.appendChild(action);
+    card.appendChild(button);
+    elements.specializationOptions.appendChild(card);
+  });
+}
+
 function canAffordCosts(costs) {
   const entries = Object.entries(costs);
   return entries.every(([key, value]) => {
@@ -2608,6 +2854,7 @@ function startNewGamePlus() {
   rebuildDirectivesUI();
   rebuildCommandTalentsUI();
   rebuildRelicLabUI();
+  rebuildDoctrineUI();
   refreshUnlocks(true);
   elements.log.innerHTML = "";
   addLog(`New Game+ begun. Feathered multiplier now x${formatNumber(multiplier)}.`);
@@ -2691,6 +2938,13 @@ function saveGame() {
     relics: game.relics,
     birdFraction: game.birdFraction,
     forageBurstCooldown: game.forageBurstCooldown,
+    doctrine: game.doctrine,
+    doctrineActionCooldown: game.doctrineActionCooldown,
+    eventHeat: game.eventHeat,
+    currentRouteFocus: game.currentRouteFocus,
+    scoutRouteTimer: game.scoutRouteTimer,
+    flockFormationTimer: game.flockFormationTimer,
+    earlyActions: game.earlyActions,
     birdCost: game.birdCost,
     nestCost: game.nestCost,
     nestTwigCost: game.nestTwigCost,
@@ -3011,6 +3265,12 @@ function restoreUpgrades() {
   if (typeof game.forageBurstCooldown !== "number") {
     game.forageBurstCooldown = 0;
   }
+  if (typeof game.doctrineActionCooldown !== "number") game.doctrineActionCooldown = 0;
+  if (typeof game.eventHeat !== "number") game.eventHeat = 0;
+  if (typeof game.scoutRouteTimer !== "number") game.scoutRouteTimer = 0;
+  if (typeof game.flockFormationTimer !== "number") game.flockFormationTimer = 0;
+  if (!game.currentRouteFocus) game.currentRouteFocus = "balanced";
+  if (!game.earlyActions || typeof game.earlyActions !== "object") game.earlyActions = { flockFormationUsed: false, scoutRouteUsed: false };
   achievementsConfig.forEach((achievement) => ensureAchievementState(achievement.id));
   directivesConfig.forEach((directive) => ensureDirectiveState(directive.id));
   initDirectives();
