@@ -3,6 +3,13 @@
 A finite, strategic incremental game about guiding a flock from one sunlit
 canopy to a galaxy-wide living network.
 
+## Play online
+
+[Play Birds vs. Everything](https://slopapocalypse-harbinger.github.io/incremental-game/)
+
+The GitHub Pages version is built and deployed automatically whenever changes
+land on `main`.
+
 ## Play locally
 
 ```bash
