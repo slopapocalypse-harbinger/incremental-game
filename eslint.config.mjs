@@ -7,7 +7,6 @@ export default tseslint.config(
     ignores: [
       "dist/**",
       "dist-pages/**",
-      "legacy/**",
       "node_modules/**",
       "dev-dist/**",
       "scripts/**",

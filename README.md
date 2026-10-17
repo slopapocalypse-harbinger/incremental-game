@@ -34,7 +34,7 @@ pnpm lint
 pnpm build
 ```
 
-`pnpm build:preview` builds the previous game at the site root and this one under `dist-pages/next/`.
+`pnpm build` writes the Pages site to `dist-pages/` and does not include `playtest/`. `pnpm playtest:check` rebuilds the phone bundle and fails if the committed copy drifted. Remove `playtest/` before or when this branch merges.
 
 ## Saves
 

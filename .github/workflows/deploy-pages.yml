@@ -1,8 +1,6 @@
-# Deploys from main only. The github-pages environment rejects other branches,
-# so a playtest push cannot update the live site. The phone build is the
-# committed playtest/ directory. To serve /next/ from this repo before merge,
-# allow the branch on that environment and add it under on.push.branches.
-# The preview build keeps the previous game at the site root.
+# Deploys from main only. The github-pages environment rejects other branches.
+# The phone preview is the committed playtest/ directory, and this workflow
+# must not publish that directory. Remove playtest/ before or at merge.
 name: Deploy GitHub Pages
 
 on:
@@ -55,12 +53,18 @@ jobs:
         run: corepack enable && corepack prepare pnpm@11.16.0 --activate
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Build preview site
-        if: github.ref == 'refs/heads/cursor/birds-rebuild-233d'
-        run: pnpm build:preview
       - name: Build release site
-        if: github.ref != 'refs/heads/cursor/birds-rebuild-233d'
         run: pnpm build
+      - name: Keep the phone bundle out of Pages
+        run: |
+          if [ -d dist-pages/playtest ]; then
+            echo "dist-pages/playtest must not be published"
+            exit 1
+          fi
+          if grep -R -q "cdn.jsdelivr.net/gh/slopapocalypse-harbinger/incremental-game" dist-pages; then
+            echo "playtest CDN URLs must not be published"
+            exit 1
+          fi
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v6
       - name: Upload site artifact
