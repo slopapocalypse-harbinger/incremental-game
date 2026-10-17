@@ -79,6 +79,35 @@ export const TIPS: Tip[] = [
   },
 ];
 
+const TAB_ORDER: TabId[] = ["flock", "plans", "study", "world", "log"];
+
+export function visibleTabs(state: GameState): TabId[] {
+  return TAB_ORDER.filter((tab) => tabAccess(state, tab).open);
+}
+
+/** Arrival notices share the notebook's seen list. Starter surfaces are never new. */
+export function arrivalId(kind: "tab" | "role", id: string): string {
+  return `new:${kind}:${id}`;
+}
+
+export function isNewArrival(state: GameState, kind: "tab" | "role", id: string): boolean {
+  if (kind === "tab" && (id === "flock" || id === "plans")) return false;
+  if (kind === "role" && id === "foragers") return false;
+  return !state.notebook.seen.includes(arrivalId(kind, id));
+}
+
+export function acknowledgeArrival(state: GameState, kind: "tab" | "role", id: string): GameState {
+  return dismissTip(state, arrivalId(kind, id));
+}
+
+export function acknowledgeArrivals(
+  state: GameState,
+  kind: "tab" | "role",
+  ids: readonly string[],
+): GameState {
+  return ids.reduce((next, id) => acknowledgeArrival(next, kind, id), state);
+}
+
 export function tabAccess(state: GameState, tab: TabId): { open: boolean; reason: string } {
   if (tab === "plans" || tab === "flock") return { open: true, reason: "" };
   if (tab === "world") {

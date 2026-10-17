@@ -62,7 +62,7 @@ export interface OfflineReport {
 export interface Notebook {
   /** Story intro still waiting, or finished. */
   intro: "pending" | "done";
-  /** Tip ids already dismissed. */
+  /** Tip ids and one-time arrival notices (`new:tab:*`, `new:role:*`) already cleared. */
   seen: string[];
   /** When true, no tips are shown. */
   quiet: boolean;

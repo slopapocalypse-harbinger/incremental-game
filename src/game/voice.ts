@@ -1,4 +1,4 @@
-import type { DoctrineId, SeasonId } from "./types";
+import type { DoctrineId, RoleId, SeasonId } from "./types";
 
 /** American goldfinches. Same four birds, all expedition. */
 export const FLOCK_VOICES = [
@@ -66,6 +66,25 @@ export function doctrineRemark(id: DoctrineId): string {
       return "Quill: Write it down, then go faster than is comfortable.";
     case "wanderlust":
       return "Nell: The route is the point. A nest is a rest.";
+  }
+}
+
+export function roleArrival(id: RoleId): string {
+  switch (id) {
+    case "weavers":
+      return "Bram: Weavers. The twigs need a bird.";
+    case "scouts":
+      return "Nell: Scouts. They bring more back.";
+    case "broodkeepers":
+      return "Pip: Broodkeepers. More mouths, kept.";
+    case "scholars":
+      return "Quill: Scholars. Write it down now.";
+    case "envoys":
+      return "Nell: Envoys. The song can travel.";
+    case "navigators":
+      return "Nell: Navigators. The sun is a fix.";
+    default:
+      return "";
   }
 }
 

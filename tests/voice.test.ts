@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { DOCTRINES, EVENTS, PROJECTS, SEASONS } from "../src/game/content";
+import { DOCTRINES, EVENTS, PROJECTS, ROLE_DEFS, SEASONS } from "../src/game/content";
 import { INTRO_BEATS } from "../src/game/guide";
 import {
   FLOCK_VOICES,
@@ -12,6 +12,7 @@ import {
   projectRemark,
   remarkVariants,
   repeatRemark,
+  roleArrival,
   seasonRemark,
 } from "../src/game/voice";
 
@@ -47,6 +48,16 @@ describe("flock voice", () => {
     }
     for (const beat of INTRO_BEATS) {
       expect(knownVoice(introRemark(beat.id))).toBe(true);
+    }
+    for (const role of ROLE_DEFS) {
+      if (role.id === "foragers") {
+        expect(roleArrival(role.id)).toBe("");
+        continue;
+      }
+      const line = roleArrival(role.id);
+      expect(line.length, line).toBeGreaterThan(0);
+      expect(line.length, line).toBeLessThan(48);
+      expect(knownVoice(line), line).toBe(true);
     }
   });
 

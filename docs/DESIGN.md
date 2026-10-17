@@ -57,12 +57,12 @@ A new game starts with three short story beats: the flock, the tree, and why the
 After that, the notebook introduces itself one surface at a time.
 
 - **Plans** and **Flock** are open immediately. Plans: one project, stores spent up front. Flock: idle birds eat and gather nothing.
-- **World** and **Log** stay locked until the seed cache. World introduces seasons, which change gathering and not launch speed. The log introduces itself as a record, not a choice.
-- **Study** stays locked until the first nest. It introduces research, then doctrine once the roost exists.
+- **World** and **Log** appear after the seed cache. World introduces seasons, which change gathering and not launch speed. The log introduces itself as a record, not a choice.
+- **Study** appears after the first nest. It introduces research, then doctrine once the roost exists.
 - The first **event** introduces the rule that one option never asks for a resource you might not have.
 - **Migration** introduces itself in Act II, including that a win pays 8 or more and the confirm line states the early payout.
 
-A locked tab stays visible, says it is locked, and explains the gate in one line. Tips are one or two lines, one at a time, and they are stored on the save.
+A locked tab, role, or later-act study is absent until it unlocks. The Now line is the next goal. When a tab or role appears, it fades in and keeps a new dot until the first look. That look is stored on the notebook, with the tips. Tips are one or two lines, one at a time.
 
 ### First five minutes
 

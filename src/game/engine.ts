@@ -18,7 +18,7 @@ import {
   type ProjectDef,
 } from "./content";
 import { clampResource, formatAmount, formatDuration, formatRate } from "./number";
-import { doctrineRemark, eventRemark, repeatNote, repeatRemark } from "./voice";
+import { doctrineRemark, eventRemark, repeatNote, repeatRemark, roleArrival } from "./voice";
 import {
   SAVE_VERSION,
   type Act,
@@ -260,6 +260,10 @@ export function isRoleUnlocked(state: GameState, role: RoleId): boolean {
   if (role === "broodkeepers" || role === "scholars") return state.act >= 2;
   if (role === "envoys") return state.act >= 3;
   return state.act >= 4;
+}
+
+export function visibleRoles(state: GameState): RoleId[] {
+  return ROLE_DEFS.map((role) => role.id).filter((id) => isRoleUnlocked(state, id));
 }
 
 export function isResourceUnlocked(state: GameState, resource: ResourceId): boolean {
@@ -1126,6 +1130,7 @@ function completeProject(state: GameState, id: string): GameState {
   switch (id) {
     case "seed-cache":
       next = pushLog(next, "Dry grass in a hollow. The seed stays where it was put.", "story");
+      next = pushLog(next, roleArrival("weavers"), "story");
       break;
     case "first-nest":
       next = { ...next, counts: { ...next.counts, nest: count(next, "nest") + 1 } };
@@ -1138,6 +1143,7 @@ function completeProject(state: GameState, id: string): GameState {
         "Two branches are worth a route. A little knowledge keeps arriving. Scouts bring more.",
         "story",
       );
+      next = pushLog(next, roleArrival("scouts"), "story");
       break;
     case "nest":
       next = pushLog(next, repeatNote("nest", count(next, "nest")) ?? "Another nest cups into the tree.");
@@ -1158,6 +1164,8 @@ function completeProject(state: GameState, id: string): GameState {
         "The first roost holds through the night. At dawn someone starts keeping a record.",
         "story",
       );
+      next = pushLog(next, roleArrival("broodkeepers"), "story");
+      next = pushLog(next, roleArrival("scholars"), "story");
       break;
     case "archive":
       next = pushLog(
@@ -1184,6 +1192,7 @@ function completeProject(state: GameState, id: string): GameState {
         resources: { ...next.resources, influence: Math.max(next.resources.influence, 8) },
       };
       next = pushLog(next, "The Sky Council sits. Nobody agrees who called it.", "story");
+      next = pushLog(next, roleArrival("envoys"), "story");
       break;
     case "beacon":
       next = pushLog(next, "A chorus beacon takes the light past the last familiar tree.");
@@ -1218,6 +1227,7 @@ function completeProject(state: GameState, id: string): GameState {
         "The Open-Sky Accord is ratified. The sun becomes a destination, not only a clock.",
         "story",
       );
+      next = pushLog(next, roleArrival("navigators"), "story");
       break;
     case "solar":
       next = pushLog(next, "A solar nursery catches the light between two legs of the route.");

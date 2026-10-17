@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   actName,
@@ -12,11 +12,22 @@ import {
   pauseGame,
   resolveEvent,
   seasonLength,
+  visibleRoles,
 } from "../game/engine";
-import { currentTip, dismissTip, finishIntro, tabAccess, type TabId } from "../game/guide";
+import {
+  acknowledgeArrival,
+  acknowledgeArrivals,
+  currentTip,
+  dismissTip,
+  finishIntro,
+  isNewArrival,
+  tabAccess,
+  visibleTabs,
+  type TabId,
+} from "../game/guide";
 import { formatAmount, formatBirds, formatDuration, formatRate } from "../game/number";
 import { sceneFromState } from "../game/scene";
-import type { GameState, ResourceId } from "../game/types";
+import type { GameState, ResourceId, RoleId } from "../game/types";
 import { projectRemark } from "../game/voice";
 import { LivingScene } from "./art/canopy";
 import { Icon, resourceIcon, tabIcon } from "./art/icons";
@@ -25,7 +36,7 @@ import { FlockPanel, LogPanel, PlansPanel, StudyPanel, WorldPanel } from "./pane
 import { CapSheet, EventSheet, MigrateSheet, SettingsSheet } from "./sheets";
 import { useCampaign } from "./useCampaign";
 import { useFlourish } from "./useFlourish";
-import { useReducedMotion } from "./useMotion";
+import { useReducedMotion, useWideLayout } from "./useMotion";
 
 type Sheet =
   | null
@@ -47,8 +58,27 @@ export function App() {
   const flourish = useFlourish(game);
   const [tab, setTab] = useState<TabId>("plans");
   const [sheet, setSheet] = useState<Sheet>(null);
-  const [lockedReason, setLockedReason] = useState<string | null>(null);
+  const [glowRoles, setGlowRoles] = useState<RoleId[]>([]);
+  const wide = useWideLayout();
   const playtest = import.meta.env.BASE_URL.includes("/next/");
+  const flockShown = Boolean(game) && (wide || tab === "flock");
+
+  useEffect(() => {
+    if (!game || !flockShown) {
+      setGlowRoles((current) => (current.length === 0 ? current : []));
+      return;
+    }
+    const unseen = visibleRoles(game).filter((id) => isNewArrival(game, "role", id));
+    if (unseen.length === 0) return;
+    setGlowRoles((current) => {
+      const merged = [...current];
+      for (const id of unseen) {
+        if (!merged.includes(id)) merged.push(id);
+      }
+      return merged.length === current.length ? current : merged;
+    });
+    commit((state) => acknowledgeArrivals(state, "role", unseen));
+  }, [flockShown, game, commit]);
 
   if (!game) {
     return (
@@ -65,6 +95,30 @@ export function App() {
   const worldOpen = tabAccess(game, "world").open;
   const tip = currentTip(game, tab);
   const showingIntro = game.notebook.intro === "pending";
+  const current = game;
+  const freshRoles = visibleRoles(current).filter(
+    (id) => glowRoles.includes(id) || isNewArrival(current, "role", id),
+  );
+
+  function selectTab(id: TabId): void {
+    if (id === "flock") {
+      const unseen = visibleRoles(current).filter((role) => isNewArrival(current, "role", role));
+      if (unseen.length > 0) {
+        setGlowRoles((current) => {
+          const merged = [...current];
+          for (const role of unseen) {
+            if (!merged.includes(role)) merged.push(role);
+          }
+          return merged.length === current.length ? current : merged;
+        });
+        commit((state) => acknowledgeArrivals(state, "role", unseen));
+      }
+    } else if (tab === "flock") {
+      setGlowRoles([]);
+    }
+    setTab(id);
+    if (isNewArrival(current, "tab", id)) commit((state) => acknowledgeArrival(state, "tab", id));
+  }
 
   return (
     <main className={`app ${modeClass}${worldOpen ? "" : " world-closed"}${game.won ? " won" : ""}`}>
@@ -160,11 +214,7 @@ export function App() {
         </aside>
       ) : null}
 
-      {lockedReason ? (
-        <p className="tip" data-testid="tab-locked">
-          {lockedReason}
-        </p>
-      ) : tip ? (
+      {tip ? (
         <aside className="tip" data-testid="tip">
           <p>
             <strong>{tip.title}.</strong> {tip.body}
@@ -181,50 +231,53 @@ export function App() {
       ) : null}
 
       <div className="stage">
-        <FlockPanel game={game} active={tab === "flock"} apply={apply} />
+        <FlockPanel
+          game={game}
+          active={tab === "flock"}
+          shown={flockShown}
+          freshRoles={freshRoles}
+          apply={apply}
+        />
         <WorldPanel game={game} active={tab === "world"} open={worldOpen} />
         <PlansPanel
           game={game}
           active={tab === "plans"}
           apply={apply}
           onMigrate={() => setSheet("migrate")}
-          onStudy={() => setTab("study")}
+          onStudy={() => selectTab("study")}
         />
         <StudyPanel
           game={game}
           active={tab === "study"}
           apply={apply}
           onMigrate={() => setSheet("migrate")}
-          onPlans={() => setTab("plans")}
+          onPlans={() => selectTab("plans")}
         />
-        <LogPanel game={game} active={tab === "log"} onPlans={() => setTab("plans")} />
+        <LogPanel game={game} active={tab === "log"} onPlans={() => selectTab("plans")} />
       </div>
 
       <nav className="tabs" aria-label="Notebook sections">
-        {TABS.map((item) => {
-          const access = tabAccess(game, item.id);
+        {visibleTabs(game).map((id) => {
+          const item = TABS.find((entry) => entry.id === id);
+          if (!item) return null;
           const selected = tab === item.id;
+          const fresh = isNewArrival(game, "tab", item.id);
           return (
             <button
               key={item.id}
               type="button"
-              className={`${selected ? "on" : ""}${access.open ? "" : " locked"}`}
+              className={`${selected ? "on" : ""}${fresh ? " reveal" : ""}`}
               aria-current={selected ? "page" : undefined}
-              aria-disabled={access.open ? undefined : true}
               data-testid={`tab-${item.id}`}
-              data-open={access.open ? "true" : "false"}
-              onClick={() => {
-                if (!access.open) {
-                  setLockedReason(access.reason);
-                  return;
-                }
-                setLockedReason(null);
-                setTab(item.id);
-              }}
+              data-open="true"
+              data-new={fresh ? "true" : "false"}
+              onClick={() => selectTab(item.id)}
             >
               <Icon name={tabIcon(item.id)} />
               <span>{item.label}</span>
-              {access.open ? null : <small>Locked</small>}
+              {fresh ? (
+                <span className="new-dot" data-testid={`new-tab-${item.id}`} aria-label="New" />
+              ) : null}
             </button>
           );
         })}
@@ -263,7 +316,7 @@ export function App() {
             sheet.id === "flock"
               ? () => {
                   setSheet(null);
-                  setTab("flock");
+                  selectTab("flock");
                 }
               : undefined
           }

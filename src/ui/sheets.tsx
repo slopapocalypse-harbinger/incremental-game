@@ -239,11 +239,15 @@ export function SettingsSheet({
         </button>
       </div>
 
-      <h3>Leave the flight</h3>
-      <p>Migration spends marks and starts a new flock. It does not erase the export you already copied.</p>
-      <button type="button" className="btn ghost" onClick={onMigrate} disabled={game.act < 2 && !game.won}>
-        {game.act < 2 && !game.won ? "Migration opens after the roost" : "Open migration"}
-      </button>
+      {game.act >= 2 || game.won ? (
+        <>
+          <h3>Leave the flight</h3>
+          <p>Migration spends marks and starts a new flock. It does not erase the export you already copied.</p>
+          <button type="button" className="btn ghost" onClick={onMigrate}>
+            Open migration
+          </button>
+        </>
+      ) : null}
     </Sheet>
   );
 }

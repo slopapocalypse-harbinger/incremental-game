@@ -55,10 +55,14 @@ const EFFECT_LABEL: Record<string, string> = {
 export function FlockPanel({
   game,
   active,
+  shown = active,
+  freshRoles = [],
   apply,
 }: {
   game: GameState;
   active: boolean;
+  shown?: boolean;
+  freshRoles?: RoleId[];
   apply: Apply;
 }) {
   const idle = getIdleBirds(game);
@@ -83,7 +87,16 @@ export function FlockPanel({
       </header>
       <ul className="role-list">
         {ROLE_DEFS.map((role) => (
-          <RoleRow key={role.id} game={game} role={role.id} name={role.name} blurb={role.blurb} apply={apply} />
+          <RoleRow
+            key={role.id}
+            game={game}
+            role={role.id}
+            name={role.name}
+            blurb={role.blurb}
+            fresh={freshRoles.includes(role.id)}
+            shown={shown}
+            apply={apply}
+          />
         ))}
       </ul>
     </section>
@@ -95,35 +108,34 @@ function RoleRow({
   role,
   name,
   blurb,
+  fresh,
+  shown,
   apply,
 }: {
   game: GameState;
   role: RoleId;
   name: string;
   blurb: string;
+  fresh: boolean;
+  shown: boolean;
   apply: Apply;
 }) {
-  if (!isRoleUnlocked(game, role)) {
-    return (
-      <li className="role locked">
-        <div>
-          <h3>
-            <Icon name={role} />
-            {name}
-          </h3>
-          <p>{unlockHint(role)}</p>
-        </div>
-      </li>
-    );
-  }
+  if (!isRoleUnlocked(game, role)) return null;
   const count = Math.floor(game.roles[role]);
   const idle = getIdleBirds(game);
   return (
-    <li className="role">
+    <li
+      className={`role${fresh && shown ? " reveal" : ""}`}
+      data-testid={`role-${role}`}
+      data-new={fresh ? "true" : "false"}
+    >
       <div className="role-copy">
         <h3>
           <Icon name={role} />
           {name}
+          {fresh ? (
+            <span className="new-dot" data-testid={`new-role-${role}`} aria-label="New" />
+          ) : null}
         </h3>
         <p>{blurb}</p>
         <p className="yield">{roleYield(game, role)}</p>
@@ -149,14 +161,6 @@ function RoleRow({
       </div>
     </li>
   );
-}
-
-function unlockHint(role: RoleId): string {
-  if (role === "weavers") return "Opens when the seed cache is lined.";
-  if (role === "scouts") return "Opens after the canopy survey.";
-  if (role === "broodkeepers" || role === "scholars") return "Opens with the aerie, in Act II.";
-  if (role === "envoys") return "Opens with dominion, in Act III.";
-  return "Opens on the crossing, in Act IV.";
 }
 
 export function PlansPanel({
@@ -186,9 +190,7 @@ export function PlansPanel({
           <button type="button" className="btn ghost" onClick={onMigrate}>
             Migrate
           </button>
-        ) : (
-          <p className="aside">Migration opens after the first roost.</p>
-        )}
+        ) : null}
       </header>
 
       {idle >= 1 && !game.won && !game.flags.includes("survey") ? (
@@ -345,11 +347,9 @@ export function StudyPanel({
         </button>
       </header>
 
+      {game.act < 2 ? null : (
       <article className="card">
         <p className="eyebrow">Doctrine</p>
-        {game.act < 2 ? (
-          <p>The roost has to exist before the flock will argue about how to fly.</p>
-        ) : (
           <>
           <Plate id="doctrine-choice" />
           <ul className="doctrines">
@@ -380,7 +380,6 @@ export function StudyPanel({
                       type="button"
                       className="btn"
                       data-testid={`doctrine-${doctrine.id}`}
-                      disabled={game.act < 2}
                       onClick={() => apply((state) => chooseDoctrine(state, doctrine.id as DoctrineId))}
                     >
                       Fly this way
@@ -392,33 +391,27 @@ export function StudyPanel({
             })}
           </ul>
           </>
-        )}
       </article>
+      )}
 
       <article className="card">
         <p className="eyebrow">Field notes</p>
         <h3>Research</h3>
         <ul className="techs">
           {TECHS.map((tech) => {
+            if (tech.act > game.act) return null;
             const owned = game.techs.includes(tech.id);
-            const future = tech.act > game.act;
             const ready = canBuyTech(game, tech.id);
             return (
-              <li key={tech.id} className={owned ? "owned" : ""}>
+              <li key={tech.id} className={owned ? "owned" : ""} data-testid={`study-${tech.id}`}>
                 <div>
                   <h3>{tech.name}</h3>
                   <p>{tech.summary}</p>
                   <p className="forecast">{formatCosts(tech.cost)}</p>
                   {owned ? <p className="reason ready">Learned.</p> : null}
-                  {future ? <p className="reason">Opens in Act {tech.act}.</p> : null}
-                  {!owned && !future && !game.flags.includes("first-nest") ? (
-                    <p className="reason">The first nest has to exist before anyone writes this down.</p>
-                  ) : null}
-                  {!owned && !future && game.flags.includes("first-nest") && !ready ? (
-                    <p className="reason">{formatMissing(game, tech.cost)}</p>
-                  ) : null}
+                  {!owned && !ready ? <p className="reason">{formatMissing(game, tech.cost)}</p> : null}
                 </div>
-                {owned || future ? null : (
+                {owned ? null : (
                   <button
                     type="button"
                     className="btn"
@@ -443,9 +436,11 @@ export function StudyPanel({
           {game.migrations > 0 ? ` ${game.migrations} migration${game.migrations === 1 ? "" : "s"} so far.` : ""}
         </p>
         <RankList game={game} />
-        <button type="button" className="btn" onClick={onMigrate} disabled={game.act < 2 && !game.won}>
-          {game.act < 2 && !game.won ? "Migration is closed" : "Spend marks"}
-        </button>
+        {game.act >= 2 || game.won ? (
+          <button type="button" className="btn" onClick={onMigrate}>
+            Spend marks
+          </button>
+        ) : null}
       </article>
     </section>
   );

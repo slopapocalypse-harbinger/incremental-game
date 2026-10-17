@@ -448,11 +448,6 @@ p {
   align-items: center;
 }
 
-.role.locked {
-  background: transparent;
-  color: var(--ink-soft);
-}
-
 .role-copy,
 .techs li div,
 .upgrades li div,
@@ -624,15 +619,24 @@ p {
   margin: 0;
 }
 
-.tabs button.locked {
-  opacity: 0.72;
+.tabs button.reveal,
+.role.reveal {
+  animation: arrive 280ms ease;
 }
 
-.tabs button small {
-  display: block;
-  font-size: 0.68rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+.new-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ochre);
+  box-shadow: 0 0 0 2px var(--cream);
+  flex: none;
+}
+
+.tabs button .new-dot {
+  position: absolute;
+  top: 4px;
+  right: 8px;
 }
 
 .intro-root {
@@ -932,8 +936,7 @@ p {
 }
 
 .tabs {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  display: flex;
   gap: 4px;
   padding: 6px 8px calc(8px + var(--safe-bottom));
   background: rgba(243, 239, 228, 0.96);
@@ -941,7 +944,10 @@ p {
 }
 
 .tabs button {
+  position: relative;
   display: flex;
+  flex: 1 1 0;
+  min-width: 0;
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -951,6 +957,13 @@ p {
   border-radius: 12px;
   color: var(--ink-soft);
   padding: 6px 0;
+}
+
+.tabs button span:not(.new-dot) {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .tabs .icon {
@@ -1048,6 +1061,17 @@ p {
 .doctrine.on {
   border-color: var(--moss-2);
   box-shadow: inset 4px 0 0 var(--moss);
+}
+
+@keyframes arrive {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 @keyframes seed-pop {
@@ -1195,14 +1219,6 @@ p {
     overflow: hidden;
   }
 
-  .role.locked {
-    padding: 2px 8px;
-  }
-
-  .role.locked p {
-    -webkit-line-clamp: 1;
-  }
-
   .cards,
   .role-list,
   .doctrines,
@@ -1268,7 +1284,9 @@ p {
 
 @media (prefers-reduced-motion: reduce) {
   .burst,
-  .flourish-line {
+  .flourish-line,
+  .tabs button.reveal,
+  .role.reveal {
     animation: none;
   }
 }
@@ -1347,11 +1365,15 @@ html[data-tab-hidden="true"] .burst {
 
   .tabs {
     order: 4;
-    grid-template-columns: repeat(3, minmax(88px, 140px));
-    justify-content: end;
+    justify-content: flex-end;
     border-top: 0;
     background: transparent;
     padding-bottom: 0;
+  }
+
+  .tabs button {
+    flex: 0 1 140px;
+    min-width: 88px;
   }
 
   .stage {
