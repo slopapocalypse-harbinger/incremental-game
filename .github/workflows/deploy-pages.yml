@@ -1,10 +1,16 @@
+# Deploys from main only. The github-pages environment rejects other branches.
+# Adding cursor/birds-rebuild-233d as a deployment branch policy returned
+# HTTP 403: Resource not accessible by integration. Do not trigger this
+# workflow on that branch until someone with environment access adds the
+# policy. A /next/ artifact must keep the live root and only add dist-pages/next.
+# The phone preview until then is the committed playtest/ directory.
+# Remove playtest/ before or at merge. It must not be published here.
 name: Deploy GitHub Pages
 
 on:
   push:
     branches:
       - main
-      - agent/modern-incremental-game-overhaul
   workflow_dispatch:
 
 permissions:
@@ -17,7 +23,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  verify:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -26,13 +32,43 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 22
-          package-manager-cache: false
       - name: Enable pnpm
-        run: corepack enable
+        run: corepack enable && corepack prepare pnpm@11.16.0 --activate
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Build static game
-        run: pnpm build:pages
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Lint
+        run: pnpm lint
+      - name: Test
+        run: pnpm test
+
+  build:
+    runs-on: ubuntu-latest
+    needs: verify
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - name: Enable pnpm
+        run: corepack enable && corepack prepare pnpm@11.16.0 --activate
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build release site
+        run: pnpm build
+      - name: Keep the phone bundle out of Pages
+        run: |
+          if [ -d dist-pages/playtest ]; then
+            echo "dist-pages/playtest must not be published"
+            exit 1
+          fi
+          if grep -R -q "cdn.jsdelivr.net/gh/slopapocalypse-harbinger/incremental-game" dist-pages; then
+            echo "playtest CDN URLs must not be published"
+            exit 1
+          fi
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v6
       - name: Upload site artifact

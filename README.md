@@ -1,28 +1,41 @@
 # Birds vs. Everything
 
-A finite, strategic incremental game about guiding a flock from one sunlit
-canopy to a galaxy-wide living network.
+A field notebook about a flock that learns to leave. Staff the birds, spend the stores, and decide what the route is for.
 
-## Play online
+The design, including the critique of the previous game and the pacing targets, is in [docs/DESIGN.md](docs/DESIGN.md).
 
-[Play Birds vs. Everything](https://slopapocalypse-harbinger.github.io/incremental-game/)
+## Play
 
-The GitHub Pages version is built and deployed automatically whenever changes
-land on `main`.
+The live game stays at the site root until the rebuild is merged:
 
-## Play locally
+[Birds vs. Everything](https://slopapocalypse-harbinger.github.io/incremental-game/)
+
+The playtest build is published from `cursor/birds-rebuild-233d`. GitHub Pages only accepts deploys from branches allowed on the `github-pages` environment, and this branch is not one of them, so `/next/` is not on the live site yet.
+
+Until that environment allows the branch, the same build is committed under `playtest/` and can be opened here:
+
+[Playtest](https://htmlpreview.github.io/?https://raw.githubusercontent.com/slopapocalypse-harbinger/incremental-game/cursor/birds-rebuild-233d/playtest/index.html)
+
+GitHub Pages rejected a deploy from this branch (the `github-pages` environment only allows selected branches), so the live game is untouched. The link above is the playtest. Scripts and styles load from jsDelivr, which sends the right file types; the page itself is the `playtest/` build on this branch.
+
+## Run locally
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
-The game runs at `http://localhost:3000`. Progress is saved locally in the
-browser and can also be exported from the settings drawer.
+The dev server opens at `http://localhost:5173/`. Progress is stored in this browser under `bve.campaign`.
 
-## Design
+```bash
+pnpm test
+pnpm typecheck
+pnpm lint
+pnpm build
+```
 
-The simulation favors staffing choices, resource chains, timed commitments,
-long-term doctrines, and legible consequences over repetitive clicking. The
-central Living Atlas changes with every era so progress is visible as well as
-numerical.
+`pnpm build` writes the Pages site to `dist-pages/` and does not include `playtest/`. `pnpm playtest:check` rebuilds the phone bundle and fails if the committed copy drifted. Remove `playtest/` before or when this branch merges.
+
+## Saves
+
+Older browser saves are deleted on startup and are not imported. Export from the notebook before you clear browser data; import asks you to confirm before it replaces the run.
