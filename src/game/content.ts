@@ -282,7 +282,6 @@ export interface ProjectDef {
   era: boolean;
   category: string;
   summary: string;
-  forecast: string;
   duration: (state: GameState) => number;
   birds: number;
   costs: (state: GameState) => Partial<Resources>;
@@ -300,6 +299,20 @@ function allyDiscount(state: GameState): number {
   return state.flags.includes("ally") ? 0.85 : 1;
 }
 
+/** How many of a repeatable plan fit on one flight. Chips and visibility share this. */
+export const PLAN_CAPS = {
+  nest: 8,
+  archive: 3,
+  beacon: 5,
+  corridor: 6,
+  treaty: 6,
+  solar: 3,
+  ark: 8,
+  scan: 4,
+  brood: 8,
+  civic: 3,
+} as const;
+
 export const PROJECTS: ProjectDef[] = [
   {
     id: "seed-cache",
@@ -308,7 +321,6 @@ export const PROJECTS: ProjectDef[] = [
     era: true,
     category: "Foundation",
     summary: "Store seeds so they stop blowing away.",
-    forecast: "Unlocks twigs, Weavers, and a store that can hold a plan.",
     duration: () => 0,
     birds: 0,
     costs: () => ({ seeds: 58 }),
@@ -323,7 +335,6 @@ export const PROJECTS: ProjectDef[] = [
     era: true,
     category: "Foundation",
     summary: "A twig cup. Unlocks plans and research.",
-    forecast: "Unlocks field plans and research. +5 flock capacity.",
     duration: () => 0,
     birds: 0,
     costs: () => ({ seeds: 48, twigs: 16 }),
@@ -339,7 +350,6 @@ export const PROJECTS: ProjectDef[] = [
     era: true,
     category: "Expedition",
     summary: "Mark the branches worth flying again.",
-    forecast: "+2 routes. Unlocks knowledge and Scouts.",
     duration: () => 28,
     birds: 2,
     costs: () => ({ seeds: 36, twigs: 12 }),
@@ -355,7 +365,6 @@ export const PROJECTS: ProjectDef[] = [
     era: false,
     category: "Structure",
     summary: "More housing, and bigger stores.",
-    forecast: "+5 flock capacity · larger seed and twig stores.",
     duration: (state) => 24 + count(state, "nest") * 4,
     birds: 2,
     costs: (state) => ({
@@ -364,7 +373,7 @@ export const PROJECTS: ProjectDef[] = [
     }),
     repeatable: true,
     goal: false,
-    visible: (state) => state.flags.includes("first-nest") && count(state, "nest") < 8,
+    visible: (state) => state.flags.includes("first-nest") && count(state, "nest") < PLAN_CAPS.nest,
   },
   {
     id: "seedfall",
@@ -373,7 +382,6 @@ export const PROJECTS: ProjectDef[] = [
     era: false,
     category: "Season",
     summary: "A short burst of gathering.",
-    forecast: "+1 route · gathering surges for 75 seconds.",
     duration: () => 22,
     birds: 3,
     costs: () => ({ seeds: 30, twigs: 12 }),
@@ -395,7 +403,6 @@ export const PROJECTS: ProjectDef[] = [
     era: true,
     category: "Era",
     summary: "Turn the nests into a roost.",
-    forecast: "Begins the aerie. Unlocks doctrine, scholarship, and brood.",
     duration: () => 42,
     birds: 3,
     costs: () => ({ seeds: 170, twigs: 95, knowledge: 8 }),
@@ -413,7 +420,6 @@ export const PROJECTS: ProjectDef[] = [
     era: false,
     category: "Knowledge",
     summary: "A bigger knowledge store.",
-    forecast: "A larger knowledge store, and a little scholarship even when no one is reading.",
     duration: (state) => 36 + count(state, "archive") * 8,
     birds: 3,
     costs: (state) => ({
@@ -423,7 +429,7 @@ export const PROJECTS: ProjectDef[] = [
     }),
     repeatable: true,
     goal: false,
-    visible: (state) => state.act >= 2 && count(state, "archive") < 3,
+    visible: (state) => state.act >= 2 && count(state, "archive") < PLAN_CAPS.archive,
   },
   {
     id: "brood",
@@ -432,13 +438,12 @@ export const PROJECTS: ProjectDef[] = [
     era: false,
     category: "Flock",
     summary: "Three birds now, then the nursery rests.",
-    forecast: `+3 birds, if there is room. The nursery then rests ${TUNE.broodRest}s.`,
     duration: () => 30,
     birds: 2,
     costs: () => ({ seeds: 70, twigs: 24 }),
     repeatable: true,
     goal: false,
-    visible: (state) => state.act >= 2 && count(state, "brood") < 8,
+    visible: (state) => state.act >= 2 && count(state, "brood") < PLAN_CAPS.brood,
     blocked: (state) => {
       const readyAt = state.cooldowns.brood ?? 0;
       if (state.elapsed + 0.01 < readyAt) {
@@ -458,7 +463,6 @@ export const PROJECTS: ProjectDef[] = [
     era: false,
     category: "Expedition",
     summary: "Scouts bring back one route.",
-    forecast: "+1 route.",
     duration: () => 34,
     birds: 3,
     costs: (state) => ({
@@ -467,7 +471,8 @@ export const PROJECTS: ProjectDef[] = [
     }),
     repeatable: true,
     goal: false,
-    visible: (state) => state.act >= 2 && state.routes < TUNE.maxRoutes && count(state, "corridor") < 6,
+    visible: (state) =>
+      state.act >= 2 && state.routes < TUNE.maxRoutes && count(state, "corridor") < PLAN_CAPS.corridor,
   },
   {
     id: "council",
@@ -476,7 +481,6 @@ export const PROJECTS: ProjectDef[] = [
     era: true,
     category: "Era",
     summary: "A promise bigger than one tree.",
-    forecast: "Begins dominion. Unlocks influence and Envoys.",
     duration: () => 80,
     birds: 5,
     costs: () => ({ seeds: 520, twigs: 280, knowledge: 300 }),
@@ -497,7 +501,6 @@ export const PROJECTS: ProjectDef[] = [
     era: false,
     category: "Civic",
     summary: "Passive influence the roosts can see.",
-    forecast: "Passive influence, and a taller store of it.",
     duration: (state) => 48 + count(state, "beacon") * 6,
     birds: 4,
     costs: (state) => {
@@ -511,7 +514,7 @@ export const PROJECTS: ProjectDef[] = [
     },
     repeatable: true,
     goal: false,
-    visible: (state) => state.act >= 3 && count(state, "beacon") < 5,
+    visible: (state) => state.act >= 3 && count(state, "beacon") < PLAN_CAPS.beacon,
   },
   {
     id: "treaty",
@@ -520,13 +523,12 @@ export const PROJECTS: ProjectDef[] = [
     era: false,
     category: "Diplomacy",
     summary: "A visit that brings influence.",
-    forecast: "+14 influence · Envoys work faster for 90 seconds.",
     duration: () => 36,
     birds: 3,
     costs: () => ({ seeds: 120, knowledge: 40 }),
     repeatable: true,
     goal: false,
-    visible: (state) => state.act >= 3 && count(state, "treaty") < 6,
+    visible: (state) => state.act >= 3 && count(state, "treaty") < PLAN_CAPS.treaty,
     blocked: (state) => {
       const readyAt = state.cooldowns.treaty ?? 0;
       if (state.elapsed + 0.01 < readyAt) {
@@ -542,13 +544,12 @@ export const PROJECTS: ProjectDef[] = [
     era: false,
     category: "Civic roost",
     summary: "A roost that stores seed.",
-    forecast: "A deep seed store and a trickle of seed that does not need a beak.",
     duration: () => 50,
     birds: 4,
     costs: (state) => roostCost(state),
     repeatable: true,
     goal: false,
-    visible: (state) => state.act >= 3 && civicRoosts(state) < 3,
+    visible: (state) => state.act >= 3 && civicRoosts(state) < PLAN_CAPS.civic,
   },
   {
     id: "academy",
@@ -557,13 +558,12 @@ export const PROJECTS: ProjectDef[] = [
     era: false,
     category: "Civic roost",
     summary: "A roost that stores knowledge.",
-    forecast: "A deep knowledge store and passive scholarship.",
     duration: () => 50,
     birds: 4,
     costs: (state) => roostCost(state),
     repeatable: true,
     goal: false,
-    visible: (state) => state.act >= 3 && civicRoosts(state) < 3,
+    visible: (state) => state.act >= 3 && civicRoosts(state) < PLAN_CAPS.civic,
   },
   {
     id: "eyrie",
@@ -572,13 +572,12 @@ export const PROJECTS: ProjectDef[] = [
     era: false,
     category: "Civic roost",
     summary: "A roost with more housing.",
-    forecast: "+6 flock capacity and a faster brood.",
     duration: () => 50,
     birds: 4,
     costs: (state) => roostCost(state),
     repeatable: true,
     goal: false,
-    visible: (state) => state.act >= 3 && civicRoosts(state) < 3,
+    visible: (state) => state.act >= 3 && civicRoosts(state) < PLAN_CAPS.civic,
   },
   {
     id: "accord",
@@ -587,7 +586,6 @@ export const PROJECTS: ProjectDef[] = [
     era: true,
     category: "Era",
     summary: "Name the route and leave the tree.",
-    forecast: "Begins the crossing. Unlocks starlight, Navigators, and a home star.",
     duration: () => 110,
     birds: 8,
     costs: () => ({ seeds: 1100, twigs: 640, knowledge: 280, influence: 150 }),
@@ -606,7 +604,6 @@ export const PROJECTS: ProjectDef[] = [
     era: false,
     category: "Harbor",
     summary: "Housing and a thread of starlight.",
-    forecast: "Capacity, stores, and a thread of starlight.",
     duration: (state) => 55 + count(state, "solar") * 8,
     birds: 5,
     costs: (state) => ({
@@ -616,7 +613,7 @@ export const PROJECTS: ProjectDef[] = [
     }),
     repeatable: true,
     goal: false,
-    visible: (state) => state.act >= 4 && count(state, "solar") < 3,
+    visible: (state) => state.act >= 4 && count(state, "solar") < PLAN_CAPS.solar,
   },
   {
     id: "ark",
@@ -625,7 +622,6 @@ export const PROJECTS: ProjectDef[] = [
     era: false,
     category: "Crossing",
     summary: "A roost that becomes a star system.",
-    forecast: "+1 star system. The store grows with the route.",
     duration: (state) => 70 + count(state, "ark") * 6,
     birds: 6,
     costs: (state) => {
@@ -639,7 +635,7 @@ export const PROJECTS: ProjectDef[] = [
     },
     repeatable: true,
     goal: false,
-    visible: (state) => state.act >= 4 && count(state, "ark") < 8,
+    visible: (state) => state.act >= 4 && count(state, "ark") < PLAN_CAPS.ark,
   },
   {
     id: "scan",
@@ -648,13 +644,12 @@ export const PROJECTS: ProjectDef[] = [
     era: false,
     category: "Crossing",
     summary: "A cheaper star, and one route.",
-    forecast: "+1 star system · +1 route.",
     duration: () => 48,
     birds: 4,
     costs: () => ({ knowledge: 70, starlight: 22 }),
     repeatable: true,
     goal: false,
-    visible: (state) => state.act >= 4 && count(state, "scan") < 4 && state.systems < 12,
+    visible: (state) => state.act >= 4 && count(state, "scan") < PLAN_CAPS.scan && state.systems < 12,
   },
   {
     id: "murmur",
@@ -663,7 +658,6 @@ export const PROJECTS: ProjectDef[] = [
     era: true,
     category: "Era",
     summary: "Finish the route and end the flight.",
-    forecast: "Completes the expedition. The ending remembers your doctrine.",
     duration: () => 150,
     birds: 10,
     costs: () => ({ seeds: 1680, twigs: 980, knowledge: 640, starlight: 340 }),

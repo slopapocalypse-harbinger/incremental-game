@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 import {
   actName,
+  activeBoosts,
   calculateRates,
   dismissReport,
   getCapacity,
@@ -179,6 +180,8 @@ export function App() {
         onOpen={(id) => setSheet({ kind: "cap", id })}
       />
 
+      <BoostLine game={game} />
+
       <section className="objective" data-testid="objective">
         <h2>{objective.title}</h2>
         <p className="next-action">{game.won ? objective.detail : objective.next}</p>
@@ -323,6 +326,16 @@ export function App() {
         />
       ) : null}
     </main>
+  );
+}
+
+function BoostLine({ game }: { game: GameState }) {
+  const boosts = activeBoosts(game);
+  if (boosts.length === 0) return null;
+  return (
+    <p className="boost-line" data-testid="active-boosts">
+      {boosts.map((boost) => `${boost.label} ${formatDuration(boost.remaining)}`).join(" · ")}
+    </p>
   );
 }
 

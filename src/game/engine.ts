@@ -11,7 +11,9 @@ import {
   UPGRADES,
   capacityPreview,
   count,
+  civicRoosts,
   emptyResources,
+  PLAN_CAPS,
   emptyRoles,
   projectById,
   type EventDef,
@@ -1111,6 +1113,16 @@ function clampUnit(value: number): number {
 }
 
 function completeProject(state: GameState, id: string): GameState {
+  const next = resolveProject(state, id);
+  return pushStory(next, projectLogLine(next, id));
+}
+
+/** Mechanical result of finishing a plan, with no log line. */
+export function previewProject(state: GameState, id: string): GameState {
+  return resolveProject(state, id);
+}
+
+function resolveProject(state: GameState, id: string): GameState {
   let next: GameState = state;
   const once = !projectById(id)?.repeatable;
   if (once) {
@@ -1130,7 +1142,7 @@ function completeProject(state: GameState, id: string): GameState {
         ...next,
         routes: Math.min(TUNE.maxRoutes, next.routes + 1),
         cooldowns: { ...next.cooldowns, seedfall: next.elapsed + 240 },
-        effects: upsertEffect(next, "seedfall", 75),
+        effects: upsertEffect(next, "seedfall", BOOST_SECONDS.seedfall),
       };
       break;
     case "roost":
@@ -1158,7 +1170,7 @@ function completeProject(state: GameState, id: string): GameState {
         ...next,
         resources: gain(next, { influence: 14 }),
         cooldowns: { ...next.cooldowns, treaty: next.elapsed + 180 },
-        effects: upsertEffect(next, "tailwind", 90),
+        effects: upsertEffect(next, "tailwind", BOOST_SECONDS.tailwind),
       };
       break;
     case "accord":
@@ -1186,7 +1198,192 @@ function completeProject(state: GameState, id: string): GameState {
     default:
       break;
   }
-  return pushStory(next, projectLogLine(next, id));
+  return next;
+}
+
+const BOOST_SECONDS = {
+  seedfall: 75,
+  tailwind: 90,
+} as const;
+
+const BOOST_LABEL: Record<string, string> = {
+  seedfall: "Seedfall",
+  huddle: "Huddled",
+  burn: "Hot launch",
+  tailwind: "Tailwind",
+  cuckoo: "Cuckoo",
+};
+
+export function activeBoosts(state: GameState): Array<{ id: string; label: string; remaining: number }> {
+  return state.effects
+    .filter((effect) => effect.until > state.elapsed)
+    .map((effect) => ({
+      id: effect.id,
+      label: BOOST_LABEL[effect.id] ?? effect.id,
+      remaining: effect.until - state.elapsed,
+    }));
+}
+
+export function planChip(state: GameState, id: string): string {
+  switch (id) {
+    case "seed-cache":
+    case "first-nest":
+    case "survey":
+    case "roost":
+    case "council":
+    case "accord":
+      return "Unlock";
+    case "nest":
+      return buildingChip(count(state, "nest"), PLAN_CAPS.nest);
+    case "archive":
+      return buildingChip(count(state, "archive"), PLAN_CAPS.archive);
+    case "beacon":
+      return buildingChip(count(state, "beacon"), PLAN_CAPS.beacon);
+    case "granary":
+    case "academy":
+    case "eyrie":
+      return buildingChip(civicRoosts(state), PLAN_CAPS.civic);
+    case "solar":
+      return buildingChip(count(state, "solar"), PLAN_CAPS.solar);
+    case "ark":
+      return buildingChip(count(state, "ark"), PLAN_CAPS.ark);
+    case "corridor":
+      return buildingChip(count(state, "corridor"), PLAN_CAPS.corridor);
+    case "scan":
+      return buildingChip(count(state, "scan"), PLAN_CAPS.scan);
+    case "seedfall":
+      return `Boost · ${BOOST_SECONDS.seedfall}s`;
+    case "treaty":
+      return `Boost · ${BOOST_SECONDS.tailwind}s`;
+    case "brood":
+      return "Instant";
+    case "murmur":
+      return "Finale";
+    default:
+      return "";
+  }
+}
+
+function buildingChip(built: number, max: number): string {
+  return `Building · ${built}/${max}`;
+}
+
+const STORE_WORD: Record<ResourceId, string> = {
+  seeds: "seed",
+  twigs: "twig",
+  knowledge: "knowledge",
+  influence: "influence",
+  starlight: "starlight",
+};
+
+/** What the next build changes, measured from the same rules as the simulation. */
+export function projectForecast(state: GameState, id: string): string {
+  if (id === "murmur") return "Ends the expedition.";
+  const after = resolveProject(state, id);
+  const lasting: GameState = { ...after, effects: state.effects };
+  const parts: string[] = [];
+  const cap = getCapacity(lasting) - getCapacity(state);
+  if (cap) parts.push(`+${formatAmount(cap, 0)} flock cap`);
+  const birds = after.flock - state.flock;
+  if (birds > 0.05) parts.push(`+${formatAmount(birds, 0)} birds`);
+  const routes = lasting.routes - state.routes;
+  if (routes > 0) {
+    const permanent = id === "seedfall" || id === "corridor" || id === "scan";
+    parts.push(`+${routes} route${routes === 1 ? "" : "s"}${permanent ? " (permanent)" : ""}`);
+  }
+  const systems = lasting.systems - state.systems;
+  if (systems > 0) parts.push(`+${systems} system${systems === 1 ? "" : "s"}`);
+  for (const key of ["seeds", "twigs", "knowledge", "influence", "starlight"] as const) {
+    const grant = after.resources[key] - state.resources[key];
+    if (grant >= 1) parts.push(`+${formatAmount(Math.round(grant), 0)} ${key}`);
+    const store = getStorage(lasting)[key] - getStorage(state)[key];
+    if (Math.abs(store) >= 1) {
+      parts.push(`${STORE_WORD[key]} store ${signedAmount(store)}`);
+    }
+  }
+  const beforeRates = calculateRates(growthReady(state));
+  const afterRates = calculateRates(growthReady(lasting));
+  if (id !== "brood") {
+    for (const key of ["seeds", "twigs", "knowledge", "influence", "starlight", "population"] as const) {
+      const delta = afterRates[key] - beforeRates[key];
+      if (Math.abs(delta) < 0.0005) continue;
+      const unit = key === "population" ? "birds" : key;
+      parts.push(`passive ${signedRate(delta)} ${unit}/s`);
+    }
+  }
+  const boost = boostClause(id);
+  if (boost) parts.push(boost);
+  if (id === "brood") parts.push(`nursery rests ${TUNE.broodRest}s`);
+  const unlocked = unlockClause(state, after);
+  if (unlocked) parts.push(unlocked);
+  return parts.join(" · ");
+}
+
+function growthReady(state: GameState): GameState {
+  const room = Math.min(getCapacity(state) - 1, Math.max(state.flock, 1));
+  const flock = Math.max(0, room);
+  return {
+    ...state,
+    flock,
+    resources: { ...state.resources, seeds: Math.max(state.resources.seeds, flock * 5 + 50) },
+  };
+}
+
+function signedAmount(value: number): string {
+  const rounded = Math.round(value);
+  const body = formatAmount(Math.abs(rounded), 0);
+  return rounded >= 0 ? `+${body}` : `-${body}`;
+}
+
+function signedRate(value: number): string {
+  const digits = Math.abs(value) < 0.1 ? 3 : 2;
+  const body = formatAmount(Math.abs(value), digits);
+  return value >= 0 ? `+${body}` : `-${body}`;
+}
+
+function boostClause(id: string): string | null {
+  if (id === "seedfall") {
+    const seeds = boostPercent("seedfall", "seeds");
+    const twigs = boostPercent("seedfall", "twigs");
+    return `gather +${seeds}% seeds · +${twigs}% twigs for ${BOOST_SECONDS.seedfall}s`;
+  }
+  if (id === "treaty") {
+    const influence = boostPercent("tailwind", "influence");
+    return `influence +${influence}% for ${BOOST_SECONDS.tailwind}s`;
+  }
+  return null;
+}
+
+function boostPercent(effectId: string, key: "seeds" | "twigs" | "influence"): number {
+  const state = createInitialState(0);
+  const staffed: GameState = {
+    ...state,
+    flock: 0,
+    morale: 1,
+    roles: { ...state.roles, foragers: 8, weavers: 8, envoys: 8 },
+  };
+  const off = calculateRates(staffed)[key];
+  const on = calculateRates({
+    ...staffed,
+    effects: [{ id: effectId, until: state.elapsed + 30 }],
+  })[key];
+  if (off <= 0.0001) return 0;
+  return Math.round((on / off - 1) * 100);
+}
+
+function unlockClause(before: GameState, after: GameState): string | null {
+  const bits: string[] = [];
+  if (!before.flags.includes("first-nest") && after.flags.includes("first-nest")) bits.push("research");
+  for (const key of ["twigs", "knowledge", "influence", "starlight"] as const) {
+    if (!isResourceUnlocked(before, key) && isResourceUnlocked(after, key)) bits.push(key);
+  }
+  if (before.act < 2 && after.act >= 2) bits.push("doctrine");
+  const roles = ROLE_DEFS.filter(
+    (role) => !isRoleUnlocked(before, role.id) && isRoleUnlocked(after, role.id),
+  ).map((role) => role.name);
+  const phrase = [...bits, roles.join(" and ")].filter(Boolean);
+  if (phrase.length === 0) return null;
+  return `Unlocks ${phrase.join(" · ")}`;
 }
 
 /** One line per completion. A quip only when the previous line was not a bird. */

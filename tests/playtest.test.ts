@@ -12,6 +12,7 @@ import {
   getSeason,
   getStorage,
   growthPause,
+  projectForecast,
   respecDoctrine,
   startProject,
   tick,
@@ -179,7 +180,7 @@ describe("playtest regressions", () => {
     expect(brood?.blocked?.({ ...state, elapsed: 10, cooldowns: { brood: 67 } })).toBe(
       `Nursery rests ${TUNE.broodRest}s after a brood. 57s left.`,
     );
-    expect(brood?.forecast).toContain(String(TUNE.broodRest));
+    expect(projectForecast(state, "brood")).toContain(String(TUNE.broodRest));
   });
 
   it("gives each doctrine an immediate, distinct payoff", () => {

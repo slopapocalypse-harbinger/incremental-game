@@ -26,6 +26,8 @@ import {
   getIdleBirds,
   getObjective,
   getSeason,
+  planChip,
+  projectForecast,
   isRoleUnlocked,
   listProjects,
   marksForRun,
@@ -39,7 +41,7 @@ import {
 import { formatAmount, formatBirds, formatDuration } from "../game/number";
 import type { DoctrineId, GameState, RoleId } from "../game/types";
 import { LivingScene } from "./art/canopy";
-import { Icon, categoryIcon } from "./art/icons";
+import { Icon } from "./art/icons";
 import { Plate } from "./art/plates";
 
 type Apply = (update: (state: GameState) => GameState) => void;
@@ -185,6 +187,9 @@ export function PlansPanel({
         <div>
           <p className="eyebrow">What to spend</p>
           <h2>Plans</h2>
+          <p className="permanence" data-testid="buildings-last">
+            Buildings last until you migrate.
+          </p>
         </div>
         {game.act >= 2 || game.won ? (
           <button type="button" className="btn ghost" onClick={onMigrate}>
@@ -237,16 +242,14 @@ function ProjectCard({
   const afford = timeToAfford(game, costs);
   return (
     <li className={`card${project.goal ? " goal" : ""}`} data-testid={`project-${project.id}`}>
-      <p className="eyebrow">
-        <Icon name={categoryIcon(project.category)} />
-        {project.category}
-        {project.goal ? " · era goal" : ""}
+      <p className="type-chip" data-testid={`plan-chip-${project.id}`}>
+        {planChip(game, project.id)}
       </p>
       <h3>{projectTitle(game, project)}</h3>
-      <p className="summary">{project.summary}</p>
+      <p className="summary">{projectForecast(game, project.id)}</p>
       <div className={`plan-note${open ? " show" : ""}`}>
         {planFlavor(project.id) ? <p className="flavor">{planFlavor(project.id)}</p> : null}
-        <p>{project.forecast}</p>
+        <p>{project.summary}</p>
       </div>
       <p className="meta">
         {formatCosts(costs)}
