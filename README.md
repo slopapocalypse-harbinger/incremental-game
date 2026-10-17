@@ -14,9 +14,9 @@ The playtest build is published from `cursor/birds-rebuild-233d`. GitHub Pages o
 
 Until that environment allows the branch, the same build is committed under `playtest/` and can be opened here:
 
-[Playtest](https://raw.githack.com/slopapocalypse-harbinger/incremental-game/cursor/birds-rebuild-233d/playtest/index.html)
+[Playtest](https://htmlpreview.github.io/?https://raw.githubusercontent.com/slopapocalypse-harbinger/incremental-game/cursor/birds-rebuild-233d/playtest/index.html)
 
-That URL is a static copy of this branch. It does not replace the live game. `/next/` on GitHub Pages is wired in the preview build, and it will publish only after the `github-pages` environment allows this branch.
+GitHub Pages rejected a deploy from this branch (the `github-pages` environment only allows selected branches), so the live game is untouched. The link above is the playtest. Scripts and styles load from jsDelivr, which sends the right file types; the page itself is the `playtest/` build on this branch.
 
 ## Run locally
 
