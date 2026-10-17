@@ -13,9 +13,13 @@
   --line-strong: rgba(27, 36, 32, 0.32);
   --good: #1d6a42;
   --shadow: 0 16px 40px rgba(23, 53, 44, 0.12);
-  --bird: #e2a01a;
-  --bird-soft: #c6ae4e;
-  --bill: #c56a38;
+  --bird: #f5d90a;
+  --bird-soft: #c6b43a;
+  --bird-basic: #c6ae6a;
+  --bird-buff: #b49662;
+  --bill: #f0a080;
+  --bill-pale: #f4d2c2;
+  --wing: #161616;
   --bark: #6b4632;
   --bark-deep: #4a3022;
   --leaf-deep: #1e4638;
@@ -747,8 +751,6 @@ p {
 .plate.season-dearth {
   --sky-top: #efe2c4;
   --sky-bottom: #ddc89a;
-  --bird: #c9962e;
-  --bird-soft: #b59a58;
   --leaf: #8a7344;
   --leaf-pale: #c2b184;
   --leaf-deep: #6d5a38;

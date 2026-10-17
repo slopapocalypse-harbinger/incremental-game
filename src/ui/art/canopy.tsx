@@ -9,12 +9,14 @@ import {
   Chevron,
   EyrieLedge,
   Goldfinch,
+  GOLDFINCH_MIRROR,
   GranaryMark,
   Leaf,
   NestCup,
   RoostMass,
   SeedHead,
   Star,
+  type Plumage,
   type Sex,
 } from "./marks";
 
@@ -24,7 +26,15 @@ function perchSlot(index: number, total: number): number {
   if (total <= 1) return 300;
   return 148 + (index * 410) / (total - 1);
 }
-const LEAF_X = [40, 120, 200, 290, 390, 500, 590];
+/** High twigs, clear of the perch line, so a leaf never sits on a bird's back. */
+const LEAF_SLOTS = [
+  [34, 46],
+  [72, 38],
+  [108, 52],
+  [548, 42],
+  [592, 54],
+  [626, 36],
+];
 const STAR_SLOTS = [
   [48, 28],
   [120, 16],
@@ -123,15 +133,18 @@ export function LivingScene({
         : null}
       {model.eyries > 0 ? <EyrieLedge x={500} /> : null}
       <path className="branch-line" d="M8 136 C 120 122, 250 146, 400 128 S 580 138, 636 122" />
-      {Array.from({ length: model.leaves }, (_, index) => (
-        <Leaf
-          key={`leaf-${index}`}
-          x={LEAF_X[index % LEAF_X.length]}
-          y={118 + (index % 3) * 4}
-          motion={motion}
-          delay={index * 0.35}
-        />
-      ))}
+      {Array.from({ length: model.leaves }, (_, index) => {
+        const slot = LEAF_SLOTS[index % LEAF_SLOTS.length];
+        return (
+          <Leaf
+            key={`leaf-${index}`}
+            x={slot[0]}
+            y={slot[1]}
+            motion={motion}
+            delay={index * 0.35}
+          />
+        );
+      })}
       {Array.from({ length: model.seedHeads }, (_, index) => (
         <SeedHead
           key={`head-${index}`}
@@ -165,14 +178,15 @@ export function LivingScene({
         <PerchedBird
           key={`bird-${index}`}
           x={perchSlot(index, model.perched)}
-          sex={index % 3 === 2 ? "female" : "male"}
+          sex={index % 3 === 1 ? "female" : "male"}
+          plumage={model.plumage}
           pose={index === 0 && model.seedHeads > 0 && !closed ? "feed" : "perch"}
           faceLeft={index % 2 === 1 && index !== 0}
           motion={motion}
           delay={(index % 5) * 0.28}
         />
       ))}
-      {model.flyer ? <Flyer motion={motion} /> : null}
+      {model.flyer ? <Flyer motion={motion} plumage={model.plumage} /> : null}
       <g className="burst" aria-hidden="true">
         <circle cx="300" cy="70" r="5" fill="var(--seed)" />
         <circle cx="330" cy="54" r="3.5" fill="var(--cream)" />
@@ -190,6 +204,7 @@ function PerchedBird({
   faceLeft,
   motion,
   delay,
+  plumage,
 }: {
   x: number;
   sex: Sex;
@@ -197,6 +212,7 @@ function PerchedBird({
   faceLeft: boolean;
   motion: boolean;
   delay: number;
+  plumage: Plumage;
 }) {
   return (
     <g transform={`translate(${x} 98)`}>
@@ -212,9 +228,9 @@ function PerchedBird({
             repeatCount="indefinite"
           />
         ) : null}
-        <g transform={faceLeft ? "translate(64 0) scale(-1 1)" : undefined}>
+        <g transform={faceLeft ? `translate(${GOLDFINCH_MIRROR} 0) scale(-1 1)` : undefined}>
           <g transform={pose === "feed" ? "rotate(-16 50 16)" : undefined}>
-            <Goldfinch sex={sex} pose={pose} />
+            <Goldfinch sex={sex} pose={pose} plumage={plumage} />
           </g>
         </g>
       </g>
@@ -222,7 +238,7 @@ function PerchedBird({
   );
 }
 
-function Flyer({ motion }: { motion: boolean }) {
+function Flyer({ motion, plumage }: { motion: boolean; plumage: Plumage }) {
   return (
     <g transform={motion ? "translate(-70 40)" : "translate(188 34)"}>
       {motion ? (
@@ -235,7 +251,7 @@ function Flyer({ motion }: { motion: boolean }) {
           repeatCount="indefinite"
         />
       ) : null}
-      <Goldfinch pose="fly" sex="male" />
+      <Goldfinch pose="fly" sex="male" plumage={plumage} />
     </g>
   );
 }

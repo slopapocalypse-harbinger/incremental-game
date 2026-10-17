@@ -4,10 +4,12 @@ import {
   Chevron,
   Cuckoo,
   Goldfinch,
+  GOLDFINCH_MIRROR,
   NestCup,
   QuillMark,
   SeedHead,
   Star,
+  type Plumage,
 } from "./marks";
 
 /** Small illustrations for the opening, events, doctrine, and the leaving. */
@@ -91,8 +93,8 @@ function bodyFor(id: string): ReactNode {
         <g>
           <Branch />
           <Frost />
-          <Bird x={120} y={88} />
-          <Bird x={168} y={90} faceLeft sex="female" />
+          <Bird x={120} y={88} plumage="basic" />
+          <Bird x={168} y={90} faceLeft sex="female" plumage="basic" />
         </g>
       );
     case "garden-treaty":
@@ -147,7 +149,7 @@ function bodyFor(id: string): ReactNode {
           <SeedHead x={56} y={84} closed />
           <SeedHead x={96} y={86} closed />
           <rect x="180" y="96" width="28" height="20" rx="3" fill="var(--ochre-deep)" />
-          <Bird x={230} y={86} />
+          <Bird x={230} y={86} plumage="basic" />
         </g>
       );
     case "rival-aerie":
@@ -254,18 +256,20 @@ function Bird({
   sex = "male",
   pose = "perch",
   faceLeft = false,
+  plumage = "breeding",
 }: {
   x: number;
   y: number;
   sex?: "male" | "female";
   pose?: "perch" | "feed";
   faceLeft?: boolean;
+  plumage?: Plumage;
 }) {
   return (
     <g transform={`translate(${x} ${y}) scale(0.72)`}>
-      <g transform={faceLeft ? "translate(60 0) scale(-1 1)" : undefined}>
+      <g transform={faceLeft ? `translate(${GOLDFINCH_MIRROR} 0) scale(-1 1)` : undefined}>
         <g transform={pose === "feed" ? "rotate(-14 48 16)" : undefined}>
-          <Goldfinch sex={sex} pose={pose} />
+          <Goldfinch sex={sex} pose={pose} plumage={plumage} />
         </g>
       </g>
     </g>

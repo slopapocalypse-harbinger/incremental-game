@@ -1,63 +1,113 @@
 export type Sex = "male" | "female";
 export type Pose = "perch" | "feed" | "fly";
+export type Plumage = "breeding" | "basic";
 
-/** Breeding American goldfinch. Cap, wing bar, notched tail, conical bill. */
-export function Goldfinch({ sex = "male", pose = "perch" }: { sex?: Sex; pose?: Pose }) {
-  if (pose === "fly") return <Flyer sex={sex} />;
-  return <Perched sex={sex} feeding={pose === "feed"} />;
+/** Width of a perched goldfinch, used when mirroring one to face left. */
+export const GOLDFINCH_MIRROR = 66;
+
+/**
+ * American goldfinch. Breeding males are lemon yellow with a small black
+ * forehead cap. Females and basic (autumn/winter) birds are olive or buff,
+ * uncapped, and share the black wings, white bars, short pink bill, and
+ * notched tail.
+ */
+export function Goldfinch({
+  sex = "male",
+  pose = "perch",
+  plumage = "breeding",
+}: {
+  sex?: Sex;
+  pose?: Pose;
+  plumage?: Plumage;
+}) {
+  if (pose === "fly") return <Flyer sex={sex} plumage={plumage} />;
+  return <Perched sex={sex} feeding={pose === "feed"} plumage={plumage} />;
 }
 
-function Perched({ sex, feeding }: { sex: Sex; feeding: boolean }) {
-  const body = sex === "male" ? "var(--bird)" : "var(--bird-soft)";
-  const wing = sex === "male" ? "var(--ink)" : "var(--bark-deep)";
+function palette(sex: Sex, plumage: Plumage) {
+  const breeding = plumage === "breeding";
+  return {
+    body: !breeding
+      ? sex === "female"
+        ? "var(--bird-buff)"
+        : "var(--bird-basic)"
+      : sex === "male"
+        ? "var(--bird)"
+        : "var(--bird-soft)",
+    bill: breeding ? "var(--bill)" : "var(--bill-pale)",
+    cap: breeding && sex === "male",
+  };
+}
+
+function Perched({ sex, feeding, plumage }: { sex: Sex; feeding: boolean; plumage: Plumage }) {
+  const { body, bill, cap } = palette(sex, plumage);
   return (
     <g>
-      <path d="M2 16.5 16 13.2 16 18.4 3.2 19.2Z" fill="var(--ink)" />
-      <path d="M2.4 22.4 16 19.2 16 24.6 3.4 24.2Z" fill="var(--ink)" />
-      <path d="M6 17.2h5.2M6.4 22.2h5" stroke="var(--cream)" strokeWidth="1.4" strokeLinecap="round" />
-      <ellipse cx="30" cy="18" rx="14" ry="9" fill={body} />
-      <ellipse cx="18" cy="21" rx="5" ry="3.4" fill="var(--cream)" />
-      <path d="M22 13.5c6-3.2 14-1.6 18 4.2-6-.2-12 .6-16.5 3.6-1.4-2.4-1.8-5-1.5-7.8Z" fill={wing} />
-      <path d="M26 15.2h12.5c-.4 2.4-1.2 3.6-2.2 4.2H27.2c-.6-1.2-.8-2.6-1.2-4.2Z" fill="var(--cream)" />
-      <circle cx="42" cy="14.5" r="6.6" fill={body} />
-      {sex === "male" ? (
-        <path d="M36.4 12.2c2.2-4.6 8.2-5.2 11.2-.8-3.2-1.4-7.2-.6-11.2.8Z" fill="var(--ink)" />
+      <path d="M7 14.8 18 16.2 18 18.4 8 17.6Z" fill="var(--wing)" />
+      <path d="M7.4 22.8 18 18.8 18 21.4 8.2 22.2Z" fill="var(--wing)" />
+      <path d="M7.2 15 17 16.2" stroke="var(--cream)" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M7.6 22.6 17.2 21.2" stroke="var(--cream)" strokeWidth="1.8" strokeLinecap="round" />
+      <ellipse cx="33" cy="20" rx="15" ry="8.4" fill={body} />
+      <path d="M22 15.6 Q33 13.4 41 16.8 Q33 19.2 24 22.2 Q22 18.8 22 15.6 Z" fill="var(--wing)" />
+      <rect x="24" y="15.2" width="14.5" height="3.8" rx="1.7" fill="var(--cream)" />
+      <rect x="27" y="19.6" width="9.2" height="2.3" rx="1.1" fill="var(--cream)" />
+      <ellipse cx="17" cy="22.6" rx="5" ry="3" fill="var(--cream)" />
+      <circle cx="48" cy="15.6" r="7" fill={body} />
+      {cap ? (
+        <path
+          className="forecap"
+          d="M49.2 12.8 C50.6 9.8 53.8 9.9 54.4 12.8 C52.8 13.6 50.6 13.6 49.2 12.8 Z"
+          fill="var(--wing)"
+        />
       ) : null}
-      <path d="M47.6 14.8 58.5 17.2 48.2 19.6Z" fill="var(--bill)" />
-      <circle cx="44.2" cy="13.6" r="1.15" fill="var(--ink)" />
-      <circle cx="44.6" cy="13.2" r="0.38" fill="var(--cream)" />
       <path
-        d="M24 26.2 22.2 34.5M31 26.6 33.2 34.8"
+        className={plumage === "basic" ? "bill bill-pale" : "bill"}
+        d="M54 14.8 58.2 16.8 54 18.8Z"
+        fill={bill}
+      />
+      <circle cx="49.6" cy="16" r="1.05" fill="var(--wing)" />
+      <circle cx="49.9" cy="15.7" r="0.34" fill="var(--cream)" />
+      <path
+        d="M28 27.6 26.6 34.2M36 27.8 37.6 34.6"
         fill="none"
         stroke="var(--bark)"
-        strokeWidth="1.3"
+        strokeWidth="1.25"
         strokeLinecap="round"
       />
-      <path d="M20 34.5h4.4M31.2 34.8h4.2" stroke="var(--bark)" strokeWidth="1.2" strokeLinecap="round" />
-      {feeding ? <ellipse cx="59.2" cy="18.4" rx="2.2" ry="1.3" fill="var(--seed)" /> : null}
+      <path d="M24.8 34.2h3.6M35.8 34.6h3.4" stroke="var(--bark)" strokeWidth="1.15" strokeLinecap="round" />
+      {feeding ? <ellipse cx="59.2" cy="17.2" rx="1.4" ry="0.95" fill="var(--seed)" /> : null}
     </g>
   );
 }
 
-function Flyer({ sex }: { sex: Sex }) {
-  const body = sex === "male" ? "var(--bird)" : "var(--bird-soft)";
-  const wing = sex === "male" ? "var(--ink)" : "var(--bark-deep)";
+function Flyer({ sex, plumage }: { sex: Sex; plumage: Plumage }) {
+  const { body, bill, cap } = palette(sex, plumage);
   return (
     <g>
-      <path d="M4 22 20 18.4 20 23.2 5 24.2Z" fill="var(--ink)" />
-      <path d="M4.6 26.6 20 23.4 20 28.2 5.4 27.6Z" fill="var(--ink)" />
-      <path d="M22 20 8 6 26 18Z" fill={wing} />
-      <path d="M28 18 46 4 38 20Z" fill={wing} />
-      <path d="M12 10.5 18 15" stroke="var(--cream)" strokeWidth="2.1" strokeLinecap="round" />
-      <path d="M32 10 38 16" stroke="var(--cream)" strokeWidth="2.1" strokeLinecap="round" />
-      <ellipse cx="32" cy="22" rx="13" ry="6.2" fill={body} />
-      <ellipse cx="22" cy="23.4" rx="4" ry="2.4" fill="var(--cream)" />
-      <circle cx="44" cy="19.2" r="5.4" fill={body} />
-      {sex === "male" ? (
-        <path d="M39.6 16.8c1.8-3.4 6.2-3.8 8.4-.4-2.4-1-5.4-.4-8.4.4Z" fill="var(--ink)" />
+      <path d="M6 21.6 17 19.6 17 22.6 7 23.2Z" fill="var(--wing)" />
+      <path d="M6.6 25.8 17 23 17 26.4 7.4 26.2Z" fill="var(--wing)" />
+      <path d="M6.2 21.6 16.2 19.6" stroke="var(--cream)" strokeWidth="1.6" strokeLinecap="round" />
+      <path d="M7 26.2 16.4 25.6" stroke="var(--cream)" strokeWidth="1.6" strokeLinecap="round" />
+      <ellipse cx="30" cy="22.6" rx="12" ry="6" fill={body} />
+      <ellipse cx="17.2" cy="24.2" rx="3.8" ry="2.2" fill="var(--cream)" />
+      <path d="M22 20 8 5 26 17Z" fill="var(--wing)" />
+      <path d="M28 18 46 3 38 19Z" fill="var(--wing)" />
+      <path d="M11 10.2 18.5 15.2" stroke="var(--cream)" strokeWidth="3" strokeLinecap="round" />
+      <path d="M32.5 8.8 39.5 15.4" stroke="var(--cream)" strokeWidth="3" strokeLinecap="round" />
+      <circle cx="41.5" cy="19.4" r="5.6" fill={body} />
+      {cap ? (
+        <path
+          className="forecap"
+          d="M42.6 16.8 C43.6 14.8 46.2 14.8 46.8 16.8 C45.6 17.4 43.8 17.4 42.6 16.8 Z"
+          fill="var(--wing)"
+        />
       ) : null}
-      <path d="M48.6 19.4 57.4 21.2 49 22.8Z" fill="var(--bill)" />
-      <circle cx="45.6" cy="18.4" r="1" fill="var(--ink)" />
+      <path
+        className={plumage === "basic" ? "bill bill-pale" : "bill"}
+        d="M46.4 19.2 49.8 20.4 46.4 21.6Z"
+        fill={bill}
+      />
+      <circle cx="42.8" cy="19.5" r="0.9" fill="var(--wing)" />
     </g>
   );
 }
@@ -106,7 +156,7 @@ export function SeedHead({
             repeatCount="indefinite"
           />
         ) : null}
-        <path d="M0 0 V36" stroke="var(--leaf)" strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M0 0 V34" stroke="var(--leaf-deep)" strokeWidth="1.6" strokeLinecap="round" />
         <ellipse cx="0" cy="-2" rx={closed ? 4 : 9} ry={closed ? 7 : 6} fill="var(--seed)" />
         {closed ? null : (
           <g>
@@ -144,8 +194,9 @@ export function Leaf({
             repeatCount="indefinite"
           />
         ) : null}
-        <ellipse cx="0" cy="-11" rx="5" ry="11" fill="var(--leaf)" />
-        <ellipse cx="0" cy="-12" rx="1.1" ry="8" fill="var(--leaf-pale)" opacity="0.7" />
+        <path d="M0 10 V0" stroke="var(--leaf-deep)" strokeWidth="1.3" strokeLinecap="round" />
+        <ellipse cx="0" cy="-8" rx="4.2" ry="8.5" fill="var(--leaf)" />
+        <path d="M0 -1 V-15" stroke="var(--leaf-pale)" strokeWidth="1.1" strokeLinecap="round" />
       </g>
     </g>
   );
@@ -227,7 +278,7 @@ export function Cuckoo() {
       <path d="M6 17.2h8M8 20.4h10" stroke="var(--cream)" strokeWidth="1.3" strokeLinecap="round" />
       <ellipse cx="40" cy="16" rx="12" ry="5.2" fill="var(--bark)" />
       <circle cx="52" cy="13.5" r="4.2" fill="var(--bark)" />
-      <path d="M55.4 13.6 63 15.2 55.6 16.8Z" fill="var(--bill)" />
+      <path d="M55.4 13.6 62 15.1 55.6 16.6Z" fill="var(--bark-deep)" />
       <circle cx="53.2" cy="12.8" r="0.8" fill="var(--ink)" />
     </g>
   );

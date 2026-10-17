@@ -43,7 +43,7 @@ pnpm playtest:check
 
 Drawings are SVG in code. No raster images, no external image hosts, no generated bitmaps.
 
-- Components live in `src/ui/art/`. The flock is the American goldfinch: conical bill, black cap, black wings, white wing bar, notched tail. Females are olive and uncapped. Keep new birds in that drawing.
+- Components live in `src/ui/art/`. The flock is the American goldfinch: lemon yellow, a small black forecap on the forehead only, a short pink conical bill, black wings with bold white wing bars, a short notched tail, and a white undertail. Females and autumn/winter birds are olive or buff, uncapped, with the same wings. Keep new birds in that drawing.
 - Colors come from the tokens on `:root` in `src/styles.css` (`--ink`, `--moss`, `--leaf`, `--ochre`, `--clay`, `--cream`, `--paper`, and the bird tokens beside them). Season and act colors are overrides on `.living-scene` and `.plate`. Use `var(--bird)` and the other tokens inside the SVG so a season can recolor a drawing.
 - `sceneFromState` decides how many birds, nests, and later structures appear, and which season and act the strip is in. Extend that function when a new structure should show up, and cover it in `tests/scene.test.ts`.
 - Lines the birds say live in `src/game/voice.ts`. Components read that module. They do not invent copy.

@@ -3,6 +3,7 @@ import { getSeason } from "./engine";
 import type { Act, GameState, SeasonId } from "./types";
 
 export type Scenery = "canopy" | "aerie" | "dominion" | "crossing" | "murmuration";
+export type Plumage = "breeding" | "basic";
 
 export interface Completion {
   id: string;
@@ -30,6 +31,8 @@ export interface SceneModel {
   seedHeads: number;
   leaves: number;
   seedfall: boolean;
+  /** Breeding lemon males in summer. Basic olive and buff birds in autumn and winter. */
+  plumage: Plumage;
 }
 
 const NEST_CAP = 4;
@@ -79,7 +82,13 @@ export function sceneFromState(state: GameState): SceneModel {
     seedHeads: seedHeadCount(season, seedfall),
     leaves: leafCount(season, scenery),
     seedfall,
+    plumage: plumageFor(season),
   };
+}
+
+/** Crosswind is the autumn wind. Dearth is the closed-head winter. Both wear basic plumage. */
+export function plumageFor(season: SeasonId): Plumage {
+  return season === "crosswind" || season === "dearth" ? "basic" : "breeding";
 }
 
 export function sceneCaption(model: SceneModel): string {

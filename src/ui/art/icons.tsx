@@ -141,11 +141,17 @@ function Glyph({ name }: { name: IconName }) {
     case "flock-plan":
       return (
         <g>
-          <ellipse cx="8" cy="14" rx="3.4" ry="2.3" fill="var(--ochre)" />
-          <ellipse cx="15.5" cy="13.2" rx="3.6" ry="2.4" fill="var(--ochre)" />
-          <circle cx="11" cy="12.4" r="1.5" fill="var(--ink)" />
-          <circle cx="18.4" cy="11.6" r="1.6" fill="var(--ink)" />
-          <path d="M18.8 11.8 21.4 12.6 18.8 13.4" fill="var(--clay)" />
+          <ellipse cx="7.2" cy="14.4" rx="3.1" ry="2.1" fill="var(--bird)" />
+          <path d="M5.4 13.4c1.2-.5 2.8-.2 3.6.8-1.4.1-2.6.4-3.6 1-.1-.6-.1-1.2 0-1.8Z" fill="var(--wing)" />
+          <path d="M5.8 13.6h2.6" stroke="var(--cream)" strokeWidth="0.9" strokeLinecap="round" />
+          <circle cx="10" cy="13" r="1.45" fill="var(--bird)" />
+          <path className="forecap" d="M9.7 12c.35-.7.9-.7 1.3 0-.4-.15-.9 0-1.3.15Z" fill="var(--wing)" />
+          <path d="M11.2 13.1 12.4 13.55 11.2 14Z" fill="var(--bill)" />
+          <ellipse cx="15.4" cy="13.6" rx="3.1" ry="2.1" fill="var(--bird-soft)" />
+          <path d="M13.6 12.7c1.2-.4 2.6-.1 3.4.8-1.3.1-2.4.3-3.4.9 0-.5 0-1.1 0-1.7Z" fill="var(--wing)" />
+          <path d="M14 12.9h2.4" stroke="var(--cream)" strokeWidth="0.9" strokeLinecap="round" />
+          <circle cx="18.1" cy="12.3" r="1.4" fill="var(--bird-soft)" />
+          <path d="M19.2 12.4 20.4 12.85 19.2 13.3Z" fill="var(--bill)" />
           <path d="M4 18c3 2 13 2 17 0" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
         </g>
       );
@@ -250,14 +256,17 @@ function Glyph({ name }: { name: IconName }) {
 function GoldfinchMark() {
   return (
     <g>
-      <path d="M2 13.2 6.8 11.8 6.8 15.2Z" fill="currentColor" />
-      <ellipse cx="12.2" cy="13.4" rx="5.4" ry="3.5" fill="var(--ochre)" />
-      <path d="M9.2 12.2c2.2-.8 4.6-.2 6 1.4-2.2 0-4 .4-6 1.4-.2-1-.2-2 0-2.8Z" fill="currentColor" />
-      <path d="M10.2 12.6h3.4" stroke="var(--cream)" strokeWidth="1.3" strokeLinecap="round" />
-      <circle cx="16.4" cy="11.8" r="2.5" fill="var(--ochre)" />
-      <path d="M14.6 10.4c.8-1.5 2.6-1.6 3.4 0-1.2-.4-2.4-.1-3.4.5Z" fill="currentColor" />
-      <path d="M18.4 11.8 21.6 12.8 18.5 13.8Z" fill="var(--clay)" />
-      <circle cx="16.9" cy="11.4" r="0.55" fill="currentColor" />
+      <path d="M2.2 13.2 6.4 12.2 6.4 14.6Z" fill="var(--wing)" />
+      <path d="M2.4 15.8 6.4 14.8 6.4 17Z" fill="var(--wing)" />
+      <path d="M2.4 13.4 6 12.5" stroke="var(--cream)" strokeWidth="0.7" strokeLinecap="round" />
+      <ellipse cx="11" cy="14" rx="4.8" ry="3.1" fill="var(--bird)" />
+      <ellipse cx="7" cy="15.2" rx="1.5" ry="1" fill="var(--cream)" />
+      <path d="M8.4 12.6c1.6-.2 3.6.2 4.8 1.4-1.8-.1-3.2.2-4.6 1.1-.2-.8-.3-1.7-.2-2.5Z" fill="var(--wing)" />
+      <path d="M9 13h3.6" stroke="var(--cream)" strokeWidth="1.35" strokeLinecap="round" />
+      <circle cx="15.4" cy="12.2" r="2.35" fill="var(--bird)" />
+      <path className="forecap" d="M15.8 11.2c.5-.9 1.5-.9 1.9.1-.6-.15-1.3-.1-1.9.05Z" fill="var(--wing)" />
+      <path className="bill" d="M17.5 12.2 19.1 12.85 17.5 13.5Z" fill="var(--bill)" />
+      <circle cx="15.9" cy="12.2" r="0.42" fill="var(--wing)" />
     </g>
   );
 }

@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { EVENTS, PROJECTS } from "../src/game/content";
 import { createInitialState, startProject } from "../src/game/engine";
 import { animationsActive } from "../src/game/motion";
-import { newlyCompleted, sceneCaption, sceneFromState, sceneryFor, visibleFlock } from "../src/game/scene";
+import { newlyCompleted, plumageFor, sceneCaption, sceneFromState, sceneryFor, visibleFlock } from "../src/game/scene";
 import type { GameState } from "../src/game/types";
 import { LivingScene } from "../src/ui/art/canopy";
 
@@ -22,6 +22,7 @@ describe("scene state", () => {
     expect(scene.seedHeads).toBe(4);
     expect(scene.seedfall).toBe(false);
     expect(scene.stars).toBe(0);
+    expect(scene.plumage).toBe("breeding");
     expect(sceneCaption(scene)).toMatch(/Sunlit canopy/);
     expect(sceneCaption(scene)).toMatch(/6 goldfinches/);
   });
@@ -45,6 +46,7 @@ describe("scene state", () => {
     expect(scene.archives).toBe(1);
     expect(scene.scenery).toBe("aerie");
     expect(scene.season).toBe("crosswind");
+    expect(scene.plumage).toBe("basic");
     expect(scene.routes).toBe(4);
   });
 
@@ -56,11 +58,13 @@ describe("scene state", () => {
     const base = createInitialState(0);
     const rain: GameState = { ...base, act: 2, elapsed: 240, flags: ["roost"] };
     expect(sceneFromState(rain).season).toBe("rain");
+    expect(sceneFromState(rain).plumage).toBe("breeding");
     expect(sceneFromState(rain).seedHeads).toBe(2);
     expect(sceneFromState(rain).leaves).toBe(4);
 
     const dearth: GameState = { ...base, act: 2, elapsed: 360, flags: ["roost"] };
     expect(sceneFromState(dearth).season).toBe("dearth");
+    expect(sceneFromState(dearth).plumage).toBe("basic");
     expect(sceneFromState(dearth).seedHeads).toBe(1);
     expect(sceneFromState(dearth).leaves).toBe(2);
 
@@ -147,6 +151,24 @@ describe("reduced motion", () => {
     expect(moving).toContain("animateTransform");
     expect(still).toContain("Sunlit canopy");
     expect(still).toContain("season-sunlit");
+    expect(still).toContain("forecap");
+    expect(still).not.toContain("bill-pale");
+  });
+
+  it("drops the black cap in autumn and winter", () => {
+    expect(plumageFor("sunlit")).toBe("breeding");
+    expect(plumageFor("rain")).toBe("breeding");
+    expect(plumageFor("crosswind")).toBe("basic");
+    expect(plumageFor("dearth")).toBe("basic");
+    const winter = renderToStaticMarkup(
+      createElement(LivingScene, {
+        model: sceneFromState({ ...createInitialState(0), elapsed: 360 }),
+        motion: false,
+        layout: "strip",
+      }),
+    );
+    expect(winter).not.toContain("forecap");
+    expect(winter).toContain("bill-pale");
   });
 });
 
