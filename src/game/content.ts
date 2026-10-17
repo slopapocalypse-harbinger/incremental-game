@@ -35,6 +35,18 @@ export const TUNE = {
   seasonLater: 180,
   offlineHours: 8,
   resourceCeilingNote: 1e12,
+  /** Passive knowledge after the canopy survey, so the number moves before anyone is a scholar. */
+  fieldNotes: 0.02,
+  /** Flat rest after Welcome a brood. The card shows this and the time left. */
+  broodRest: 120,
+  ingenuityGift: 40,
+  wanderlustGift: 2,
+  /** Below one worker of that resource, the Now line names the role. */
+  stallSeed: 0.05,
+  stallTwig: 0.04,
+  stallKnowledge: 0.07,
+  stallInfluence: 0.002,
+  stallStarlight: 0.004,
 };
 
 export const ACT_NAMES: Record<Act, string> = {
@@ -113,21 +125,19 @@ export const DOCTRINES: Array<{
     id: "stewardship",
     name: "Stewardship",
     summary: "Keep more than you spend. The flock flies heavy and lands soft.",
-    tradeoff:
-      "Stores +25% · gathering +8% · upkeep −8% · expeditions −6% · offline twilight +25%",
+    tradeoff: "Felt now: gathering +8%, upkeep −8%, stores +25%. Expeditions −6%. Offline +25%.",
   },
   {
     id: "ingenuity",
     name: "Ingenuity",
     summary: "Write it down, then do it faster than is comfortable.",
-    tradeoff: "Knowledge +30% · expeditions +15% · upkeep +10%",
+    tradeoff: `Felt now: a scholar joins and +${TUNE.ingenuityGift} knowledge. Knowledge +30%. Expeditions +15%. Upkeep +10%.`,
   },
   {
     id: "wanderlust",
     name: "Wanderlust",
     summary: "The route is the point. A nest is how you rest.",
-    tradeoff:
-      "Route bonus +40% · starlight +30% · scouting +40% · expeditions +10% · gathering −6%",
+    tradeoff: `Felt now: +${TUNE.wanderlustGift} routes. Routes +40%. Scouts +40%. Starlight +30%. Expeditions +10%. Gathering −6%.`,
   },
 ];
 
@@ -386,8 +396,8 @@ export const PROJECTS: ProjectDef[] = [
     category: "Era",
     summary: "Bind the nests into a place that is still there tomorrow.",
     forecast: "Begins the aerie. Unlocks doctrine, scholarship, and brood.",
-    duration: () => 55,
-    birds: 4,
+    duration: () => 42,
+    birds: 3,
     costs: () => ({ seeds: 170, twigs: 95, knowledge: 8 }),
     repeatable: false,
     goal: true,
@@ -422,7 +432,7 @@ export const PROJECTS: ProjectDef[] = [
     era: false,
     category: "Flock",
     summary: "Spend stores to bring three young birds up now, instead of waiting on the keepers.",
-    forecast: "+3 birds, if there is room on the branches.",
+    forecast: `+3 birds, if there is room. The nursery then rests ${TUNE.broodRest}s.`,
     duration: () => 30,
     birds: 2,
     costs: () => ({ seeds: 70, twigs: 24 }),
@@ -432,7 +442,8 @@ export const PROJECTS: ProjectDef[] = [
     blocked: (state) => {
       const readyAt = state.cooldowns.brood ?? 0;
       if (state.elapsed + 0.01 < readyAt) {
-        return `The nursery needs ${Math.ceil(readyAt - state.elapsed)}s.`;
+        const left = Math.ceil(readyAt - state.elapsed);
+        return `Nursery rests ${TUNE.broodRest}s after a brood. ${left}s left.`;
       }
       if (state.flock + 3 > capacityPreview(state) + 0.01) {
         return "The branches are full. Raise capacity before another brood.";
@@ -701,6 +712,15 @@ export function projectById(id: string): ProjectDef | undefined {
   return PROJECTS.find((project) => project.id === id);
 }
 
+/** Repeatable archives share one card. The title says which tier is next. */
+export function projectTitle(state: GameState, project: ProjectDef): string {
+  if (project.id !== "archive") return project.name;
+  const next = count(state, "archive") + 1;
+  if (next <= 1) return "Raise an archive";
+  if (next === 2) return "Raise a second archive";
+  return "Raise the last archive";
+}
+
 export interface EventOptionDef {
   id: string;
   name: string;
@@ -729,13 +749,13 @@ export const EVENTS: EventDef[] = [
       {
         id: "ride",
         name: "Ride the gale",
-        effect: "+2 routes, and 28 seeds blown out of the cache.",
+        effect: "+2 routes. Costs 28 seeds.",
         cost: { seeds: 28 },
       },
       {
         id: "brace",
         name: "Brace and let it pass",
-        effect: "Morale recovers. The route can wait.",
+        effect: "Morale rises. Influence and growth speed up. No stores spent.",
       },
     ],
     when: (state) => state.flags.includes("survey"),
@@ -750,13 +770,13 @@ export const EVENTS: EventDef[] = [
       {
         id: "burn",
         name: "Burn a little wood",
-        effect: "Spend 16 twigs. The flock sleeps.",
+        effect: "Costs 16 twigs. Morale rises. The flock sleeps.",
         cost: { twigs: 16 },
       },
       {
         id: "huddle",
         name: "Huddle and watch",
-        effect: "Gathering slows for two minutes. The scouts learn something.",
+        effect: "+8 knowledge. Gathering −15% for 2 min.",
       },
     ],
     when: (state) => count(state, "nest") >= 2 && state.seenEvents.includes("summer-gale"),
@@ -771,12 +791,12 @@ export const EVENTS: EventDef[] = [
       {
         id: "accept",
         name: "Accept, in the open",
-        effect: "A larger seed store and busier foragers. You are no longer a secret.",
+        effect: "Seed store +220. Foragers +10%. +6 influence.",
       },
       {
         id: "study",
         name: "Watch from cover",
-        effect: "+45 knowledge and a route. The grain stays where it was.",
+        effect: "+45 knowledge. +1 route.",
       },
     ],
     when: (state) => state.flags.includes("roost") && state.elapsed > state.actStartedAt + 50,
@@ -791,13 +811,13 @@ export const EVENTS: EventDef[] = [
       {
         id: "drive",
         name: "Drive it off",
-        effect: "Spend 24 knowledge. The brood keeps its pace.",
+        effect: "Costs 24 knowledge. Brood pace stays the same.",
         cost: { knowledge: 24 },
       },
       {
         id: "tolerate",
         name: "Let it stay the week",
-        effect: "+35 knowledge. Growth slows for a few minutes.",
+        effect: "+35 knowledge. Growth −20% for 3 min.",
       },
     ],
     when: (state) => count(state, "archive") >= 1,
@@ -812,12 +832,12 @@ export const EVENTS: EventDef[] = [
       {
         id: "hunt",
         name: "Teach the hunting song",
-        effect: "Foragers permanently a little quicker.",
+        effect: "Foragers +6% from now on.",
       },
       {
         id: "build",
         name: "Teach the building song",
-        effect: "Weavers permanently a little quicker.",
+        effect: "Weavers +6% from now on.",
       },
     ],
     when: (state) =>
@@ -833,13 +853,13 @@ export const EVENTS: EventDef[] = [
       {
         id: "congress",
         name: "Call a congress",
-        effect: "Spend 50 knowledge. Influence jumps.",
+        effect: "Costs 50 knowledge. +18 influence.",
         cost: { knowledge: 50 },
       },
       {
         id: "leave",
         name: "Let the complaint stand",
-        effect: "A little influence. Morale dips. No stores spent.",
+        effect: "+4 influence. Morale dips. No stores spent.",
       },
     ],
     when: (state) => state.flags.includes("council") && state.elapsed > state.actStartedAt + 40,
@@ -854,12 +874,12 @@ export const EVENTS: EventDef[] = [
       {
         id: "open",
         name: "Open the granaries",
-        effect: "Lose about 12% of your seeds. Morale and influence rise.",
+        effect: "Lose 12% of your seeds. +12 influence. Morale rises.",
       },
       {
         id: "hold",
         name: "Keep the reserve",
-        effect: "The stores stay. The outer roosts remember.",
+        effect: "Stores stay. Morale dips.",
       },
     ],
     when: (state) => count(state, "beacon") >= 1,
@@ -874,13 +894,13 @@ export const EVENTS: EventDef[] = [
       {
         id: "contest",
         name: "Contest the corridor",
-        effect: "+1 route and influence. Spend seeds and twigs.",
+        effect: "Costs 160 seeds and 80 twigs. +1 route. +10 influence.",
         cost: { seeds: 160, twigs: 80 },
       },
       {
         id: "ally",
         name: "Offer the next beacon",
-        effect: "A small gain of influence. Your next beacons cost less.",
+        effect: "+4 influence. Later beacons cost 15% less.",
       },
     ],
     when: (state) => count(state, "beacon") >= 2,
@@ -895,13 +915,13 @@ export const EVENTS: EventDef[] = [
       {
         id: "follow",
         name: "Follow the signal",
-        effect: "+1 system. Spend 24 starlight.",
+        effect: "Costs 24 starlight. +1 system.",
         cost: { starlight: 24 },
       },
       {
         id: "archive",
         name: "Archive the pattern",
-        effect: "+90 knowledge and +24 starlight.",
+        effect: "+90 knowledge. +24 starlight.",
       },
     ],
     when: (state) => state.flags.includes("accord") && state.elapsed > state.actStartedAt + 40,
@@ -916,7 +936,7 @@ export const EVENTS: EventDef[] = [
       {
         id: "burn",
         name: "Burn reserve starlight",
-        effect: "Spend 30 starlight. The active expedition, or the next one, runs hot for a minute.",
+        effect: "Costs 30 starlight. Launches +35% for about a minute.",
         cost: { starlight: 30 },
       },
       {
@@ -937,12 +957,12 @@ export const EVENTS: EventDef[] = [
       {
         id: "sanctuary",
         name: "Leave it wild",
-        effect: "Gathering is permanently a little poorer. The ending will say so.",
+        effect: "Gathering −4% from now on. The ending remembers.",
       },
       {
         id: "harvest",
         name: "Take the seed",
-        effect: "+180 seeds and +70 twigs. The ending will say so.",
+        effect: "+180 seeds. +70 twigs. The ending remembers.",
       },
     ],
     when: (state) => state.systems >= 4,

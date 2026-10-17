@@ -1,9 +1,19 @@
 import { useState } from "react";
 
-import { DOCTRINES, ROLE_DEFS, TECHS, UPGRADES, projectById, type ProjectDef } from "../game/content";
+import {
+  DOCTRINES,
+  ROLE_DEFS,
+  TECHS,
+  TUNE,
+  UPGRADES,
+  projectById,
+  projectTitle,
+  type ProjectDef,
+} from "../game/content";
 import { sceneFromState } from "../game/scene";
 import { planFlavor, seasonRemark } from "../game/voice";
 import {
+  actionLabel,
   assignRole,
   buyTech,
   canBuyTech,
@@ -62,7 +72,9 @@ export function FlockPanel({
           <h2>The flock</h2>
         </div>
         <p className="stat">
-          <strong>{formatBirds(idle)}</strong> idle
+          <span className="stat-line">
+            <strong>{formatBirds(idle)}</strong> idle
+          </span>
           <span>
             {formatBirds(game.flock)} / {formatAmount(capacity, 0)} housed
             {out > 0 ? ` · ${out} out` : ""}
@@ -228,7 +240,7 @@ function ProjectCard({
         {project.category}
         {project.goal ? " · era goal" : ""}
       </p>
-      <h3>{project.name}</h3>
+      <h3>{projectTitle(game, project)}</h3>
       <p className="summary">{project.summary}</p>
       {planFlavor(project.id) ? <p className="flavor">{planFlavor(project.id)}</p> : null}
       <p className={`plan-note${open ? " show" : ""}`}>{project.forecast}</p>
@@ -250,7 +262,7 @@ function ProjectCard({
           disabled={!readiness.ok}
           onClick={() => apply((state) => startProject(state, project.id))}
         >
-          {project.duration(game) <= 0 ? "Build" : "Launch"}
+          {actionLabel(readiness.reason, readiness.ok, project.duration(game) <= 0)}
         </button>
         <button
           type="button"
@@ -514,6 +526,10 @@ export function WorldPanel({
         <p className="aside">No weather is sitting on the flock right now.</p>
       )}
       <p className="aside">
+        Each route adds {Math.round(TUNE.routeBonus * (game.doctrine === "wanderlust" ? 1.4 : 1) * 100)}% to seeds
+        and twigs. Morale speeds influence and growth. It cannot fall far enough to stop the flock.
+      </p>
+      <p className="aside">
         {getSeason(game).detail}{" "}
         {game.systems > 0
           ? "Stars on the map are harbors and scans, not decoration."
@@ -556,6 +572,7 @@ export function LogPanel({
           Plans
         </button>
       </header>
+      <p className="aside">Quill writes what happened. The log will not choose.</p>
       {entries.length === 0 ? (
         <p className="empty">The first page is still blank.</p>
       ) : (

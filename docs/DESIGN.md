@@ -72,14 +72,14 @@ The player lands on the plan, not on a diagram. The opening is the only thing in
 - The objective is one sentence: store the first harvest. The only project is **Line a seed cache** (about 60 seeds, instant). Assigning the idle birds is the first decision, and it is worth roughly double the seed rate. A player who never opens the Flock tab still finishes the cache; they just wait longer.
 - The cache unlocks twigs and Weavers. The objective becomes the first nest. If no weaver is assigned, twigs do not move, and the card says so.
 - **Weave the first nest** is instant. It unlocks research and the field plans.
-- **Survey the canopy** borrows two birds for a short expedition, opens knowledge and Scouts, and adds routes. Routes are a permanent, modest bonus to seeds and twigs.
+- **Survey the canopy** borrows two birds for a short expedition, opens knowledge and Scouts, and adds routes. Routes are a permanent, modest bonus to seeds and twigs. A thin thread of knowledge starts on its own, so the store moves before anyone is staffing it. If the Now goal is waiting on a resource that is barely coming in, that line names the role that fixes it (a Scout here, a Scholar once the aerie exists).
 - By about minute five a human is choosing between a second nest, Woven Baskets or Seed Ledgers, and the season, which has changed at least once. The objective already names the roost: two nests, the survey, then bind them.
 
 No zero-speed “tutorial lock” past those two instant builds. The instant work is only the first two, so the game answers the first taps immediately and then starts taking time.
 
 ### Mid-game
 
-**Act II, the aerie.** Founding the roost opens the doctrine, Broodkeepers, and Scholars. Broodkeepers grow the flock only while a seed reserve exists, so a growth push can stall a project and a project can stall a generation. Welcome a Brood is the impatient version: birds now, stores and time spent. Archives raise the knowledge cap and add a little passive scholarship. The Sky Council asks for an archive, a flock in the high teens, a doctrine, and a real bank of all three early resources.
+**Act II, the aerie.** Founding the roost opens the doctrine, Broodkeepers, and Scholars. The roost borrows three birds, so a flock of six can leave a crew on the seed heads. Broodkeepers grow the flock only while a seed reserve exists, so a growth push can stall a project and a project can stall a generation. Welcome a Brood is the impatient version: birds now, stores and time spent. The nursery then rests 120 seconds, and the card says both the full rest and the time left. Archives raise the knowledge cap and add a little passive scholarship. Each archive card is the next tier, named so it is not a second copy of the one you just built. The Sky Council asks for an archive, a flock in the high teens, a doctrine, and a real bank of all three early resources. If knowledge is barely coming in, the Now line says to assign a Scholar before that bank becomes a wall.
 
 **Act III, dominion.** Envoys and beacons make influence. Influence is a resource you spend, not a meter glued to 100. Two beacons and a larger flock open the Open-Sky Accord. Civic roosts are optional specializations, and the choice is on the card before you pay:
 
@@ -130,7 +130,7 @@ Second Look is bought between runs and spent during a later one. The first run l
 
 - **Who is idle, and who is eating.** Six roles by the end, never enough birds. Pulling the last foragers onto an ark is how a dearth becomes a morale problem. Morale slows influence and growth. It does not delete birds and it cannot fall low enough to freeze the economy.
 - **What the one active project is.** A beacon now, or a granary before the next bank. The era goal is pinned to the top of the list so it is never hidden behind four other cards.
-- **Doctrine.** Stewardship keeps stores, trims upkeep, lengthens offline twilight, and makes projects slower. Ingenuity speeds projects and scholarship and eats more. Wanderlust pays routes, scouts, and starlight, and gathers a little worse. All three can finish.
+- **Doctrine.** Chosen at the first roost, and each one pays off in that minute. Stewardship keeps stores, trims upkeep, lifts gathering, lengthens offline twilight, and makes projects slower. Ingenuity puts a scholar at the desk with knowledge already written, then speeds scholarship and projects and eats more. Wanderlust hands you two routes, then pays routes, scouts, and starlight, and gathers a little worse before those routes. All three can finish.
 - **Research order.** Everything can be bought eventually. The early pair (baskets vs ledgers) and the Act II pair (hatcheries vs logistics vs memory) change which resource is annoying for the next half hour.
 - **Ark or scan.** Infrastructure versus a cheaper star.
 - **Events.** Eleven of them, tied to milestones (the survey, the second nest, the first archive, the first beacon, the fourth system) so a locked phone does not skip the story and a fast player does not outrun it. The costly option is disabled, with the reason on the button, when you cannot pay. The other option is always available.
@@ -147,9 +147,21 @@ Simulated time, not wall-clock reading time. A scripted attentive player (instan
 | First roost, Act II | about 8–12 minutes | End of a coffee |
 | Sky Council, Act III | about 25–45 minutes | End of a sitting. Longer if research eats the knowledge bank |
 | Open-Sky Accord, Act IV | about 2–3 hours | Next session, with offline in between |
-| The Murmuration | about 4–7 hours | A long day of checking in, or a few evenings |
+| The Murmuration | about 3.5–4.5 hours | A long day of checking in, or a few evenings |
 
-Measured on the attentive Ingenuity script after seasons stopped changing launch speed: cache 40s, first nest 1m 20s, survey 2m 40s, roost 8m 20s, council 27m, accord 2h 03m, murmuration 4h 01m. Stewardship finishes in about 4h 10m. Wanderlust finishes in about 3h 36m, because the crossing is what that doctrine is for. A run that buys no tech still finishes in about 4h. The playthrough test locks these bands.
+Measured on the attentive script after the doctrine gifts. The roost is the same for every doctrine, because the choice comes after it.
+
+| Milestone | Stewardship | Ingenuity | Wanderlust |
+| --- | --- | --- | --- |
+| Seed cache | 40s | 40s | 40s |
+| First nest | 1m 20s | 1m 20s | 1m 20s |
+| Canopy surveyed | 2m 40s | 2m 40s | 2m 40s |
+| First roost | 8m 20s | 8m 20s | 8m 20s |
+| Sky Council | 26m 40s | 24m | 25m 40s |
+| Open-Sky Accord | 2h 00m | 2h 01m | 2h 03m |
+| The Murmuration | 3h 59m | 3h 58m | 3h 34m |
+
+Ingenuity reaches the council first, because the scholar and the written knowledge are already there. Wanderlust is the shortest full flight, because the crossing is what that doctrine is for. A run that buys no tech still finishes in about 3h 57m. The playthrough test locks these bands.
 
 The measured script times from the playthrough test are recorded in the test output and should stay inside those bands. If a balance change pushes them out, change the numbers or change this table in the same commit. Do not leave the table as a wish.
 

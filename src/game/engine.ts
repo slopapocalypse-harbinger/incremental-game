@@ -17,8 +17,8 @@ import {
   type EventDef,
   type ProjectDef,
 } from "./content";
-import { clampResource, formatAmount, formatDuration } from "./number";
-import { doctrineRemark, eventRemark, projectRemark } from "./voice";
+import { clampResource, formatAmount, formatDuration, formatRate } from "./number";
+import { doctrineRemark, eventRemark, repeatNote, repeatRemark } from "./voice";
 import {
   SAVE_VERSION,
   type Act,
@@ -326,12 +326,14 @@ export function calculateRates(state: GameState): Rates {
   const twigs =
     (state.roles.weavers * TUNE.weaver * season.twig * (1 + route) * steady * twigTech * seedfallTwig * build * huddle +
       count(state, "nest") * TUNE.nestTwig);
+  const notes = state.flags.includes("survey") ? TUNE.fieldNotes : 0;
   const knowledge =
     (state.roles.scholars * TUNE.scholar +
       state.roles.scouts * TUNE.scout * scoutDoctrine +
       count(state, "archive") * TUNE.archiveKnowledge +
       count(state, "academy") * TUNE.academyKnowledge +
-      state.systems * TUNE.systemKnowledge) *
+      state.systems * TUNE.systemKnowledge +
+      notes) *
     season.knowledge *
     memory *
     ingenuity *
@@ -410,14 +412,18 @@ export function canStart(state: GameState, projectId: string): Readiness {
   const blocked = project.blocked?.(state);
   if (blocked) return { ok: false, reason: blocked };
   const costs = project.costs(state);
-  if (!hasCosts(state, costs)) return { ok: false, reason: formatMissing(state, costs) };
+  const missingCost = !hasCosts(state, costs) ? formatMissing(state, costs) : "";
   const idle = getIdleBirds(state);
-  if (idle < project.birds) {
-    const missing = project.birds - idle;
-    return {
-      ok: false,
-      reason: `Free ${missing} more bird${missing === 1 ? "" : "s"} from their roles.`,
-    };
+  const missingBirds = Math.max(0, project.birds - idle);
+  const impact =
+    project.birds > 0 ? borrowImpact(state, project.birds, wallTime(state, project)) : "";
+  if (missingCost || missingBirds > 0) {
+    const free =
+      missingBirds > 0
+        ? `Free ${missingBirds} more bird${missingBirds === 1 ? "" : "s"}.`
+        : "";
+    const reason = [missingCost, free, impact].filter(Boolean).join(" ");
+    return { ok: false, reason };
   }
   return { ok: true, reason: project.duration(state) === 0 ? "Ready to build." : "Ready to launch." };
 }
@@ -462,22 +468,142 @@ export function wallTime(state: GameState, project: ProjectDef): number {
 }
 
 export function timeToAfford(state: GameState, costs: Partial<Resources>): string {
-  if (hasCosts(state, costs)) return "Stores cover this.";
+  const limit = limitingResource(state, costs);
+  if (!limit) return "Stores cover this.";
+  const hint = limit.rate < stallFloor(limit.id) ? ` ${roleFix(state, limit.id)}` : "";
+  if (limit.rate <= 0.001) {
+    const falling = limit.rate < -0.001;
+    return `${RESOURCE_LABEL[limit.id]} ${falling ? "is falling" : "is not increasing"}.${hint}`;
+  }
+  return `About ${formatDuration(limit.seconds)} at the current rates.${hint}`;
+}
+
+const PULL_ORDER: RoleId[] = [
+  "foragers",
+  "weavers",
+  "scouts",
+  "scholars",
+  "broodkeepers",
+  "envoys",
+  "navigators",
+];
+
+/** What leaving roles for a launch does to income. Empty when idle birds cover it. */
+export function borrowImpact(state: GameState, birds: number, seconds: number): string {
+  if (birds <= 0) return "";
+  const pull = Math.max(0, birds - getIdleBirds(state));
+  if (pull <= 0) return "";
+  const roles = { ...state.roles };
+  const taken: Partial<Record<RoleId, number>> = {};
+  let left = pull;
+  while (left > 0) {
+    const role = [...PULL_ORDER]
+      .filter((id) => roles[id] > 0)
+      .sort((a, b) => roles[b] - roles[a] || PULL_ORDER.indexOf(a) - PULL_ORDER.indexOf(b))[0];
+    if (!role) break;
+    roles[role] -= 1;
+    taken[role] = (taken[role] ?? 0) + 1;
+    left -= 1;
+  }
+  if (left > 0) return "";
+  const before = calculateRates(state);
+  const after = calculateRates({ ...state, roles });
+  const changes = rateChanges(before, after);
+  const who = describeTaken(taken);
+  const clock = formatDuration(seconds);
+  return changes ? `Pulls ${who}; ${changes} for ${clock}.` : `Pulls ${who} for ${clock}.`;
+}
+
+export function actionLabel(reason: string, ready: boolean, instant: boolean): string {
+  if (ready) return instant ? "Build" : "Launch";
+  const free = reason.match(/^Free (\d+) more bird/);
+  if (free) return `Free ${free[1]} ${Number(free[1]) === 1 ? "bird" : "birds"}`;
+  const sentence = reason.split(". ")[0] ?? reason;
+  if (sentence.startsWith("Need ") && sentence.length <= 36) return sentence.replace(/\.$/, "");
+  return instant ? "Build" : "Launch";
+}
+
+export function stallFloor(id: ResourceId): number {
+  switch (id) {
+    case "seeds":
+      return TUNE.stallSeed;
+    case "twigs":
+      return TUNE.stallTwig;
+    case "knowledge":
+      return TUNE.stallKnowledge;
+    case "influence":
+      return TUNE.stallInfluence;
+    case "starlight":
+      return TUNE.stallStarlight;
+  }
+}
+
+export function roleFix(state: GameState, id: ResourceId): string {
+  if (id === "knowledge" && !isRoleUnlocked(state, "scholars")) return "Assign a Scout.";
+  const noun: Record<ResourceId, string> = {
+    seeds: "Forager",
+    twigs: "Weaver",
+    knowledge: "Scholar",
+    influence: "Envoy",
+    starlight: "Navigator",
+  };
+  return `Assign a ${noun[id]}.`;
+}
+
+interface ResourceLimit {
+  id: ResourceId;
+  rate: number;
+  seconds: number;
+}
+
+export function limitingResource(state: GameState, costs: Partial<Resources>): ResourceLimit | null {
   const rates = calculateRates(state);
-  let worst = 0;
-  let blocked: string | null = null;
+  let worst: ResourceLimit | null = null;
   for (const [key, cost] of Object.entries(costs) as Array<[ResourceId, number]>) {
     const short = cost - state.resources[key];
-    if (short <= 0) continue;
+    if (short <= 0.05) continue;
     const rate = rates[key];
-    if (rate <= 0.001) {
-      blocked = `${RESOURCE_LABEL[key]} ${rate < -0.001 ? "is falling" : "is not increasing"}.`;
-      break;
-    }
-    worst = Math.max(worst, short / rate);
+    const seconds = rate <= 0.001 ? Number.POSITIVE_INFINITY : short / rate;
+    if (!worst || seconds > worst.seconds) worst = { id: key, rate, seconds };
   }
-  if (blocked) return blocked;
-  return `About ${formatDuration(worst)} at the current rates.`;
+  return worst;
+}
+
+/** Short Now-line when the goal is waiting on a resource that is barely coming in. */
+export function stallHint(state: GameState, costs: Partial<Resources>): string | null {
+  const limit = limitingResource(state, costs);
+  if (!limit || limit.rate >= stallFloor(limit.id)) return null;
+  const label = RESOURCE_LABEL[limit.id];
+  const fix = roleFix(state, limit.id);
+  if (limit.rate < -0.001) return `${label} is falling. ${fix}`;
+  if (limit.rate <= 0.001) return `${label} is not increasing. ${fix}`;
+  return `${label} is barely coming in. ${fix}`;
+}
+
+function rateChanges(before: Rates, after: Rates): string {
+  const keys: ResourceId[] = ["seeds", "twigs", "knowledge", "influence", "starlight"];
+  const parts: string[] = [];
+  for (const key of keys) {
+    if (Math.abs(before[key] - after[key]) < 0.015) continue;
+    parts.push(`${key} ${formatRate(before[key])} to ${formatRate(after[key])}`);
+    if (parts.length === 2) break;
+  }
+  return parts.join(", ");
+}
+
+function describeTaken(taken: Partial<Record<RoleId, number>>): string {
+  const parts = (Object.entries(taken) as Array<[RoleId, number]>)
+    .filter(([, amount]) => amount > 0)
+    .map(([role, amount]) => `${amount} ${roleNoun(role, amount)}`);
+  if (parts.length === 0) return "birds";
+  if (parts.length === 1) return parts[0] ?? "birds";
+  return `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
+}
+
+function roleNoun(role: RoleId, amount: number): string {
+  const name = ROLE_DEFS.find((item) => item.id === role)?.name.toLowerCase() ?? role;
+  if (amount === 1 && name.endsWith("s")) return name.slice(0, -1);
+  return name;
 }
 
 export function canBuyTech(state: GameState, techId: string): boolean {
@@ -506,15 +632,44 @@ export function chooseDoctrine(state: GameState, doctrine: DoctrineId): GameStat
   if (state.act < 2 || state.doctrine) return state;
   if (!DOCTRINES.some((item) => item.id === doctrine)) return state;
   const definition = DOCTRINES.find((item) => item.id === doctrine);
-  return pushLog(
-    pushLog(
-      { ...state, doctrine },
-      `${definition?.name ?? "A doctrine"} becomes the way this flock flies.`,
-      "story",
-    ),
-    doctrineRemark(doctrine),
+  let next = applyDoctrineGift({ ...state, doctrine }, doctrine);
+  next = pushLog(
+    next,
+    `${definition?.name ?? "A doctrine"} becomes the way this flock flies.`,
     "story",
   );
+  next = pushLog(next, doctrineRemark(doctrine), "story");
+  const gift = doctrineGiftNote(doctrine);
+  if (gift) next = pushLog(next, gift, "good");
+  return next;
+}
+
+function applyDoctrineGift(state: GameState, doctrine: DoctrineId): GameState {
+  if (doctrine === "ingenuity") {
+    let next = state;
+    if (next.flock + 1 <= getCapacity(next) + 0.01) {
+      next = {
+        ...next,
+        flock: next.flock + 1,
+        roles: { ...next.roles, scholars: next.roles.scholars + 1 },
+      };
+    }
+    return { ...next, resources: gain(next, { knowledge: TUNE.ingenuityGift }) };
+  }
+  if (doctrine === "wanderlust") {
+    return { ...state, routes: Math.min(TUNE.maxRoutes, state.routes + TUNE.wanderlustGift) };
+  }
+  return state;
+}
+
+function doctrineGiftNote(doctrine: DoctrineId): string {
+  if (doctrine === "ingenuity") {
+    return `A scholar joins the desk. ${TUNE.ingenuityGift} knowledge is already written.`;
+  }
+  if (doctrine === "wanderlust") {
+    return `${TUNE.wanderlustGift} headings are already flown. The routes count them.`;
+  }
+  return "";
 }
 
 export function respecDoctrine(state: GameState, doctrine: DoctrineId): GameState {
@@ -585,6 +740,36 @@ export interface Objective {
 }
 
 export function getObjective(state: GameState): Objective {
+  const objective = objectiveBody(state);
+  if (state.active && state.active.id === objective.projectId) return objective;
+  const project = objective.projectId ? projectById(objective.projectId) : undefined;
+  const hint = project ? stallHint(state, project.costs(state)) : null;
+  if (hint) return { ...objective, next: hint };
+  const later = eraStall(state);
+  if (later) return { ...objective, next: later };
+  return objective;
+}
+
+function eraStall(state: GameState): string | null {
+  const id =
+    state.act === 2 && state.doctrine && !state.flags.includes("council")
+      ? "council"
+      : state.act === 3 && !state.flags.includes("accord")
+        ? "accord"
+        : state.act === 4 && !state.won
+          ? "murmur"
+          : null;
+  if (!id || id === getImmediateId(state)) return null;
+  const project = projectById(id);
+  if (!project) return null;
+  return stallHint(state, project.costs(state));
+}
+
+function getImmediateId(state: GameState): string | null {
+  return objectiveBody(state).projectId;
+}
+
+function objectiveBody(state: GameState): Objective {
   if (state.won) {
     const ending = endingText(state);
     return {
@@ -948,10 +1133,14 @@ function completeProject(state: GameState, id: string): GameState {
       break;
     case "survey":
       next = { ...next, routes: Math.min(TUNE.maxRoutes, next.routes + 2) };
-      next = pushLog(next, "Two branches are worth the name of a route.", "story");
+      next = pushLog(
+        next,
+        "Two branches are worth a route. A little knowledge keeps arriving. Scouts bring more.",
+        "story",
+      );
       break;
     case "nest":
-      next = pushLog(next, "Another nest cups into the tree.");
+      next = pushLog(next, repeatNote("nest", count(next, "nest")) ?? "Another nest cups into the tree.");
       break;
     case "seedfall":
       next = {
@@ -971,15 +1160,18 @@ function completeProject(state: GameState, id: string): GameState {
       );
       break;
     case "archive":
-      next = pushLog(next, "An archive opens under a roof of woven leaves.");
+      next = pushLog(
+        next,
+        repeatNote("archive", count(next, "archive")) ?? "An archive opens under a roof of woven leaves.",
+      );
       break;
     case "brood":
       next = {
         ...next,
         flock: Math.min(getCapacity(next), next.flock + 3),
-        cooldowns: { ...next.cooldowns, brood: next.elapsed + 120 },
+        cooldowns: { ...next.cooldowns, brood: next.elapsed + TUNE.broodRest },
       };
-      next = pushLog(next, "Three young birds join the count.");
+      next = pushLog(next, repeatNote("brood", count(next, "brood")) ?? "Three young birds join the count.");
       break;
     case "corridor":
       next = { ...next, routes: Math.min(TUNE.maxRoutes, next.routes + 1) };
@@ -1050,7 +1242,7 @@ function completeProject(state: GameState, id: string): GameState {
     default:
       break;
   }
-  const aside = projectRemark(id);
+  const aside = repeatRemark(id, Math.max(1, count(next, id)));
   if (aside) next = pushLog(next, aside, "story");
   return next;
 }

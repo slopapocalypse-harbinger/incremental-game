@@ -119,6 +119,44 @@ test("event, season, and doctrine stay inside the phone", async ({ page }) => {
   }
 });
 
+test("knowledge cap is not clipped at phone width", async ({ page }) => {
+  await page.addInitScript(() => {
+    const raw = sessionStorage.getItem("boot-save");
+    if (raw) {
+      localStorage.setItem("bve.campaign", raw);
+      sessionStorage.removeItem("boot-save");
+    }
+  });
+  await page.setViewportSize({ width: 412, height: 915 });
+  let state = finishIntro(createInitialState(Date.now()));
+  for (const id of ["plans", "study", "seasons", "doctrine", "migration"]) state = dismissTip(state, id);
+  state = {
+    ...state,
+    act: 2,
+    elapsed: 3 * 120 + 20,
+    flags: ["seed-cache", "first-nest", "survey", "roost"],
+    counts: { nest: 2, archive: 1 },
+    doctrine: "stewardship",
+    resources: { ...state.resources, seeds: 80, twigs: 40, knowledge: 40 },
+    flock: 12,
+    roles: { ...state.roles, foragers: 6, weavers: 2, scholars: 0, scouts: 0 },
+  };
+  await boot(page, state);
+  await expect(page.getByTestId("season")).toContainText("Dearth");
+  const clip = await page.evaluate(() => {
+    const cap = document.querySelector("[data-testid='resource-knowledge'] .chip-inline-cap");
+    if (!(cap instanceof HTMLElement)) return "missing";
+    const text = cap.textContent ?? "";
+    if (!text.includes("350")) return `text:${text}`;
+    const capBox = cap.getBoundingClientRect();
+    const chip = cap.closest(".chip")?.getBoundingClientRect();
+    if (!chip) return "nochip";
+    if (capBox.right > chip.right + 1 || capBox.left < chip.left - 1) return "clipped";
+    return "ok";
+  });
+  expect(clip).toBe("ok");
+});
+
 async function boot(page: Page, state: GameState): Promise<void> {
   const payload = encodeSave(state, Date.now());
   await page.goto("/");
@@ -128,7 +166,7 @@ async function boot(page: Page, state: GameState): Promise<void> {
 
 function eventSave(now: number): GameState {
   let state = finishIntro(createInitialState(now));
-  for (const id of ["plans", "staffing", "events"]) state = dismissTip(state, id);
+  for (const id of ["plans", "staffing", "events", "study"]) state = dismissTip(state, id);
   return {
     ...state,
     flags: ["seed-cache", "first-nest", "survey"],

@@ -72,18 +72,24 @@ export function CapSheet({
   game,
   id,
   onClose,
+  onStaff,
 }: {
   game: GameState;
   id: ResourceId | "flock";
   onClose: () => void;
+  onStaff?: () => void;
 }) {
   const lines = capBreakdown(game, id);
-  const title = id === "flock" ? "Flock capacity" : `${RESOURCE_LABEL[id]} cap`;
-  const held = id === "flock" ? formatBirds(game.flock) : formatAmount(game.resources[id], 1);
+  const flock = id === "flock";
+  const title = flock ? "Housing limit" : `${RESOURCE_LABEL[id]} cap`;
+  const held = flock ? formatBirds(game.flock) : formatAmount(game.resources[id], 1);
   return (
-    <Sheet title={title} eyebrow="Why it stops here" onClose={onClose} testId={`cap-${id}`}>
+    <Sheet title={title} eyebrow={flock ? "Not the roster" : "Why it stops here"} onClose={onClose} testId={`cap-${id}`}>
+      {flock ? (
+        <p>This is how many birds the branches can hold. Staffing is on the Flock tab.</p>
+      ) : null}
       <p className="stat">
-        <strong>{held}</strong> on hand
+        <strong>{held}</strong> {flock ? "housed" : "on hand"}
       </p>
       <ul className="breakdown">
         {lines.map((line) => (
@@ -93,7 +99,13 @@ export function CapSheet({
           </li>
         ))}
       </ul>
-      <p className="aside">A full store stops that income. Spending, or building a larger hold, is how it moves again.</p>
+      {flock && onStaff ? (
+        <button type="button" className="btn" onClick={onStaff}>
+          Staff the flock
+        </button>
+      ) : (
+        <p className="aside">A full store stops that income. Spending, or building a larger hold, is how it moves again.</p>
+      )}
     </Sheet>
   );
 }

@@ -10,6 +10,8 @@ import {
   knownVoice,
   planFlavor,
   projectRemark,
+  remarkVariants,
+  repeatRemark,
   seasonRemark,
 } from "../src/game/voice";
 
@@ -51,5 +53,19 @@ describe("flock voice", () => {
   it("does not change a line between reads", () => {
     expect(projectRemark("seed-cache")).toBe(projectRemark("seed-cache"));
     expect(eventRemark("cuckoo")).toBe(eventRemark("cuckoo"));
+  });
+
+  it("varies lines that repeat", () => {
+    const broods = remarkVariants("brood");
+    expect(broods.length).toBeGreaterThan(2);
+    expect(new Set(broods).size).toBe(broods.length);
+    expect(repeatRemark("brood", 1)).not.toBe(repeatRemark("brood", 2));
+    expect(repeatRemark("brood", 1)).toBe(repeatRemark("brood", 1));
+    for (const id of ["brood", "nest", "archive", "beacon", "seedfall"]) {
+      for (const line of remarkVariants(id)) {
+        expect(line.length, line).toBeLessThan(48);
+        expect(knownVoice(line), line).toBe(true);
+      }
+    }
   });
 });

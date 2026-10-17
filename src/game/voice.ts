@@ -35,6 +35,25 @@ export function projectRemark(id: string): string {
   return PROJECT_REMARK[id] ?? "";
 }
 
+/** Varied lines for plans that can finish more than once. `nth` starts at 1. */
+export function repeatRemark(id: string, nth: number): string {
+  const lines = REPEAT_REMARKS[id];
+  if (!lines || lines.length === 0) return projectRemark(id);
+  const index = (Math.max(1, nth) - 1) % lines.length;
+  return lines[index] ?? projectRemark(id);
+}
+
+export function repeatNote(id: string, nth: number): string | null {
+  const lines = REPEAT_NOTES[id];
+  if (!lines || lines.length === 0) return null;
+  const index = (Math.max(1, nth) - 1) % lines.length;
+  return lines[index] ?? null;
+}
+
+export function remarkVariants(id: string): readonly string[] {
+  return REPEAT_REMARKS[id] ?? (PROJECT_REMARK[id] ? [PROJECT_REMARK[id]] : []);
+}
+
 export function eventRemark(id: string): string {
   return EVENT_REMARK[id] ?? "";
 }
@@ -107,6 +126,75 @@ const PROJECT_REMARK: Record<string, string> = {
   ark: "Nell: A nest that can leave.",
   scan: "Quill: One star, copied down.",
   murmur: "Nell: Home is a heading. Keep up.",
+};
+
+const REPEAT_REMARKS: Record<string, readonly string[]> = {
+  brood: [
+    "Pip: Three more mouths.",
+    "Pip: Three more beaks to fill.",
+    "Bram: Three more on the rim.",
+    "Nell: New wings, already looking out.",
+    "Quill: Three names, once I learn them.",
+  ],
+  nest: [
+    "Bram: Don't sit on the rim.",
+    "Bram: Another cup. The rim holds.",
+    "Pip: More room. I will fill it.",
+  ],
+  archive: [
+    "Quill: A note can outlive you.",
+    "Quill: The next shelf is the real one.",
+    "Quill: Three rooms. The wind stays out.",
+  ],
+  beacon: [
+    "Nell: They can see us now.",
+    "Nell: Another post, past the song.",
+    "Bram: Higher. Don't fall off it.",
+  ],
+  corridor: [
+    "Nell: Flown twice. It is a route.",
+    "Nell: Another line someone can fly.",
+    "Quill: I wrote the heading down.",
+  ],
+  seedfall: [
+    "Pip: Keep eating. This will not last.",
+    "Pip: A scramble, then a quiet.",
+    "Nell: I found the heads by the wind.",
+  ],
+  ark: [
+    "Nell: A nest that can leave.",
+    "Nell: Another harbor, new sun.",
+    "Pip: Pack the seed. I counted it.",
+  ],
+  scan: [
+    "Quill: One star, copied down.",
+    "Quill: Another fix, written once.",
+    "Nell: A cheaper star. I'll take it.",
+  ],
+  treaty: [
+    "Quill: Polite, and too loud.",
+    "Nell: They heard us. That is new.",
+    "Bram: Smile, then check the rim.",
+  ],
+};
+
+const REPEAT_NOTES: Record<string, readonly string[]> = {
+  brood: [
+    "Three young birds join the count.",
+    "Another three take a place on the branch.",
+    "The nursery empties. The flock is larger.",
+    "Three more, and the seed sum changes.",
+  ],
+  nest: [
+    "Another nest cups into the tree.",
+    "A new cup, measured and left to settle.",
+    "The tree holds one more rim.",
+  ],
+  archive: [
+    "An archive opens under a roof of woven leaves.",
+    "A second room takes the notes the first one cannot.",
+    "The last archive closes against the wind.",
+  ],
 };
 
 const EVENT_REMARK: Record<string, string> = {

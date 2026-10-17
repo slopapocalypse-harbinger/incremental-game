@@ -204,7 +204,7 @@ p {
 
 .resources {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 6px;
   padding: 8px 12px 0;
 }
@@ -220,6 +220,7 @@ p {
   border-radius: 14px;
   padding: 6px 10px 6px;
   min-height: 64px;
+  min-width: 0;
 }
 
 .chip.capped {
@@ -254,11 +255,13 @@ p {
   justify-content: space-between;
   align-items: baseline;
   gap: 8px;
+  min-width: 0;
 }
 
 .chip-value strong {
   font-family: var(--serif);
   font-size: 1.2rem;
+  flex: none;
 }
 
 .chip-value small,
@@ -267,8 +270,24 @@ p {
   font-size: 0.78rem;
 }
 
+.chip-value small {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35em;
+  min-width: 0;
+}
+
+.chip-rate {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .chip-inline-cap {
   display: none;
+  flex: none;
+  white-space: nowrap;
 }
 
 .meter {
@@ -364,6 +383,11 @@ p {
   text-align: right;
   display: flex;
   flex-direction: column;
+  align-items: flex-end;
+}
+
+.stat-line {
+  white-space: nowrap;
 }
 
 .stat strong {
@@ -1129,6 +1153,10 @@ p {
     padding: 4px 10px 8px;
   }
 
+  .panel-head {
+    align-items: flex-start;
+  }
+
   .panel-head h2,
   .sheet-head h2 {
     font-size: 1.05rem;
@@ -1267,7 +1295,7 @@ html[data-tab-hidden="true"] .burst {
   }
 
   .resources {
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 
   .objective {

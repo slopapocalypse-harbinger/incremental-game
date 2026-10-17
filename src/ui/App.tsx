@@ -255,7 +255,19 @@ export function App() {
         <MigrateSheet game={game} onClose={() => setSheet(null)} commit={commit} />
       ) : null}
       {sheet && typeof sheet === "object" ? (
-        <CapSheet game={game} id={sheet.id} onClose={() => setSheet(null)} />
+        <CapSheet
+          game={game}
+          id={sheet.id}
+          onClose={() => setSheet(null)}
+          onStaff={
+            sheet.id === "flock"
+              ? () => {
+                  setSheet(null);
+                  setTab("flock");
+                }
+              : undefined
+          }
+        />
       ) : null}
       {showingIntro ? (
         <IntroSheet
@@ -329,8 +341,8 @@ function ResourceChip({
       <span className="chip-value">
         <strong>{shown}</strong>
         <small>
-          {formatRate(rate)}
-          <span className="chip-inline-cap"> · cap {formatAmount(cap, 0)}</span>
+          <span className="chip-rate">{formatRate(rate)}</span>
+          <span className="chip-inline-cap">cap {formatAmount(cap, 0)}</span>
         </small>
       </span>
       <span className="chip-cap">Cap {formatAmount(cap, 0)}</span>
