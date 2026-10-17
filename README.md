@@ -1,28 +1,39 @@
 # Birds vs. Everything
 
-A finite, strategic incremental game about guiding a flock from one sunlit
-canopy to a galaxy-wide living network.
+A field notebook about a flock that learns to leave. Staff the birds, spend the stores, and decide what the route is for.
 
-## Play online
+The design, including the critique of the previous game and the pacing targets, is in [docs/DESIGN.md](docs/DESIGN.md).
 
-[Play Birds vs. Everything](https://slopapocalypse-harbinger.github.io/incremental-game/)
+## Play
 
-The GitHub Pages version is built and deployed automatically whenever changes
-land on `main`.
+The live game stays at the site root until the rebuild is merged:
 
-## Play locally
+[Birds vs. Everything](https://slopapocalypse-harbinger.github.io/incremental-game/)
+
+The playtest build is published from `cursor/birds-rebuild-233d` at:
+
+[Playtest](https://slopapocalypse-harbinger.github.io/incremental-game/next/)
+
+That playtest keeps the previous game at the root and serves this one from `/next/`. After the playtest branch is merged, remove it from `.github/workflows/deploy-pages.yml`. A later push to that branch would put the old game back at the root.
+
+## Run locally
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
-The game runs at `http://localhost:3000`. Progress is saved locally in the
-browser and can also be exported from the settings drawer.
+The dev server opens at `http://localhost:5173/`. Progress is stored in this browser under `bve.campaign`.
 
-## Design
+```bash
+pnpm test
+pnpm typecheck
+pnpm lint
+pnpm build
+```
 
-The simulation favors staffing choices, resource chains, timed commitments,
-long-term doctrines, and legible consequences over repetitive clicking. The
-central Living Atlas changes with every era so progress is visible as well as
-numerical.
+`pnpm build:preview` builds the previous game at the site root and this one under `dist-pages/next/`.
+
+## Saves
+
+This campaign does not read the previous game's save (`birds-vs-everything-v3`). That key is left in place. Export from the notebook before you clear browser data; import asks you to confirm before it replaces the run.
