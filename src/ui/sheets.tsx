@@ -52,7 +52,9 @@ export function EventSheet({
                 {option.name}
               </button>
               <p className="forecast">{option.effect}</p>
-              {option.cost ? <p className="reason">Costs {formatCosts(option.cost)}.</p> : <p className="reason">No stores spent.</p>}
+              {option.cost && !/cost/i.test(option.effect) ? (
+                <p className="reason">Costs {formatCosts(option.cost)}.</p>
+              ) : null}
               {!readiness.ok ? <p className="reason">{readiness.reason}</p> : null}
             </li>
           );
@@ -60,11 +62,9 @@ export function EventSheet({
       </ul>
       {waiting > 0 ? (
         <p className="aside">
-          {waiting} more moment{waiting === 1 ? "" : "s"} waiting after this one. The flock keeps working underneath.
+          {waiting} more choice{waiting === 1 ? "" : "s"} after this.
         </p>
-      ) : (
-        <p className="aside">The flock keeps working while you choose.</p>
-      )}
+      ) : null}
     </Sheet>
   );
 }
@@ -88,7 +88,7 @@ export function CapSheet({
   return (
     <Sheet title={title} eyebrow={flock ? "Not the roster" : "Why it stops here"} onClose={onClose} testId={`cap-${id}`}>
       {flock ? (
-        <p>This is how many birds the branches can hold. Staffing is on the Flock tab.</p>
+        <p>How many birds the branches can hold.</p>
       ) : null}
       {pause ? <p data-testid="growth-reason">{pause}</p> : null}
       <p className="stat">
@@ -107,7 +107,7 @@ export function CapSheet({
           Staff the flock
         </button>
       ) : (
-        <p className="aside">A full store stops that income. Spending, or building a larger hold, is how it moves again.</p>
+        <p className="aside">A full store stops that income until you spend or build.</p>
       )}
     </Sheet>
   );

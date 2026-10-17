@@ -180,15 +180,8 @@ export function App() {
       />
 
       <section className="objective" data-testid="objective">
-        <div className="objective-copy">
-          <p className="eyebrow">Now</p>
-          <h2>{objective.title}</h2>
-          <p>{objective.detail}</p>
-        </div>
-        <div className="meter" aria-hidden="true">
-          <i style={{ width: `${Math.min(100, objective.progress * 100)}%` }} />
-        </div>
-        <p className="next-action">{objective.next}</p>
+        <h2>{objective.title}</h2>
+        <p className="next-action">{game.won ? objective.detail : objective.next}</p>
       </section>
 
       {note ? (

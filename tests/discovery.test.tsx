@@ -126,8 +126,8 @@ describe("discovery", () => {
 
     state = finish(state, "roost");
     expect(state.act).toBe(2);
-    expect(texts(state)).toContain(roleArrival("broodkeepers"));
-    expect(texts(state)).toContain(roleArrival("scholars"));
+    expect(texts(state).join("\n")).toContain(roleArrival("broodkeepers"));
+    expect(texts(state).join("\n")).toContain(roleArrival("scholars"));
 
     state = {
       ...state,
@@ -137,12 +137,12 @@ describe("discovery", () => {
     };
     state = finish(state, "council");
     expect(state.act).toBe(3);
-    expect(texts(state)).toContain(roleArrival("envoys"));
+    expect(texts(state).join("\n")).toContain(roleArrival("envoys"));
 
     state = { ...state, counts: { ...state.counts, beacon: 2 }, flock: 24 };
     state = finish(state, "accord");
     expect(state.act).toBe(4);
-    expect(texts(state)).toContain(roleArrival("navigators"));
+    expect(texts(state).join("\n")).toContain(roleArrival("navigators"));
 
     const announced = ROLE_DEFS.map((role) => role.id).filter((id) => roleArrival(id).length > 0);
     expect(announced).toEqual([

@@ -18,7 +18,7 @@ import {
   type ProjectDef,
 } from "./content";
 import { clampResource, formatAmount, formatDuration, formatRate } from "./number";
-import { doctrineRemark, eventRemark, repeatNote, repeatRemark, roleArrival } from "./voice";
+import { doctrineRemark, isBirdLine, repeatRemark, roleArrival } from "./voice";
 import {
   SAVE_VERSION,
   type Act,
@@ -75,17 +75,11 @@ export function createInitialState(now: number, meta?: Partial<RunMeta>): GameSt
       {
         id: 1,
         at: 0,
-        text: "Six birds in the sunward canopy. Three are already working the seed heads. Three are watching.",
-        tone: "story",
-      },
-      {
-        id: 2,
-        at: 0,
-        text: "Pip: Six. I counted the ones working and the ones watching.",
+        text: "Six birds. Three working, three idle.",
         tone: "story",
       },
     ],
-    logSeq: 2,
+    logSeq: 1,
     won: false,
     marks: meta?.marks ?? 0,
     ranks,
@@ -456,12 +450,13 @@ export function startProject(state: GameState, projectId: string): GameState {
   if (duration <= 0) {
     return completeProject(spent, project.id);
   }
+  const away = project.birds > 0 ? ` ${project.birds} birds step off the job.` : "";
   return pushLog(
     {
       ...spent,
       active: { id: project.id, remaining: duration, duration, birds: project.birds },
     },
-    `${project.name} begins. ${project.birds} birds leave their ordinary work.`,
+    `${project.name} starts.${away}`,
     "story",
   );
 }
@@ -471,7 +466,7 @@ export function recallProject(state: GameState): GameState {
   const project = projectById(state.active.id);
   return pushLog(
     { ...state, active: null },
-    `${project?.name ?? "The expedition"} is recalled. What you spent stays spent.`,
+    `${project?.name ?? "The plan"} recalled. Stores stay spent.`,
     "warning",
   );
 }
@@ -647,17 +642,10 @@ export function buyTech(state: GameState, techId: string): GameState {
 export function chooseDoctrine(state: GameState, doctrine: DoctrineId): GameState {
   if (state.act < 2 || state.doctrine) return state;
   if (!DOCTRINES.some((item) => item.id === doctrine)) return state;
-  const definition = DOCTRINES.find((item) => item.id === doctrine);
-  let next = applyDoctrineGift({ ...state, doctrine }, doctrine);
-  next = pushLog(
-    next,
-    `${definition?.name ?? "A doctrine"} becomes the way this flock flies.`,
-    "story",
-  );
-  next = pushLog(next, doctrineRemark(doctrine), "story");
+  const next = applyDoctrineGift({ ...state, doctrine }, doctrine);
   const gift = doctrineGiftNote(doctrine);
-  if (gift) next = pushLog(next, gift, "good");
-  return next;
+  const line = gift ? `${doctrineRemark(doctrine)} ${gift}` : doctrineRemark(doctrine);
+  return pushNotable(next, line);
 }
 
 function applyDoctrineGift(state: GameState, doctrine: DoctrineId): GameState {
@@ -680,10 +668,10 @@ function applyDoctrineGift(state: GameState, doctrine: DoctrineId): GameState {
 
 function doctrineGiftNote(doctrine: DoctrineId): string {
   if (doctrine === "ingenuity") {
-    return `A scholar joins the desk. ${TUNE.ingenuityGift} knowledge is already written.`;
+    return `A scholar joins. +${TUNE.ingenuityGift} knowledge.`;
   }
   if (doctrine === "wanderlust") {
-    return `${TUNE.wanderlustGift} headings are already flown. The routes count them.`;
+    return `+${TUNE.wanderlustGift} routes already flown.`;
   }
   return "";
 }
@@ -694,14 +682,9 @@ export function respecDoctrine(state: GameState, doctrine: DoctrineId): GameStat
   if (state.doctrine === doctrine) return state;
   if (state.act < 2) return state;
   const definition = DOCTRINES.find((item) => item.id === doctrine);
-  return pushLog(
-    pushLog(
-      { ...state, doctrine, doctrineChanges: state.doctrineChanges + 1 },
-      `Second look: the flock turns toward ${definition?.name ?? doctrine}.`,
-      "story",
-    ),
-    doctrineRemark(doctrine),
-    "story",
+  return pushNotable(
+    { ...state, doctrine, doctrineChanges: state.doctrineChanges + 1 },
+    `Second look: ${definition?.name ?? doctrine}. ${doctrineRemark(doctrine)}`,
   );
 }
 
@@ -731,9 +714,7 @@ export function resolveEvent(state: GameState, eventId: string, optionId: string
       : [...state.flags, `event:${eventId}:${optionId}`],
   };
   next = applyEvent(next, eventId, optionId);
-  next = pushLog(next, `${event.title} — ${option.name}.`, "story");
-  const aside = eventRemark(eventId);
-  if (aside) next = pushLog(next, aside, "story");
+  next = pushLog(next, `${event.title}: ${option.name}.`, "story");
   return promoteQueue(next);
 }
 
@@ -858,7 +839,7 @@ function objectiveBody(state: GameState): Objective {
           ? "Raise an archive."
           : state.flock < 16
             ? `Grow the flock to 16 (${formatAmount(Math.floor(state.flock), 0)}/16).`
-            : "Bank the council's stores.",
+            : "Save up for the council.",
       projectId,
     };
   }
@@ -874,7 +855,7 @@ function objectiveBody(state: GameState): Objective {
           ? `Raise beacons (${count(state, "beacon")}/2).`
           : state.flock < 24
             ? `Grow the flock to 24 (${formatAmount(Math.floor(state.flock), 0)}/24).`
-            : "Bank the accord.",
+            : "Save up for the accord.",
       projectId,
     };
   }
@@ -888,7 +869,7 @@ function objectiveBody(state: GameState): Objective {
         ? `Reach six systems (${state.systems}/6). Arks build harbors; scans are cheaper.`
         : state.flock < 32
           ? `Grow the flock to 32 (${formatAmount(Math.floor(state.flock), 0)}/32).`
-          : "Bank the murmuration.",
+          : "Save up for the murmuration.",
     projectId,
   };
 }
@@ -896,30 +877,28 @@ function objectiveBody(state: GameState): Objective {
 export function endingText(state: GameState): { title: string; body: string } {
   let body: string;
   if (state.doctrine === "stewardship") {
-    body =
-      "The murmuration settles as a chain of gardens. Every world is left with more cover than the flock found.";
+    body = "Every world keeps more cover than the flock found.";
   } else if (state.doctrine === "ingenuity") {
-    body =
-      "The murmuration becomes a library written across suns. The route learns to remember itself.";
+    body = "The route writes itself down, and remembers.";
   } else {
-    body = "The murmuration never settles. A galaxy of routes is the flock's last, endless home.";
+    body = "The flock never settles. The routes are home.";
   }
   if (state.flags.includes("event:garden-treaty:accept")) {
-    body += " The first garden is still on the route.";
+    body += " The first garden stays on the route.";
   }
   if (state.flags.includes("event:quiet-signal:follow")) {
     body += " The signal became a heading.";
   }
   if (state.flags.includes("event:quiet-signal:archive")) {
-    body += " The signal was copied down and left unanswered.";
+    body += " The signal was copied and left alone.";
   }
   if (state.flags.includes("sanctuary")) {
-    body += " One ground was left wild on purpose.";
+    body += " One ground was left wild.";
   }
   if (state.flags.includes("took-seed")) {
-    body += " The last ground was harvested down to the soil.";
+    body += " The last ground was harvested.";
   }
-  return { title: "The sky is a habitat", body };
+  return { title: "The route is written", body };
 }
 
 export function marksForRun(state: GameState): number {
@@ -988,8 +967,8 @@ export function migrate(
     state: pushLog(
       fresh,
       state.won
-        ? "The route is written down. A new flock gathers under the same headings."
-        : "The expedition turns back early. A few headings are all that travel with you.",
+        ? "New flock. The old headings came along."
+        : "Turned back early. A few headings carry over.",
       "story",
     ),
   };
@@ -1140,25 +1119,11 @@ function completeProject(state: GameState, id: string): GameState {
     next = { ...next, counts: { ...next.counts, [id]: count(next, id) + 1 } };
   }
   switch (id) {
-    case "seed-cache":
-      next = pushLog(next, "Dry grass in a hollow. The seed stays where it was put.", "story");
-      next = pushLog(next, roleArrival("weavers"), "story");
-      break;
     case "first-nest":
       next = { ...next, counts: { ...next.counts, nest: count(next, "nest") + 1 } };
-      next = pushLog(next, "The first nest takes a bird's weight. Plans can start.", "story");
       break;
     case "survey":
       next = { ...next, routes: Math.min(TUNE.maxRoutes, next.routes + 2) };
-      next = pushLog(
-        next,
-        "Two branches are worth a route. A little knowledge keeps arriving. Scouts bring more.",
-        "story",
-      );
-      next = pushLog(next, roleArrival("scouts"), "story");
-      break;
-    case "nest":
-      next = pushLog(next, repeatNote("nest", count(next, "nest")) ?? "Another nest cups into the tree.");
       break;
     case "seedfall":
       next = {
@@ -1167,23 +1132,9 @@ function completeProject(state: GameState, id: string): GameState {
         cooldowns: { ...next.cooldowns, seedfall: next.elapsed + 240 },
         effects: upsertEffect(next, "seedfall", 75),
       };
-      next = pushLog(next, "The flock hits the seedfall. A new route is scratched into bark.");
       break;
     case "roost":
       next = setAct(next, 2);
-      next = pushLog(
-        next,
-        "The first roost holds through the night. At dawn someone starts keeping a record.",
-        "story",
-      );
-      next = pushLog(next, roleArrival("broodkeepers"), "story");
-      next = pushLog(next, roleArrival("scholars"), "story");
-      break;
-    case "archive":
-      next = pushLog(
-        next,
-        repeatNote("archive", count(next, "archive")) ?? "An archive opens under a roof of woven leaves.",
-      );
       break;
     case "brood":
       next = {
@@ -1191,11 +1142,9 @@ function completeProject(state: GameState, id: string): GameState {
         flock: Math.min(getCapacity(next), next.flock + 3),
         cooldowns: { ...next.cooldowns, brood: next.elapsed + TUNE.broodRest },
       };
-      next = pushLog(next, repeatNote("brood", count(next, "brood")) ?? "Three young birds join the count.");
       break;
     case "corridor":
       next = { ...next, routes: Math.min(TUNE.maxRoutes, next.routes + 1) };
-      next = pushLog(next, "A corridor is flown twice, and then it is a route.");
       break;
     case "council":
       next = setAct(next, 3);
@@ -1203,11 +1152,6 @@ function completeProject(state: GameState, id: string): GameState {
         ...next,
         resources: { ...next.resources, influence: Math.max(next.resources.influence, 8) },
       };
-      next = pushLog(next, "The Sky Council sits. Nobody agrees who called it.", "story");
-      next = pushLog(next, roleArrival("envoys"), "story");
-      break;
-    case "beacon":
-      next = pushLog(next, "A chorus beacon takes the light past the last familiar tree.");
       break;
     case "treaty":
       next = {
@@ -1216,16 +1160,6 @@ function completeProject(state: GameState, id: string): GameState {
         cooldowns: { ...next.cooldowns, treaty: next.elapsed + 180 },
         effects: upsertEffect(next, "tailwind", 90),
       };
-      next = pushLog(next, "The treaty flight comes home lighter and louder.");
-      break;
-    case "granary":
-      next = pushLog(next, "A granary roost is raised. It exists to be full.");
-      break;
-    case "academy":
-      next = pushLog(next, "An academy roost opens. The arguments finally have a shelf.");
-      break;
-    case "eyrie":
-      next = pushLog(next, "An eyrie roost juts out over the drop. There is room for more birds.");
       break;
     case "accord":
       next = setAct(next, 4);
@@ -1234,19 +1168,9 @@ function completeProject(state: GameState, id: string): GameState {
         systems: Math.max(1, next.systems),
         resources: gain(next, { starlight: 24 }),
       };
-      next = pushLog(
-        next,
-        "The Open-Sky Accord is ratified. The sun becomes a destination, not only a clock.",
-        "story",
-      );
-      next = pushLog(next, roleArrival("navigators"), "story");
-      break;
-    case "solar":
-      next = pushLog(next, "A solar nursery catches the light between two legs of the route.");
       break;
     case "ark":
       next = { ...next, systems: next.systems + 1 };
-      next = pushLog(next, "A seed ark roots itself under an unfamiliar star.");
       break;
     case "scan":
       next = {
@@ -1254,19 +1178,74 @@ function completeProject(state: GameState, id: string): GameState {
         systems: next.systems + 1,
         routes: Math.min(TUNE.maxRoutes, next.routes + 1),
       };
-      next = pushLog(next, "The deep sky gives up one quiet star and a line through the dark.");
       break;
     case "murmur":
       next = setAct(next, 5);
       next = { ...next, won: true, paused: false };
-      next = pushLog(next, endingText(next).body, "story");
       break;
     default:
       break;
   }
-  const aside = repeatRemark(id, Math.max(1, count(next, id)));
-  if (aside) next = pushLog(next, aside, "story");
-  return next;
+  return pushStory(next, projectLogLine(next, id));
+}
+
+/** One line per completion. A quip only when the previous line was not a bird. */
+function projectLogLine(state: GameState, id: string): string {
+  switch (id) {
+    case "seed-cache":
+      return roleArrival("weavers");
+    case "first-nest":
+      return "The first nest is up. Plans can start.";
+    case "survey":
+      return roleArrival("scouts");
+    case "roost":
+      return `The roost is up. ${roleArrival("broodkeepers")} ${roleArrival("scholars")}`;
+    case "council":
+      return `The council sits. ${roleArrival("envoys")}`;
+    case "accord":
+      return `The accord is set. ${roleArrival("navigators")}`;
+    case "murmur":
+      return endingText(state).body;
+    default: {
+      const nth = Math.max(1, count(state, id));
+      const last = state.logs[state.logs.length - 1]?.text ?? "";
+      if (nth % 2 === 1 && !isBirdLine(last)) return repeatRemark(id, nth);
+      return plainResult(id);
+    }
+  }
+}
+
+function plainResult(id: string): string {
+  switch (id) {
+    case "nest":
+      return "Another nest. More housing.";
+    case "seedfall":
+      return "Seedfall hit. One new route.";
+    case "archive":
+      return "Archive raised. Knowledge store grows.";
+    case "brood":
+      return "Three birds join the flock.";
+    case "corridor":
+      return "One new route.";
+    case "beacon":
+      return "Beacon raised. Influence grows.";
+    case "treaty":
+      return "Treaty flight home. Influence up.";
+    case "granary":
+      return "Granary roost raised.";
+    case "academy":
+      return "Academy roost raised.";
+    case "eyrie":
+      return "Eyrie roost raised.";
+    case "solar":
+      return "Solar nursery woven.";
+    case "ark":
+      return "Seed ark launched. One new system.";
+    case "scan":
+      return "One star read. One new route.";
+    default:
+      return "Done.";
+  }
 }
 
 function setAct(state: GameState, act: Act): GameState {
@@ -1398,7 +1377,7 @@ function enqueueDue(state: GameState): GameState {
   if (dropped.length > 0) {
     next = pushLog(
       next,
-      "Some weather passed while the flock was busy. The notebook skipped ahead.",
+      "A choice passed while the flock was busy.",
       "warning",
     );
   }
@@ -1452,6 +1431,28 @@ export function formatCosts(costs: Partial<Resources>): string {
 function pushLog(state: GameState, text: string, tone: GameLog["tone"] = "good"): GameState {
   const entry: GameLog = { id: state.logSeq + 1, at: state.elapsed, text, tone };
   return { ...state, logSeq: entry.id, logs: [...state.logs.slice(-79), entry] };
+}
+
+/** One bird line at a time. A second voice folds into the line already showing. */
+function pushStory(state: GameState, text: string): GameState {
+  const last = state.logs[state.logs.length - 1];
+  if (last && isBirdLine(last.text) && isBirdLine(text)) {
+    const logs = state.logs.slice(0, -1);
+    logs.push({ ...last, text: `${last.text} ${text}` });
+    return { ...state, logs };
+  }
+  return pushLog(state, text, "story");
+}
+
+/** Keeps a bird from answering the bird on the previous line. */
+function pushNotable(state: GameState, text: string, tone: GameLog["tone"] = "story"): GameState {
+  const last = state.logs[state.logs.length - 1];
+  if (last && isBirdLine(last.text) && isBirdLine(text)) {
+    const plain = text.replace(/\b(Pip|Bram|Nell|Quill):\s*/g, "").trim();
+    if (!plain) return state;
+    return pushLog(state, plain, tone);
+  }
+  return pushLog(state, text, tone);
 }
 
 export function actName(act: Act): string {

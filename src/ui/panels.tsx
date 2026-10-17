@@ -195,7 +195,7 @@ export function PlansPanel({
 
       {idle >= 1 && !game.won && !game.flags.includes("survey") ? (
         <p className="hint">
-          {formatBirds(idle)} bird{idle === 1 ? " is" : "s are"} idle. Staff them on the Flock tab, then come back to launch.
+          {formatBirds(idle)} idle. Assign them on Flock.
         </p>
       ) : null}
 
@@ -203,7 +203,7 @@ export function PlansPanel({
       {game.active ? <ActiveCard game={game} apply={apply} /> : null}
 
       {projects.length === 0 && !game.won ? (
-        <p className="empty">Nothing new can be started. Check the objective for the gate.</p>
+        <p className="empty">Nothing to start. Check Now for the gate.</p>
       ) : (
         <ul className="cards">
           {projects.map((project) => (
@@ -244,8 +244,10 @@ function ProjectCard({
       </p>
       <h3>{projectTitle(game, project)}</h3>
       <p className="summary">{project.summary}</p>
-      {planFlavor(project.id) ? <p className="flavor">{planFlavor(project.id)}</p> : null}
-      <p className={`plan-note${open ? " show" : ""}`}>{project.forecast}</p>
+      <div className={`plan-note${open ? " show" : ""}`}>
+        {planFlavor(project.id) ? <p className="flavor">{planFlavor(project.id)}</p> : null}
+        <p>{project.forecast}</p>
+      </div>
       <p className="meta">
         {formatCosts(costs)}
         {" · "}
@@ -290,7 +292,7 @@ function ActiveCard({ game, apply }: { game: GameState; apply: Apply }) {
       <p className="eyebrow">Out now</p>
       <h3>{project?.name ?? "Expedition"}</h3>
       <p>
-        {active.birds} birds are away. About {formatDuration(active.remaining / speed)} of work remains.
+        {active.birds} birds away. {formatDuration(active.remaining / speed)} left.
       </p>
       <div className="meter" aria-hidden="true">
         <i style={{ width: `${Math.min(100, progress * 100)}%` }} />
@@ -298,7 +300,7 @@ function ActiveCard({ game, apply }: { game: GameState; apply: Apply }) {
       <button type="button" className="btn danger" onClick={() => apply(recallProject)}>
         Recall
       </button>
-      <p className="reason">Recalling does not refund what you spent.</p>
+      <p className="reason">Recall keeps the cost spent.</p>
     </article>
   );
 }
@@ -311,8 +313,8 @@ function EndingCard({ game, onMigrate }: { game: GameState; onMigrate: () => voi
       <p className="eyebrow">The route is written</p>
       <h3>This expedition can migrate</h3>
       <p>
-        Leaving now carries {carry} mark{carry === 1 ? "" : "s"}
-        {game.marks > 0 ? `, on top of the ${game.marks} already banked` : ""}.
+        Leaving carries {carry} mark{carry === 1 ? "" : "s"}
+        {game.marks > 0 ? `, plus ${game.marks} banked` : ""}.
       </p>
       <button type="button" className="btn" onClick={onMigrate}>
         Choose what to carry
@@ -353,42 +355,18 @@ export function StudyPanel({
           <>
           <Plate id="doctrine-choice" />
           <ul className="doctrines">
-            {DOCTRINES.map((doctrine) => {
-              const selected = game.doctrine === doctrine.id;
-              const locked = Boolean(game.doctrine) && !canRespec && !selected;
-              return (
-                <li key={doctrine.id} className={selected ? "doctrine on" : "doctrine"}>
-                  <h3>
-                    <Icon name={doctrine.id} />
-                    {doctrine.name}
-                  </h3>
-                  <p>{doctrine.summary}</p>
-                  <p className="forecast">{doctrine.tradeoff}</p>
-                  {selected ? <p className="reason ready">This is how the flock flies.</p> : null}
-                  {!selected && game.doctrine && canRespec ? (
-                    <button
-                      type="button"
-                      className="btn"
-                      data-testid={`doctrine-${doctrine.id}`}
-                      onClick={() => apply((state) => respecDoctrine(state, doctrine.id))}
-                    >
-                      Turn toward {doctrine.name}
-                    </button>
-                  ) : null}
-                  {!game.doctrine ? (
-                    <button
-                      type="button"
-                      className="btn"
-                      data-testid={`doctrine-${doctrine.id}`}
-                      onClick={() => apply((state) => chooseDoctrine(state, doctrine.id as DoctrineId))}
-                    >
-                      Fly this way
-                    </button>
-                  ) : null}
-                  {locked ? <p className="reason">A doctrine stays unless a later flight bought Second look.</p> : null}
-                </li>
-              );
-            })}
+            {DOCTRINES.map((doctrine) => (
+              <DoctrineRow
+                key={doctrine.id}
+                game={game}
+                id={doctrine.id}
+                name={doctrine.name}
+                summary={doctrine.summary}
+                tradeoff={doctrine.tradeoff}
+                canRespec={canRespec}
+                apply={apply}
+              />
+            ))}
           </ul>
           </>
       </article>
@@ -432,8 +410,8 @@ export function StudyPanel({
         <p className="eyebrow">Carried between flights</p>
         <h3>Flyway ranks</h3>
         <p>
-          Banked marks: {game.marks}. This flight would add {marksForRun(game)} if you left now.
-          {game.migrations > 0 ? ` ${game.migrations} migration${game.migrations === 1 ? "" : "s"} so far.` : ""}
+          {game.marks} banked. This flight adds {marksForRun(game)}.
+          {game.migrations > 0 ? ` ${game.migrations} flight${game.migrations === 1 ? "" : "s"} so far.` : ""}
         </p>
         <RankList game={game} />
         {game.act >= 2 || game.won ? (
@@ -450,7 +428,7 @@ function RankList({ game }: { game: GameState }) {
   const entries = UPGRADES.map((upgrade) => ({ upgrade, rank: game.ranks[upgrade.id] ?? 0 })).filter(
     (entry) => entry.rank > 0,
   );
-  if (entries.length === 0) return <p className="reason">Nothing has been carried forward yet.</p>;
+  if (entries.length === 0) return <p className="reason">Nothing carried forward yet.</p>;
   return (
     <ul className="rank-list">
       {entries.map(({ upgrade, rank }) => (
@@ -459,6 +437,71 @@ function RankList({ game }: { game: GameState }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+function DoctrineRow({
+  game,
+  id,
+  name,
+  summary,
+  tradeoff,
+  canRespec,
+  apply,
+}: {
+  game: GameState;
+  id: DoctrineId;
+  name: string;
+  summary: string;
+  tradeoff: string;
+  canRespec: boolean;
+  apply: Apply;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = game.doctrine === id;
+  const locked = Boolean(game.doctrine) && !canRespec && !selected;
+  return (
+    <li className={selected ? "doctrine on" : "doctrine"}>
+      <h3>
+        <Icon name={id} />
+        {name}
+      </h3>
+      <p>{summary}</p>
+      <div className={`plan-note${open ? " show" : ""}`}>
+        <p className="forecast">{tradeoff}</p>
+        {locked ? <p className="reason">Stays unless a later flight bought Second look.</p> : null}
+      </div>
+      <div className="card-actions">
+        {!selected && game.doctrine && canRespec ? (
+          <button
+            type="button"
+            className="btn"
+            data-testid={`doctrine-${id}`}
+            onClick={() => apply((state) => respecDoctrine(state, id))}
+          >
+            Turn toward {name}
+          </button>
+        ) : null}
+        {!game.doctrine ? (
+          <button
+            type="button"
+            className="btn"
+            data-testid={`doctrine-${id}`}
+            onClick={() => apply((state) => chooseDoctrine(state, id))}
+          >
+            Fly this way
+          </button>
+        ) : null}
+        <button
+          type="button"
+          className="btn ghost more"
+          aria-expanded={open}
+          onClick={() => setOpen((value) => !value)}
+        >
+          {open ? "Less" : "More"}
+        </button>
+      </div>
+    </li>
   );
 }
 
@@ -471,7 +514,9 @@ export function WorldPanel({
   active: boolean;
   open?: boolean;
 }) {
+  const [details, setDetails] = useState(false);
   const effects = game.effects.filter((effect) => effect.until > game.elapsed);
+  const routeBonus = Math.round(TUNE.routeBonus * (game.doctrine === "wanderlust" ? 1.4 : 1) * 100);
   return (
     <section
       className={`panel panel-world${active ? " on" : ""}`}
@@ -517,20 +562,26 @@ export function WorldPanel({
             </li>
           ))}
         </ul>
-      ) : (
-        <p className="aside">No weather is sitting on the flock right now.</p>
-      )}
-      <p className="aside">
-        Each route adds {Math.round(TUNE.routeBonus * (game.doctrine === "wanderlust" ? 1.4 : 1) * 100)}% to seeds
-        and twigs. Morale speeds influence and growth. It cannot fall far enough to stop the flock.
-      </p>
-      <p className="aside">
-        {getSeason(game).detail}{" "}
-        {game.systems > 0
-          ? "Stars on the map are harbors and scans, not decoration."
-          : "The map stays a tree until the accord opens the dark."}
-      </p>
+      ) : null}
       <p className="voice">{seasonRemark(getSeason(game).id)}</p>
+      <button
+        type="button"
+        className="btn ghost more"
+        aria-expanded={details}
+        onClick={() => setDetails((value) => !value)}
+      >
+        {details ? "Less" : "More"}
+      </button>
+      <div className={`plan-note${details ? " show" : ""}`}>
+        <p>
+          Each route adds {routeBonus}% to seeds and twigs. Morale speeds influence and growth, and it cannot
+          stop the flock.
+        </p>
+        <p>
+          {getSeason(game).detail}{" "}
+          {game.systems > 0 ? "Stars are harbors and scans." : "The map stays a tree until the accord."}
+        </p>
+      </div>
     </section>
   );
 }
@@ -567,7 +618,6 @@ export function LogPanel({
           Plans
         </button>
       </header>
-      <p className="aside">Quill writes what happened. The log will not choose.</p>
       {entries.length === 0 ? (
         <p className="empty">The first page is still blank.</p>
       ) : (

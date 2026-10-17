@@ -20,17 +20,17 @@ export const INTRO_BEATS: StoryBeat[] = [
   {
     id: "canopy",
     title: "Six birds, one tree",
-    body: "The sunward canopy still feeds them. Three are already in the seed heads. Three are waiting on you.",
+    body: "Six birds share a tree in the sunward canopy. Three are already working.",
   },
   {
     id: "appetite",
     title: "They eat anyway",
-    body: "An idle bird gathers nothing and still takes a seed. The work is the mix, not the tapping.",
+    body: "Idle birds gather nothing, and they still eat.",
   },
   {
     id: "leaving",
     title: "Home is a heading",
-    body: "The tree is where the notebook starts. It is not where the flock means to stay. First a cache. Then a route that outgrows the sky.",
+    body: "This tree is a start. The flock will leave once the route outgrows it.",
   },
 ];
 
@@ -38,42 +38,42 @@ export const TIPS: Tip[] = [
   {
     id: "plans",
     title: "Plans",
-    body: "Pip does one plan at a time. Starting spends the stores and borrows birds until it is done.",
+    body: "One plan at a time. Starting spends stores and borrows birds.",
     tabs: ["plans"],
     when: () => true,
   },
   {
     id: "study",
     title: "Study",
-    body: "Study is open. Knowledge bends a rate or a store. None of it is a hidden key.",
+    body: "Knowledge changes a rate or a store. Nothing here is a hidden key.",
     tabs: ["plans", "flock", "study", "world", "log"],
     when: (state) => state.flags.includes("first-nest"),
   },
   {
     id: "seasons",
     title: "Seasons",
-    body: "Weather changes the gathering. A launch takes the same time in a crosswind.",
+    body: "Weather changes gathering. Launches take the same time.",
     tabs: ["world"],
     when: (state) => state.flags.includes("seed-cache"),
   },
   {
     id: "doctrine",
     title: "Doctrine",
-    body: "One identity for this flight. All three can finish. What you feel now is written on the card.",
+    body: "Pick one identity. All three can finish. More lists what you feel now.",
     tabs: ["study"],
     when: (state) => state.act >= 2 && state.doctrine === null,
   },
   {
     id: "events",
     title: "A choice",
-    body: "One option never asks for something you do not have. The other can wait until you can pay.",
+    body: "One option is free. The other waits until you can pay.",
     tabs: [],
     when: (state) => state.pendingEvent !== null,
   },
   {
     id: "migration",
     title: "Migration",
-    body: "Nell says you can leave. A win pays 8 or more. The confirm line says what leaving pays now.",
+    body: "You can leave. A win pays 8 or more. The confirm line states the payout.",
     tabs: ["plans"],
     when: (state) => state.act >= 2 || state.won,
   },
@@ -114,14 +114,14 @@ export function tabAccess(state: GameState, tab: TabId): { open: boolean; reason
     const open = state.flags.includes("seed-cache");
     return {
       open,
-      reason: open ? "" : "World opens after the seed cache. The weather can wait.",
+      reason: open ? "" : "World opens after the seed cache.",
     };
   }
   if (tab === "log") {
     const open = state.flags.length > 0;
     return {
       open,
-      reason: open ? "" : "The log opens once the flock has done something.",
+      reason: open ? "" : "The log opens after the first plan.",
     };
   }
   const open = state.flags.includes("first-nest");

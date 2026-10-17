@@ -2,26 +2,31 @@ import type { DoctrineId, RoleId, SeasonId } from "./types";
 
 /** American goldfinches. Same four birds, all expedition. */
 export const FLOCK_VOICES = [
-  { id: "pip", name: "Pip", temper: "Counts the seed, then counts it again." },
-  { id: "bram", name: "Bram", temper: "Judges a nest by the rim, and says so." },
-  { id: "nell", name: "Nell", temper: "Already describing a tree she has not landed in." },
-  { id: "quill", name: "Quill", temper: "Writes it down, then has the opinion." },
+  { id: "pip", name: "Pip", temper: "Eager. Counts everything twice." },
+  { id: "bram", name: "Bram", temper: "Grumpy, and usually right." },
+  { id: "nell", name: "Nell", temper: "Deadpan worrier." },
+  { id: "quill", name: "Quill", temper: "Know-it-all. Writes it down first." },
 ] as const;
 
 const NAMES = FLOCK_VOICES.map((bird) => bird.name);
 
 export function knownVoice(line: string): boolean {
-  return NAMES.some((name) => line.startsWith(`${name}:`));
+  return NAMES.some((name) => line.startsWith(name + ":"));
+}
+
+/** A line where a bird is speaking, including one tucked after a short lead. */
+export function isBirdLine(line: string): boolean {
+  return /\b(Pip|Bram|Nell|Quill):/.test(line);
 }
 
 export function introRemark(id: string): string {
   switch (id) {
     case "canopy":
-      return "Pip: Six. Three working, three watching.";
+      return "Pip: Six! Three working, three watching.";
     case "appetite":
-      return "Bram: An idle bird still takes a seed.";
+      return "Bram: Idle birds still eat. Of course.";
     case "leaving":
-      return "Nell: The tree is a start, not an address.";
+      return "Nell: Nice tree. We should leave.";
     default:
       return "";
   }
@@ -35,19 +40,12 @@ export function projectRemark(id: string): string {
   return PROJECT_REMARK[id] ?? "";
 }
 
-/** Varied lines for plans that can finish more than once. `nth` starts at 1. */
+/** Varied lines for plans that can finish more than once. nth starts at 1. */
 export function repeatRemark(id: string, nth: number): string {
   const lines = REPEAT_REMARKS[id];
   if (!lines || lines.length === 0) return projectRemark(id);
   const index = (Math.max(1, nth) - 1) % lines.length;
   return lines[index] ?? projectRemark(id);
-}
-
-export function repeatNote(id: string, nth: number): string | null {
-  const lines = REPEAT_NOTES[id];
-  if (!lines || lines.length === 0) return null;
-  const index = (Math.max(1, nth) - 1) % lines.length;
-  return lines[index] ?? null;
 }
 
 export function remarkVariants(id: string): readonly string[] {
@@ -61,28 +59,28 @@ export function eventRemark(id: string): string {
 export function doctrineRemark(id: DoctrineId): string {
   switch (id) {
     case "stewardship":
-      return "Bram: Keep more than you spend. The cups last longer.";
+      return "Bram: Spend less. The cups last longer.";
     case "ingenuity":
-      return "Quill: Write it down, then go faster than is comfortable.";
+      return "Quill: I wrote it down. Now hurry.";
     case "wanderlust":
-      return "Nell: The route is the point. A nest is a rest.";
+      return "Nell: The route matters. Nests are naps.";
   }
 }
 
 export function roleArrival(id: RoleId): string {
   switch (id) {
     case "weavers":
-      return "Bram: Weavers. The twigs need a bird.";
+      return "Bram: Weavers. Twigs don't fetch themselves.";
     case "scouts":
-      return "Nell: Scouts. They bring more back.";
+      return "Nell: Scouts bring knowledge. I wanted four.";
     case "broodkeepers":
       return "Pip: Broodkeepers grow the flock.";
     case "scholars":
-      return "Quill: Scholars. Write it down now.";
+      return "Quill: Scholars. Write it down. Obviously.";
     case "envoys":
-      return "Nell: Envoys. The song can travel.";
+      return "Nell: Envoys. Songs don't travel far.";
     case "navigators":
-      return "Nell: Navigators. The sun is a fix.";
+      return "Quill: Navigators. The sun is a coordinate.";
     default:
       return "";
   }
@@ -91,141 +89,122 @@ export function roleArrival(id: RoleId): string {
 export function seasonRemark(id: SeasonId): string {
   switch (id) {
     case "sunlit":
-      return "Pip: The heads are open. This is the good part.";
+      return "Pip: Heads are open. Best part!";
     case "crosswind":
-      return "Nell: The wind is useful. Bram disagrees.";
+      return "Nell: Useful wind. Bram says we die.";
     case "rain":
-      return "Quill: Good weather for a note. The seed can wait.";
+      return "Quill: Good note weather. Seed can wait.";
     case "dearth":
-      return "Pip: Live on the cache. I mentioned this.";
+      return "Bram: Live on the cache. I warned you.";
   }
 }
 
 const PLAN_FLAVOR: Record<string, string> = {
-  "seed-cache": "Pip has already named the hollow.",
-  "first-nest": "Bram wants the rim even. He will check.",
-  survey: "Nell is describing trees she has not landed in.",
-  nest: "Another cup. Bram measures it with his feet.",
+  "seed-cache": "Pip already named the hollow.",
+  "first-nest": "Bram will check that rim.",
+  survey: "Nell is naming trees she hasn't landed on.",
+  nest: "Bram measures every cup with his feet.",
   seedfall: "Pip calls a scramble a plan.",
-  roost: "Quill opens a page. The tree is a place now.",
-  archive: "A note that outlives the bird is Quill's whole faith.",
-  brood: "Three more beaks. Pip is doing the sum.",
-  corridor: "Nell flies it twice, so the rest can call it obvious.",
-  council: "Quill says an argument is a kind of nest.",
-  beacon: "Nell: A post, for when the song gives out.",
-  treaty: "Quill: Someone has to be polite up here.",
+  roost: "Quill opened a page. We're official.",
+  archive: "Quill's notes outlive the rest of us.",
+  brood: "Pip is already adding them up.",
+  corridor: "Nell flew it twice, so it's real.",
+  council: "Quill calls arguing a kind of nest.",
+  beacon: "Nell wants a post when the song dies.",
+  treaty: "Quill will be polite. Loudly.",
   granary: "Pip wanted this before it had a name.",
-  academy: "Quill's shelf, and the arguments on it.",
-  eyrie: "Bram builds the ledge, then stands on the edge.",
-  accord: "Nell's heading gets a name. She pretends it had one.",
-  solar: "Bram: A bright pause between glides.",
-  ark: "A nest with range. Nell packs light and loses the vote.",
-  scan: "Quill would rather copy a star than sit under it.",
-  murmur: "Nell: After this, home is a heading.",
+  academy: "Quill brought a shelf for the arguments.",
+  eyrie: "Bram built the ledge, then stood on it.",
+  accord: "Nell named the heading. She shrugs.",
+  solar: "Bram calls it a bright pause.",
+  ark: "Nell packs light and loses the vote.",
+  scan: "Quill would rather copy the star.",
+  murmur: "Nell says home is just a heading.",
 };
 
 const PROJECT_REMARK: Record<string, string> = {
-  "seed-cache": "Pip: It stays. I counted.",
-  "first-nest": "Bram: The rim is even enough.",
+  "seed-cache": "Pip: It stays. I counted twice!",
+  "first-nest": "Bram: Rim's even. You're welcome.",
   survey: "Nell: Two branches. I wanted four.",
   nest: "Bram: Don't sit on the rim.",
-  seedfall: "Pip: Keep eating. This will not last.",
-  roost: "Quill: The record is open.",
-  archive: "Quill: A note can outlive you.",
-  brood: "Pip: Three more mouths.",
-  corridor: "Nell: Flown twice. It is a route.",
-  council: "Quill: We sat. We did not agree.",
-  beacon: "Nell: They can see us now.",
-  treaty: "Quill: Polite, and too loud.",
-  granary: "Pip: Full is a moral good.",
-  academy: "Quill: The arguments have a shelf.",
+  seedfall: "Pip: Eat up! This will not last.",
+  roost: "Quill: Record's open. Obviously.",
+  archive: "Quill: Notes outlive birds. I checked.",
+  brood: "Pip: Three more mouths. Wonderful!",
+  corridor: "Nell: Flown twice. It's a route.",
+  council: "Quill: We sat. Nobody agreed.",
+  beacon: "Nell: They can see us. Worrying.",
+  treaty: "Quill: Polite, and far too loud.",
+  granary: "Pip: Full is a moral good!",
+  academy: "Quill: Arguments, now with a shelf.",
   eyrie: "Bram: More room. Don't fall off.",
   accord: "Nell: The sun is a destination.",
-  solar: "Bram: A bright ledge. Don't molt there.",
-  ark: "Nell: A nest that can leave.",
-  scan: "Quill: One star, copied down.",
-  murmur: "Nell: Home is a heading. Keep up.",
+  solar: "Bram: Bright ledge. Don't molt there.",
+  ark: "Nell: A nest that can leave. Good.",
+  scan: "Quill: One star, copied. You're welcome.",
+  murmur: "Nell: We're leaving. Try to keep up.",
 };
 
 const REPEAT_REMARKS: Record<string, readonly string[]> = {
   brood: [
-    "Pip: Three more mouths.",
-    "Pip: Three more beaks to fill.",
-    "Bram: Three more on the rim.",
-    "Nell: New wings, already looking out.",
+    "Pip: Three more mouths. Wonderful!",
+    "Pip: Three more beaks to fill!",
+    "Bram: Three more on the rim. Fine.",
+    "Nell: New wings. Already looking out.",
     "Quill: Three names, once I learn them.",
   ],
   nest: [
     "Bram: Don't sit on the rim.",
-    "Bram: Another cup. The rim holds.",
-    "Pip: More room. I will fill it.",
+    "Bram: Another cup. Rim holds.",
+    "Pip: More room. I'll fill it!",
   ],
   archive: [
-    "Quill: A note can outlive you.",
+    "Quill: Notes outlive birds. I checked.",
     "Quill: The next shelf is the real one.",
-    "Quill: Three rooms. The wind stays out.",
+    "Quill: Three rooms. Wind stays out.",
   ],
   beacon: [
-    "Nell: They can see us now.",
-    "Nell: Another post, past the song.",
-    "Bram: Higher. Don't fall off it.",
+    "Nell: They can see us. Worrying.",
+    "Nell: Another post. Even farther.",
+    "Bram: Higher. Don't fall off.",
   ],
   corridor: [
-    "Nell: Flown twice. It is a route.",
+    "Nell: Flown twice. It's a route.",
     "Nell: Another line someone can fly.",
     "Quill: I wrote the heading down.",
   ],
   seedfall: [
-    "Pip: Keep eating. This will not last.",
-    "Pip: A scramble, then a quiet.",
-    "Nell: I found the heads by the wind.",
+    "Pip: Eat up! This will not last.",
+    "Pip: A scramble, then a quiet!",
+    "Nell: Found the heads. Wind helped.",
   ],
   ark: [
-    "Nell: A nest that can leave.",
-    "Nell: Another harbor, new sun.",
-    "Pip: Pack the seed. I counted it.",
+    "Nell: A nest that can leave. Good.",
+    "Nell: Another harbor. New sun.",
+    "Pip: Pack the seed. I counted!",
   ],
   scan: [
-    "Quill: One star, copied down.",
-    "Quill: Another fix, written once.",
-    "Nell: A cheaper star. I'll take it.",
+    "Quill: One star, copied. You're welcome.",
+    "Quill: Another fix. Written once.",
+    "Nell: Cheaper star. I'll take it.",
   ],
   treaty: [
-    "Quill: Polite, and too loud.",
-    "Nell: They heard us. That is new.",
+    "Quill: Polite, and far too loud.",
+    "Nell: They heard us. That's new.",
     "Bram: Smile, then check the rim.",
   ],
 };
 
-const REPEAT_NOTES: Record<string, readonly string[]> = {
-  brood: [
-    "Three young birds join the count.",
-    "Another three take a place on the branch.",
-    "The nursery empties. The flock is larger.",
-    "Three more, and the seed sum changes.",
-  ],
-  nest: [
-    "Another nest cups into the tree.",
-    "A new cup, measured and left to settle.",
-    "The tree holds one more rim.",
-  ],
-  archive: [
-    "An archive opens under a roof of woven leaves.",
-    "A second room takes the notes the first one cannot.",
-    "The last archive closes against the wind.",
-  ],
-};
-
 const EVENT_REMARK: Record<string, string> = {
-  "summer-gale": "Nell wants the wind. Bram wants the cups left alone.",
-  "night-frost": "Pip is already sitting on his feet.",
-  "garden-treaty": "Quill says being seen is a kind of cost.",
-  cuckoo: "Bram counted the clutch twice and dislikes the number.",
-  "song-school": "Quill: They repeat the song you finish.",
-  "civic-doubt": "Quill wants this in writing. The outer roosts do not.",
-  "storm-year": "Pip looks at the cache, then at everyone else.",
-  "rival-aerie": "Nell knows the corridor. She is not in a sharing mood.",
-  "quiet-signal": "Quill wants the pattern. Nell wants the heading.",
-  headwind: "The fix is short. Nell has said so.",
-  "last-ground": "Pip sees seed. Quill sees the last line of the page.",
+  "summer-gale": "Nell: Ride the wind. Bram says no.",
+  "night-frost": "Pip: I'm sitting on my feet already.",
+  "garden-treaty": "Quill: Being seen is a kind of cost.",
+  cuckoo: "Bram: I counted twice. I hate it.",
+  "song-school": "Quill: They copy the song you finish.",
+  "civic-doubt": "Quill: Put it in writing. They won't.",
+  "storm-year": "Pip: Share the cache? I counted it.",
+  "rival-aerie": "Nell: I know the route. Not sharing.",
+  "quiet-signal": "Quill: Copy the pattern. Nell wants to go.",
+  headwind: "Nell: The fix is short. I checked.",
+  "last-ground": "Pip: That's seed. Quill sees a footnote.",
 };

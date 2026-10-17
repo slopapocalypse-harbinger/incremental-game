@@ -1168,13 +1168,17 @@ p {
     font-size: 0.875rem;
   }
 
-  .objective .meter {
-    height: 3px;
-    margin-top: 4px;
-  }
-
   .next-action {
     margin-top: 2px;
+  }
+
+  .log {
+    gap: 4px;
+  }
+
+  .log li {
+    gap: 6px;
+    padding-bottom: 4px;
   }
 
   .hint {
@@ -1233,7 +1237,7 @@ p {
   .doctrines,
   .techs,
   .upgrades {
-    gap: 6px;
+    gap: 4px;
   }
 
   .card-actions {
@@ -1326,24 +1330,7 @@ html[data-tab-hidden="true"] .burst {
   }
 
   .objective {
-    display: grid;
-    grid-template-columns: 1fr 180px;
-    grid-template-areas:
-      "copy meter"
-      "next next";
-    align-items: center;
-  }
-
-  .objective-copy {
-    grid-area: copy;
-  }
-
-  .objective .meter {
-    grid-area: meter;
-  }
-
-  .next-action {
-    grid-area: next;
+    display: block;
   }
 
   .stage {

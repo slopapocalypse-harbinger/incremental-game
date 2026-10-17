@@ -62,7 +62,9 @@ After that, the notebook introduces itself one surface at a time.
 - The first **event** introduces the rule that one option never asks for a resource you might not have.
 - **Migration** introduces itself in Act II, including that a win pays 8 or more and the confirm line states the early payout.
 
-A locked tab, role, or later-act study is absent until it unlocks. The Now line is the next goal. When a tab or role appears, it fades in and keeps a new dot until the first look. That look is stored on the notebook, with the tips. Tips are one or two lines, one at a time.
+A locked tab, role, or later-act study is absent until it unlocks. The Now card is a title plus one line. When a tab or role appears, it fades in and keeps a new dot until the first look. That look is stored on the notebook, with the tips. Tips are one or two lines, one at a time.
+
+Birds speak in short quips. Pip is eager, Bram is grumpy and practical, Nell is the deadpan worrier, and Quill is the know-it-all. A card says what it does in one line. Tradeoffs, forecasts, and the route breakdown sit behind More. The log keeps one line per event, and it does not put two bird lines in a row.
 
 ### First five minutes
 
@@ -202,7 +204,7 @@ New key: `bve.campaign`. Rolling backup: `bve.campaign.backup`. Quarantine: `bve
 
 Tom reads this on a phone. The layout is a column.
 
-- Sticky header: act, season name, time remaining, and that season's multipliers for seeds, twigs, and knowledge. Launches are not on that line. The weather sentence lives on the World tab, where there is room for it. Pause and settings are at least 44px.
+- Sticky header: act, season name, time remaining, and that season's multipliers for seeds, twigs, and knowledge. Launches are not on that line. The World tab shows the season quip. The weather sentence, the route bonus, and the morale note sit behind More. Pause and settings are at least 44px.
 - Resource grid, two columns. Every chip is a button. The cap breakdown opens as a sheet. Nothing important is hover-only. Desktop uses the same button.
 - The objective and its next action stay on screen.
 - One panel at a time: Flock, Plans, Study, World, Log. Tabs that are not relevant yet stay visible and locked. The tab bar sits in the safe area. Targets are at least 44px, labels are words, and the active tab is not communicated by color alone.
