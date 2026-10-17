@@ -15,11 +15,17 @@ import {
 } from "../game/engine";
 import { currentTip, dismissTip, finishIntro, tabAccess, type TabId } from "../game/guide";
 import { formatAmount, formatBirds, formatDuration, formatRate } from "../game/number";
+import { sceneFromState } from "../game/scene";
 import type { GameState, ResourceId } from "../game/types";
+import { projectRemark } from "../game/voice";
+import { LivingScene } from "./art/canopy";
+import { Icon, resourceIcon, tabIcon } from "./art/icons";
 import { IntroSheet } from "./intro";
 import { FlockPanel, LogPanel, PlansPanel, StudyPanel, WorldPanel } from "./panels";
 import { CapSheet, EventSheet, MigrateSheet, SettingsSheet } from "./sheets";
 import { useCampaign } from "./useCampaign";
+import { useFlourish } from "./useFlourish";
+import { useReducedMotion } from "./useMotion";
 
 type Sheet =
   | null
@@ -37,6 +43,8 @@ const TABS: Array<{ id: TabId; label: string }> = [
 
 export function App() {
   const { game, note, apply, commit, dismissNote } = useCampaign();
+  const reducedMotion = useReducedMotion();
+  const flourish = useFlourish(game);
   const [tab, setTab] = useState<TabId>("plans");
   const [sheet, setSheet] = useState<Sheet>(null);
   const [lockedReason, setLockedReason] = useState<string | null>(null);
@@ -96,6 +104,19 @@ export function App() {
           <span>{formatDuration(left)}</span>
           <span className="season-mods">{seasonMods(season)}</span>
         </p>
+        <div className="canopy-wrap" data-testid="canopy">
+          <LivingScene
+            model={sceneFromState(game)}
+            motion={!reducedMotion}
+            layout="strip"
+            celebrating={flourish ? (flourish.era ? "era" : "plan") : null}
+          />
+          {flourish ? (
+            <p className="flourish-line" role="status">
+              {projectRemark(flourish.id)}
+            </p>
+          ) : null}
+        </div>
       </header>
 
       <ResourceRow
@@ -201,6 +222,7 @@ export function App() {
                 setTab(item.id);
               }}
             >
+              <Icon name={tabIcon(item.id)} />
               <span>{item.label}</span>
               {access.open ? null : <small>Locked</small>}
             </button>
@@ -298,7 +320,10 @@ function ResourceChip({
       onClick={() => onOpen(id)}
     >
       <span className="chip-label">
-        {label}
+        <span className="chip-name">
+          <Icon name={resourceIcon(id)} />
+          {label}
+        </span>
         {capped ? <b>Full</b> : null}
       </span>
       <span className="chip-value">

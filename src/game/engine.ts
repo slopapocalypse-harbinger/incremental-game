@@ -18,6 +18,7 @@ import {
   type ProjectDef,
 } from "./content";
 import { clampResource, formatAmount, formatDuration } from "./number";
+import { doctrineRemark, eventRemark, projectRemark } from "./voice";
 import {
   SAVE_VERSION,
   type Act,
@@ -77,8 +78,14 @@ export function createInitialState(now: number, meta?: Partial<RunMeta>): GameSt
         text: "Six birds in the sunward canopy. Three are already working the seed heads. Three are watching.",
         tone: "story",
       },
+      {
+        id: 2,
+        at: 0,
+        text: "Pip: Six. I counted the ones working and the ones watching.",
+        tone: "story",
+      },
     ],
-    logSeq: 1,
+    logSeq: 2,
     won: false,
     marks: meta?.marks ?? 0,
     ranks,
@@ -500,8 +507,12 @@ export function chooseDoctrine(state: GameState, doctrine: DoctrineId): GameStat
   if (!DOCTRINES.some((item) => item.id === doctrine)) return state;
   const definition = DOCTRINES.find((item) => item.id === doctrine);
   return pushLog(
-    { ...state, doctrine },
-    `${definition?.name ?? "A doctrine"} becomes the way this flock flies.`,
+    pushLog(
+      { ...state, doctrine },
+      `${definition?.name ?? "A doctrine"} becomes the way this flock flies.`,
+      "story",
+    ),
+    doctrineRemark(doctrine),
     "story",
   );
 }
@@ -513,8 +524,12 @@ export function respecDoctrine(state: GameState, doctrine: DoctrineId): GameStat
   if (state.act < 2) return state;
   const definition = DOCTRINES.find((item) => item.id === doctrine);
   return pushLog(
-    { ...state, doctrine, doctrineChanges: state.doctrineChanges + 1 },
-    `Second look: the flock turns toward ${definition?.name ?? doctrine}.`,
+    pushLog(
+      { ...state, doctrine, doctrineChanges: state.doctrineChanges + 1 },
+      `Second look: the flock turns toward ${definition?.name ?? doctrine}.`,
+      "story",
+    ),
+    doctrineRemark(doctrine),
     "story",
   );
 }
@@ -546,6 +561,8 @@ export function resolveEvent(state: GameState, eventId: string, optionId: string
   };
   next = applyEvent(next, eventId, optionId);
   next = pushLog(next, `${event.title} — ${option.name}.`, "story");
+  const aside = eventRemark(eventId);
+  if (aside) next = pushLog(next, aside, "story");
   return promoteQueue(next);
 }
 
@@ -1033,6 +1050,8 @@ function completeProject(state: GameState, id: string): GameState {
     default:
       break;
   }
+  const aside = projectRemark(id);
+  if (aside) next = pushLog(next, aside, "story");
   return next;
 }
 

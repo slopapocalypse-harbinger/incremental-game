@@ -13,6 +13,17 @@
   --line-strong: rgba(27, 36, 32, 0.32);
   --good: #1d6a42;
   --shadow: 0 16px 40px rgba(23, 53, 44, 0.12);
+  --bird: #e2a01a;
+  --bird-soft: #c6ae4e;
+  --bill: #c56a38;
+  --bark: #6b4632;
+  --bark-deep: #4a3022;
+  --leaf-deep: #1e4638;
+  --leaf-pale: #8eae72;
+  --seed: #e0b14a;
+  --ochre-deep: #c4842a;
+  --sun: #f6d78a;
+  --star: #fff8e8;
   --serif: "Iowan Old Style", Palatino, "Palatino Linotype", "Book Antiqua", Georgia, serif;
   --sans: "Segoe UI", system-ui, sans-serif;
   --safe-top: env(safe-area-inset-top, 0px);
@@ -133,6 +144,9 @@ p {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-soft);
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .header .eyebrow,
@@ -211,10 +225,19 @@ p {
 .chip-label {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  gap: 6px;
   font-size: 0.75rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--ink-soft);
+}
+
+.chip-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
 }
 
 .chip-label b {
@@ -418,6 +441,13 @@ p {
   margin-bottom: 3px;
 }
 
+.role h3,
+.doctrine h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .yield {
   margin-top: 4px;
   color: var(--leaf);
@@ -494,6 +524,35 @@ p {
 .role p,
 .doctrine p {
   margin-top: 2px;
+}
+
+.flavor,
+.voice {
+  font-family: var(--serif);
+}
+
+.flavor {
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+}
+
+.icon {
+  width: 16px;
+  height: 16px;
+  display: block;
+  flex: none;
+}
+
+.role .icon,
+.doctrine .icon {
+  width: 22px;
+  height: 22px;
+}
+
+.chip .icon,
+.eyebrow .icon {
+  width: 14px;
+  height: 14px;
 }
 
 .card-actions {
@@ -638,55 +697,150 @@ p {
   background: var(--cream);
 }
 
-.scene svg {
+.canopy-wrap {
+  position: relative;
+  grid-column: 1 / -1;
+  margin-top: 2px;
+}
+
+.flourish-line {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 6px;
+  margin: 0;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: rgba(251, 247, 238, 0.92);
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: 0.875rem;
+  line-height: 1.3;
+  text-align: center;
+  pointer-events: none;
+}
+
+.living-scene,
+.plate {
+  --sky-top: #f8e7c4;
+  --sky-bottom: #f0d7a0;
+  --rain: rgba(27, 36, 32, 0.45);
+}
+
+.living-scene.season-crosswind,
+.plate.season-crosswind {
+  --sky-top: #e7f0f4;
+  --sky-bottom: #c9dbe3;
+  --leaf: #3c6d66;
+  --leaf-pale: #8eb0a4;
+}
+
+.living-scene.season-rain,
+.plate.season-rain {
+  --sky-top: #d7e4e0;
+  --sky-bottom: #b7ccc6;
+  --sun: transparent;
+  --leaf: #3d6558;
+}
+
+.living-scene.season-dearth,
+.plate.season-dearth {
+  --sky-top: #efe2c4;
+  --sky-bottom: #ddc89a;
+  --bird: #c9962e;
+  --bird-soft: #b59a58;
+  --leaf: #8a7344;
+  --leaf-pale: #c2b184;
+  --leaf-deep: #6d5a38;
+  --seed: #c4a15a;
+}
+
+.living-scene.scenery-crossing,
+.living-scene.scenery-murmuration,
+.plate.scenery-crossing {
+  --sky-top: #1c3330;
+  --sky-bottom: #142422;
+  --star: #f3e6c0;
+  --leaf-deep: #0f2420;
+  --bark: #3a2a22;
+  --sun: transparent;
+  --rain: rgba(243, 230, 192, 0.45);
+}
+
+.living-scene.scenery-crossing.season-dearth,
+.living-scene.scenery-murmuration.season-dearth {
+  --sky-top: #2a2820;
+  --sky-bottom: #1c1a16;
+}
+
+.living-scene.scenery-crossing.season-rain,
+.living-scene.scenery-murmuration.season-rain {
+  --sky-top: #1a2c30;
+  --sky-bottom: #121e22;
+}
+
+.living-scene.scenery-crossing.season-crosswind,
+.living-scene.scenery-murmuration.season-crosswind {
+  --sky-top: #1a2e34;
+  --sky-bottom: #122228;
+}
+
+.living-scene {
   display: block;
   width: 100%;
-  height: auto;
-  min-height: 180px;
+  background: var(--sky-bottom);
 }
 
-.sky {
-  fill: #f2d7a2;
+.living-scene.strip {
+  height: 108px;
+  border-radius: 12px;
 }
 
-.season-crosswind .sky {
-  fill: #d5e3ea;
+.living-scene.map {
+  height: 168px;
 }
 
-.season-rain .sky {
-  fill: #c5d5d1;
+.plate {
+  display: block;
+  width: 100%;
+  height: 104px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--sky-bottom);
 }
 
-.season-dearth .sky {
-  fill: #e6d3ae;
-}
-
-.star {
-  fill: #fffaf0;
-}
-
-.route {
+.branch-line {
   fill: none;
-  stroke: rgba(27, 36, 32, 0.35);
-  stroke-dasharray: 4 6;
-  stroke-width: 1.4;
-}
-
-.branch {
-  fill: none;
-  stroke: #6a4a32;
+  stroke: var(--bark);
   stroke-width: 8;
   stroke-linecap: round;
 }
 
-.nest {
-  fill: #8d5a32;
+.route-line {
+  fill: none;
+  stroke: var(--ink);
+  stroke-opacity: 0.4;
+  stroke-width: 1.6;
+  stroke-dasharray: 5 7;
 }
 
-.flyer {
-  fill: var(--moss);
-  stroke: none;
-  animation: drift 3.2s ease-in-out infinite;
+.scenery-crossing .route-line,
+.scenery-murmuration .route-line,
+.plate.scenery-crossing .route-line {
+  stroke: var(--star);
+  stroke-opacity: 0.7;
+}
+
+.burst {
+  opacity: 0;
+}
+
+.living-scene.is-celebrating .burst {
+  animation: seed-pop 1.15s ease-out;
+}
+
+.living-scene.is-era.is-celebrating .burst {
+  animation: seed-pop 1.5s ease-out;
 }
 
 .scene-facts {
@@ -761,11 +915,21 @@ p {
 }
 
 .tabs button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
   border: 0;
   background: transparent;
   border-radius: 12px;
   color: var(--ink-soft);
   padding: 6px 0;
+}
+
+.tabs .icon {
+  width: 18px;
+  height: 18px;
 }
 
 .tabs button.on {
@@ -860,9 +1024,15 @@ p {
   box-shadow: inset 4px 0 0 var(--moss);
 }
 
-@keyframes drift {
-  50% {
-    transform: translateY(-4px);
+@keyframes seed-pop {
+  0% {
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
   }
 }
 
@@ -1015,9 +1185,34 @@ p {
     margin-top: 4px;
   }
 
-  .scene svg {
-    min-height: 0;
-    height: 120px;
+  .living-scene.strip {
+    height: 86px;
+  }
+
+  .living-scene.map {
+    height: 100px;
+  }
+
+  .plate {
+    height: 92px;
+  }
+
+  .flavor {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-size: 0.875rem;
+  }
+
+  .tabs .icon {
+    width: 16px;
+    height: 16px;
+  }
+
+  .tabs button {
+    gap: 0;
+    padding: 2px 0 1px;
   }
 
   .scene-facts {
@@ -1042,9 +1237,14 @@ p {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .flyer {
+  .burst,
+  .flourish-line {
     animation: none;
   }
+}
+
+html[data-tab-hidden="true"] .burst {
+  animation-play-state: paused;
 }
 
 @media (min-width: 1040px) {
