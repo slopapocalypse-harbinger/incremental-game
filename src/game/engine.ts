@@ -19,7 +19,7 @@ import {
   type EventDef,
   type ProjectDef,
 } from "./content";
-import { clampResource, formatAmount, formatDuration, formatRate } from "./number";
+import { clampResource, formatAmount, formatDuration, formatPopulationRate, formatRate } from "./number";
 import { doctrineRemark, isBirdLine, repeatRemark, roleArrival } from "./voice";
 import {
   SAVE_VERSION,
@@ -384,9 +384,9 @@ export function roleYield(state: GameState, role: RoleId): string {
   });
   const key = definition.resource;
   const gain = Math.max(0, after[key] - before[key]);
+  if (key === "population") return `${formatPopulationRate(gain)} each`;
   const digits = gain < 0.1 ? 3 : 2;
-  const unit = key === "population" ? "birds" : key;
-  return `+${formatAmount(gain, digits)} ${unit}/s each`;
+  return `+${formatAmount(gain, digits)} ${key}/s each`;
 }
 
 export function assignRole(state: GameState, role: RoleId, delta: -1 | 1): GameState {

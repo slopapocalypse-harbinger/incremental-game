@@ -1,3 +1,5 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { DOCTRINES, EVENTS, TUNE, projectById, projectTitle } from "../src/game/content";
@@ -14,6 +16,7 @@ import {
   growthPause,
   projectForecast,
   respecDoctrine,
+  roleYield,
   startProject,
   tick,
   timeToAfford,
@@ -22,6 +25,7 @@ import {
 import { formatAmount, formatPopulationRate } from "../src/game/number";
 import { roleArrival } from "../src/game/voice";
 import type { GameState } from "../src/game/types";
+import { FlockPanel } from "../src/ui/panels";
 
 
 function surveyed(): GameState {
@@ -268,8 +272,14 @@ describe("playtest regressions", () => {
     const keepers = { ...housed, roles: { ...roles, broodkeepers: 1 } };
     expect(growthPause(keepers)).toBeNull();
     expect(calculateRates(keepers).population).toBeCloseTo(TUNE.brood, 6);
-    expect(formatPopulationRate(TUNE.brood)).toBe("+1 bird every ~2.5m");
-    expect(formatPopulationRate(calculateRates(keepers).population)).toBe("+1 bird every ~2.5m");
+    const slow = formatPopulationRate(calculateRates(keepers).population);
+    expect(formatPopulationRate(TUNE.brood)).toBe("+1 bird / ~2.5m");
+    expect(slow).toBe("+1 bird / ~2.5m");
+    expect(roleYield(keepers, "broodkeepers")).toBe(`${slow} each`);
+    const flock = renderToStaticMarkup(
+      createElement(FlockPanel, { game: keepers, active: true, apply: () => undefined }),
+    );
+    expect(flock).toContain(`${slow} each`);
 
     const hungry = { ...keepers, resources: { ...keepers.resources, seeds: 40 } };
     expect(growthPause(hungry)).toBe("Seed reserve too low: growth needs more than 50 seeds");
@@ -277,7 +287,7 @@ describe("playtest regressions", () => {
     const full = { ...keepers, flock: getCapacity(keepers) };
     expect(growthPause(full)).toBe("At capacity");
 
-    expect(formatPopulationRate(0.05)).toBe("+1 bird every ~20s");
+    expect(formatPopulationRate(0.05)).toBe("+1 bird / ~20s");
     expect(formatPopulationRate(0.2)).toBe("+0.20/s");
     expect(formatPopulationRate(0)).toBe("+0/s");
     expect(roleArrival("broodkeepers")).toMatch(/grow the flock/i);

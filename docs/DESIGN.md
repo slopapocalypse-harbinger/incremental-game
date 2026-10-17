@@ -42,7 +42,7 @@ The campaign is one expedition. It is winnable without any particular tech and w
 1. Birds produce. Unassigned birds produce nothing. The flock eats seeds whether or not anyone is working.
 2. You staff roles. The mix is the minute-to-minute decision.
 3. Stores fill toward a cap. A full store is a nudge to spend, and it is how offline time stays bounded.
-4. You start one project. It spends stores immediately and borrows birds until it finishes. Recall is allowed, and the stores stay spent. The chip says whether the plan unlocks something, stays as a building, or fades. Buildings last until you migrate. A running boost shows the time left beside the stores.
+4. You start one project. It spends stores immediately and borrows birds until it finishes. Recall is allowed, and the stores stay spent. The chip says whether the plan unlocks something, stays as a building, or fades. Buildings last until you migrate. A running boost shows the time left on a chip under the stores.
 5. Finished projects become nests, routes, archives, beacons, arks, or the next act.
 6. Research spends knowledge to bend a rate, a store, or the clock.
 7. Seasons rotate on a visible timer and change gathering. They do not change how fast a launch finishes.

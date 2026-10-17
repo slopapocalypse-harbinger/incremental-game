@@ -38,10 +38,10 @@ export function formatPopulationRate(value: number): string {
   if (!Number.isFinite(value) || value < 0.0005) return "+0/s";
   if (value >= 0.1) return formatRate(value);
   const seconds = 1 / value;
-  if (seconds < 90) return `+1 bird every ~${Math.max(1, Math.round(seconds))}s`;
+  if (seconds < 90) return `+1 bird / ~${Math.max(1, Math.round(seconds))}s`;
   const minutes = Math.round((seconds / 60) * 2) / 2;
   const shown = Number.isInteger(minutes) ? String(minutes) : minutes.toFixed(1);
-  return `+1 bird every ~${shown}m`;
+  return `+1 bird / ~${shown}m`;
 }
 
 export function formatDuration(seconds: number): string {

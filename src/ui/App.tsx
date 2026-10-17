@@ -180,8 +180,6 @@ export function App() {
         onOpen={(id) => setSheet({ kind: "cap", id })}
       />
 
-      <BoostLine game={game} />
-
       <section className="objective" data-testid="objective">
         <h2>{objective.title}</h2>
         <p className="next-action">{game.won ? objective.detail : objective.next}</p>
@@ -329,13 +327,20 @@ export function App() {
   );
 }
 
-function BoostLine({ game }: { game: GameState }) {
+function BoostPills({ game }: { game: GameState }) {
   const boosts = activeBoosts(game);
   if (boosts.length === 0) return null;
   return (
-    <p className="boost-line" data-testid="active-boosts">
-      {boosts.map((boost) => `${boost.label} ${formatDuration(boost.remaining)}`).join(" · ")}
-    </p>
+    <div className="boosts" data-testid="active-boosts">
+      {boosts.map((boost) => (
+        <p className="boost-pill" key={boost.id}>
+          <Icon name="boost" />
+          <span>
+            {boost.label} {formatDuration(boost.remaining)}
+          </span>
+        </p>
+      ))}
+    </div>
   );
 }
 
@@ -362,6 +367,7 @@ function ResourceRow({
         .map((chip) => (
           <ResourceChip key={chip.id} game={game} id={chip.id} rates={rates} onOpen={onOpen} />
         ))}
+      <BoostPills game={game} />
     </div>
   );
 }
@@ -391,7 +397,7 @@ function ResourceChip({
   return (
     <button
       type="button"
-      className={`chip${capped ? " capped" : ""}${pause ? " has-note" : ""}`}
+      className={`chip${flock ? " chip-flock" : ""}${capped ? " capped" : ""}${pause ? " has-note" : ""}`}
       data-testid={`resource-${id}`}
       onClick={() => onOpen(id)}
     >
@@ -406,7 +412,11 @@ function ResourceChip({
         <strong>{shown}</strong>
         {pause && !showCap ? null : (
           <small>
-            {pause ? null : <span className="chip-rate">{rateText}</span>}
+            {pause ? null : (
+              <span className="chip-rate" data-testid={flock ? "flock-rate" : undefined}>
+                {rateText}
+              </span>
+            )}
             {showCap ? <span className="chip-inline-cap">cap {formatAmount(cap, 0)}</span> : null}
           </small>
         )}
