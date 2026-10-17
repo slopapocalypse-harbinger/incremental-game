@@ -35,7 +35,7 @@ const TABS: Array<{ id: Tab; label: string }> = [
 ];
 
 export function App() {
-  const { game, note, legacyPresent, apply, commit, dismissNote } = useCampaign();
+  const { game, note, apply, commit, dismissNote } = useCampaign();
   const [tab, setTab] = useState<Tab>("plans");
   const [sheet, setSheet] = useState<Sheet>(null);
   const playtest = import.meta.env.BASE_URL.includes("/next/");
@@ -184,7 +184,6 @@ export function App() {
       {sheet === "settings" ? (
         <SettingsSheet
           game={game}
-          legacyPresent={legacyPresent}
           onClose={() => setSheet(null)}
           commit={commit}
           onMigrate={() => setSheet("migrate")}
@@ -277,7 +276,7 @@ function capOfFlock(game: GameState): number {
 }
 
 function seasonMods(season: ReturnType<typeof getSeason>): string {
-  return `Seeds ×${season.seed} · twigs ×${season.twig} · launches ×${season.expedition}`;
+  return `Seeds ×${season.seed} · twigs ×${season.twig} · knowledge ×${season.knowledge}`;
 }
 
 function reportText(game: GameState): string {

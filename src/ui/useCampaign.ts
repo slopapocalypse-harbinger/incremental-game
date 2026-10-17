@@ -9,7 +9,6 @@ const NOTE_KEY = "bve.note.dismissed";
 export function useCampaign() {
   const [game, setGame] = useState<GameState | null>(null);
   const [note, setNote] = useState<string | null>(null);
-  const [legacyPresent, setLegacyPresent] = useState(false);
   const [booted, setBooted] = useState(false);
   const ref = useRef<GameState | null>(null);
 
@@ -18,7 +17,6 @@ export function useCampaign() {
     ref.current = loaded.state;
     saveGame(window.localStorage, loaded.state, Date.now());
     setGame(loaded.state);
-    setLegacyPresent(loaded.legacyPresent);
     setNote(freshNote(loaded));
     setBooted(true);
   }, []);
@@ -69,7 +67,7 @@ export function useCampaign() {
     setNote(null);
   }
 
-  return { game, note, legacyPresent, apply, commit, dismissNote };
+  return { game, note, apply, commit, dismissNote };
 }
 
 function freshNote(loaded: LoadResult): string | null {

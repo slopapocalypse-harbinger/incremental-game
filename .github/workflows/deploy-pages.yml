@@ -1,6 +1,10 @@
 # Deploys from main only. The github-pages environment rejects other branches.
-# The phone preview is the committed playtest/ directory, and this workflow
-# must not publish that directory. Remove playtest/ before or at merge.
+# Adding cursor/birds-rebuild-233d as a deployment branch policy returned
+# HTTP 403: Resource not accessible by integration. Do not trigger this
+# workflow on that branch until someone with environment access adds the
+# policy. A /next/ artifact must keep the live root and only add dist-pages/next.
+# The phone preview until then is the committed playtest/ directory.
+# Remove playtest/ before or at merge. It must not be published here.
 name: Deploy GitHub Pages
 
 on:

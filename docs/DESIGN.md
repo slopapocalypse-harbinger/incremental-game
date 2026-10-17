@@ -45,7 +45,7 @@ The campaign is one expedition. It is winnable without any particular tech and w
 4. You start one project. It spends stores immediately and borrows birds until it finishes. Recall is allowed, and the stores stay spent.
 5. Finished projects become nests, routes, archives, beacons, arks, or the next act.
 6. Research spends knowledge to bend a rate, a store, or the clock.
-7. Seasons rotate on a visible timer and tint gathering and expedition speed.
+7. Seasons rotate on a visible timer and change gathering. They do not change how fast a launch finishes.
 8. Milestone events open a real choice. They never hard-lock the run: every event has an option that does not ask for a resource you might not have.
 
 While you watch, something on screen should ask for a decision every few minutes in the opening, and every quarter hour later. The long waits are banks of a resource, and those banks may run while the phone is in a pocket.
@@ -81,10 +81,10 @@ Seasons run under all of this.
 
 | Season | Gathering | Expeditions |
 | --- | --- | --- |
-| Sunlit | Seeds up, twigs a little down | Faster |
-| Crosswind | Twigs up, seeds a little down | Slower. Launching is a choice |
-| Soft rain | Both down a little, knowledge up, morale recovers | Steady |
-| Dearth | Seeds down hard | Slightly slower. This is what stores are for |
+| Sunlit | Seeds up, twigs a little down | No change |
+| Crosswind | Twigs up, seeds a little down | No change |
+| Soft rain | Both down a little, knowledge up, morale recovers | No change |
+| Dearth | Seeds down hard | No change. Stores are what you live on |
 
 Act I seasons are short enough to meet all four inside the opening. Later seasons stretch.
 
@@ -116,7 +116,6 @@ Second Look is bought between runs and spent during a later one. The first run l
 
 - **Who is idle, and who is eating.** Six roles by the end, never enough birds. Pulling the last foragers onto an ark is how a dearth becomes a morale problem. Morale slows influence and growth. It does not delete birds and it cannot fall low enough to freeze the economy.
 - **What the one active project is.** A beacon now, or a granary before the next bank. The era goal is pinned to the top of the list so it is never hidden behind four other cards.
-- **Whether to launch into a crosswind.** Expedition speed is visible on the card as a wall-clock estimate.
 - **Doctrine.** Stewardship keeps stores, trims upkeep, lengthens offline twilight, and makes projects slower. Ingenuity speeds projects and scholarship and eats more. Wanderlust pays routes, scouts, and starlight, and gathers a little worse. All three can finish.
 - **Research order.** Everything can be bought eventually. The early pair (baskets vs ledgers) and the Act II pair (hatcheries vs logistics vs memory) change which resource is annoying for the next half hour.
 - **Ark or scan.** Infrastructure versus a cheaper star.
@@ -136,7 +135,7 @@ Simulated time, not wall-clock reading time. A scripted attentive player (instan
 | Open-Sky Accord, Act IV | about 2–3 hours | Next session, with offline in between |
 | The Murmuration | about 4–7 hours | A long day of checking in, or a few evenings |
 
-Measured on the attentive Ingenuity script: cache 40s, first nest 1m 20s, survey 2m 40s, roost 8m 20s, council 27m, accord 2h 03m, murmuration 4h 01m. Stewardship matches that shape. Wanderlust finishes in about 3h 36m, because the crossing is what that doctrine is for. A run that buys no tech still finishes in about 4h. The playthrough test locks these bands.
+Measured on the attentive Ingenuity script after seasons stopped changing launch speed: cache 40s, first nest 1m 20s, survey 2m 40s, roost 8m 20s, council 27m, accord 2h 03m, murmuration 4h 01m. Stewardship finishes in about 4h 10m. Wanderlust finishes in about 3h 36m, because the crossing is what that doctrine is for. A run that buys no tech still finishes in about 4h. The playthrough test locks these bands.
 
 The measured script times from the playthrough test are recorded in the test output and should stay inside those bands. If a balance change pushes them out, change the numbers or change this table in the same commit. Do not leave the table as a wish.
 
@@ -171,13 +170,13 @@ New key: `bve.campaign`. Rolling backup: `bve.campaign.backup`. Quarantine: `bve
 - Import is a review step: the game shows act, flock, marks, and field time, and only replaces the run when you confirm. Export is the same envelope, pretty-printed so a phone can select it.
 - Autosave runs every few seconds and on `pagehide`.
 
-**Old saves do not carry over.** The previous game’s key `birds-vs-everything-v3` is left untouched. If it is present, the notebook says so once. The models are different enough that a partial import would be a lie. After this build replaces the live game, a player who still has the old key can export it from the old version only if they kept a copy of that version; this one will not read it.
+**Old saves are deleted.** On startup the notebook removes `birds-vs-everything-v3` and `birdGameSave` and does not read them, import them, or mention them. This campaign's own key is `bve.campaign`.
 
 ### Mobile first
 
 Tom reads this on a phone. The layout is a column.
 
-- Sticky header: act, season name, time remaining, and that season's multipliers for seeds, twigs, and launches. The weather sentence lives on the World tab, where there is room for it. Pause and settings are at least 44px.
+- Sticky header: act, season name, time remaining, and that season's multipliers for seeds, twigs, and knowledge. Launches are not on that line. The weather sentence lives on the World tab, where there is room for it. Pause and settings are at least 44px.
 - Resource grid, two columns. Every chip is a button. The cap breakdown opens as a sheet. Nothing important is hover-only. Desktop uses the same button.
 - The objective and its next action stay on screen.
 - One panel at a time: Flock, Plans, Study, World, Log. The tab bar sits in the safe area. Targets are at least 44px, labels are words, and the active tab is not communicated by color alone.
@@ -192,10 +191,12 @@ Tom reads this on a phone. The layout is a column.
 
 Sound, accounts, cloud sync, a species life-list, and an infinite third prestige layer. The migration tree is the long game.
 
-## Open questions for Tom
+## Decisions
 
-1. Is a finished expedition in a few evenings, plus two or three migrations, the right length, or do you want a longer flyway after the tree is full?
-2. Early migration pays poorly on purpose. Is Act II too early to be allowed to leave?
-3. The flock stays a flock, not a life-list of species. Worth a later layer, or is the range fantasy enough?
-4. Crosswind slowing an expedition is a small lever. If it feels like nagging on a phone, it should go and seasons should only tint gathering.
-5. Old saves are intentionally not imported. If you have a run you care about, export it before this replaces the live game; this version will not read it.
+Tom answered the open questions:
+
+1. **Length.** A few evenings, plus two or three migrations, stays the campaign. No longer flyway in this version.
+2. **Leaving in Act II.** Still allowed, and it still pays `act - 1` marks. The confirm control says how many marks that is, and that a win pays 8+.
+3. **Species.** A life-list is out of scope. The flock stays a flock.
+4. **Crosswind.** Seasons change gathering only. They do not slow or speed launches.
+5. **Saves.** Clean slate. Pre-rebuild browser saves are deleted on startup and are not imported.

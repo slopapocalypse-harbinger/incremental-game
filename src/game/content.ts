@@ -956,25 +956,22 @@ export const SEASONS: Array<{
   seed: number;
   twig: number;
   knowledge: number;
-  expedition: number;
 }> = [
   {
     id: "sunlit",
     name: "Sunlit",
-    detail: "Seed heads are open. A launch leaves with the wind on the tail.",
+    detail: "Seed heads are open.",
     seed: 1.16,
     twig: 0.92,
     knowledge: 1,
-    expedition: 1.1,
   },
   {
     id: "crosswind",
     name: "Crosswind",
-    detail: "Twigs come down easy. Launching means fighting the wind.",
+    detail: "Twigs come down easy.",
     seed: 0.94,
     twig: 1.22,
     knowledge: 1,
-    expedition: 0.88,
   },
   {
     id: "rain",
@@ -983,7 +980,6 @@ export const SEASONS: Array<{
     seed: 0.9,
     twig: 1.04,
     knowledge: 1.18,
-    expedition: 1,
   },
   {
     id: "dearth",
@@ -992,7 +988,6 @@ export const SEASONS: Array<{
     seed: 0.68,
     twig: 1.02,
     knowledge: 0.95,
-    expedition: 0.95,
   },
 ];
 

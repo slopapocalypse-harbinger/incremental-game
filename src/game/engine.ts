@@ -263,8 +263,7 @@ export function isResourceUnlocked(state: GameState, resource: ResourceId): bool
 }
 
 export function expeditionSpeed(state: GameState): number {
-  const season = getSeason(state);
-  let speed = season.expedition;
+  let speed = 1;
   if (state.doctrine === "stewardship") speed *= 0.94;
   if (state.doctrine === "ingenuity") speed *= 1.15;
   if (state.doctrine === "wanderlust") speed *= 1.1;

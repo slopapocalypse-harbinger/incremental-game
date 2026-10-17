@@ -38,4 +38,4 @@ pnpm build
 
 ## Saves
 
-This campaign does not read the previous game's save (`birds-vs-everything-v3`). That key is left in place. Export from the notebook before you clear browser data; import asks you to confirm before it replaces the run.
+Older browser saves are deleted on startup and are not imported. Export from the notebook before you clear browser data; import asks you to confirm before it replaces the run.

@@ -89,13 +89,11 @@ export function CapSheet({
 
 export function SettingsSheet({
   game,
-  legacyPresent,
   onClose,
   commit,
   onMigrate,
 }: {
   game: GameState;
-  legacyPresent: boolean;
   onClose: () => void;
   commit: (next: GameState) => void;
   onMigrate: () => void;
@@ -149,12 +147,6 @@ export function SettingsSheet({
           <dd>{game.bestTime === null ? "None yet" : formatDuration(game.bestTime)}</dd>
         </div>
       </dl>
-
-      {legacyPresent ? (
-        <p className="hint">
-          An older expedition is still in this browser under its own key. This campaign does not read it, and it does not delete it.
-        </p>
-      ) : null}
 
       <h3>Export</h3>
       <p>Copy the whole block. A partial paste will fail the checksum on purpose.</p>
@@ -245,10 +237,9 @@ export function MigrateSheet({
         <p>Finish the first roost before migrating. There is nothing to carry yet.</p>
       ) : (
         <>
+          <p data-testid="migrate-payout">{payoutLine(game.won, earned)}</p>
           <p>
-            {game.won ? "The expedition is complete." : "Leaving early pays less, and the route you built stays behind."} This
-            flight adds <strong>{earned}</strong> mark{earned === 1 ? "" : "s"}. With the bank, you can spend{" "}
-            <strong>{pool}</strong>.
+            With the bank, you can spend <strong>{pool}</strong>.
           </p>
           <ul className="upgrades">
             {UPGRADES.map((upgrade) => {
@@ -297,13 +288,18 @@ export function MigrateSheet({
             <span>{pool - spent} marks stay banked</span>
           </p>
           {error ? <p className="reason warn">{error}</p> : null}
-          <button type="button" className="btn danger" data-testid="confirm-migrate" onClick={confirm}>
-            {game.won ? "Start the next flight" : "Abandon this expedition"}
+          <button type="button" className="btn danger wide" data-testid="confirm-migrate" onClick={confirm}>
+            {payoutLine(game.won, earned)}
           </button>
         </>
       )}
     </Sheet>
   );
+}
+
+function payoutLine(won: boolean, earned: number): string {
+  const marks = `${earned} ${earned === 1 ? "mark" : "marks"}`;
+  return won ? `Start the next flight with ${marks}` : `Leave now for ${marks}; a win pays 8+`;
 }
 
 function costOf(game: GameState, picks: Record<string, number>): number {

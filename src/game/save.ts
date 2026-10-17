@@ -11,7 +11,9 @@ import {
 export const SAVE_KEY = "bve.campaign";
 export const BACKUP_KEY = "bve.campaign.backup";
 export const QUARANTINE_KEY = "bve.campaign.quarantine";
-export const LEGACY_SAVE_KEY = "birds-vs-everything-v3";
+
+/** Browser keys from builds before this campaign. Deleted on load, never read. */
+export const OBSOLETE_SAVE_KEYS = ["birds-vs-everything-v3", "birdGameSave"] as const;
 
 const MAX_SAVE_CHARS = 120_000;
 const ROLES: RoleId[] = [
@@ -46,7 +48,6 @@ export type DecodeResult =
 export interface LoadResult {
   state: GameState;
   note: string | null;
-  legacyPresent: boolean;
   quarantined: boolean;
 }
 
@@ -119,14 +120,19 @@ export function saveGame(store: KeyValueStore, state: GameState, now = Date.now(
   store.setItem(SAVE_KEY, encodeSave(state, now));
 }
 
+export function discardObsoleteSaves(store: KeyValueStore): void {
+  for (const key of OBSOLETE_SAVE_KEYS) {
+    if (store.getItem(key) !== null) store.removeItem(key);
+  }
+}
+
 export function loadGame(store: KeyValueStore, now = Date.now()): LoadResult {
-  const legacyPresent = store.getItem(LEGACY_SAVE_KEY) !== null;
+  discardObsoleteSaves(store);
   const primary = store.getItem(SAVE_KEY);
   if (!primary) {
     return {
       state: createInitialState(now),
-      note: legacyPresent ? legacyNote() : null,
-      legacyPresent,
+      note: null,
       quarantined: false,
     };
   }
@@ -138,8 +144,7 @@ export function loadGame(store: KeyValueStore, now = Date.now()): LoadResult {
       : null;
     return {
       state: caught,
-      note: joinNotes(migrationNote, legacyPresent ? legacyNote() : null),
-      legacyPresent,
+      note: migrationNote,
       quarantined: false,
     };
   }
@@ -150,11 +155,7 @@ export function loadGame(store: KeyValueStore, now = Date.now()): LoadResult {
     if (restored.ok) {
       return {
         state: catchUp(restored.state, now, { enqueueEvents: true }),
-        note: joinNotes(
-          "The latest save could not be read. The backup was restored, and the broken copy was quarantined.",
-          legacyPresent ? legacyNote() : null,
-        ),
-        legacyPresent,
+        note: "The latest save could not be read. The backup was restored, and the broken copy was quarantined.",
         quarantined: true,
       };
     }
@@ -162,11 +163,7 @@ export function loadGame(store: KeyValueStore, now = Date.now()): LoadResult {
   }
   return {
     state: createInitialState(now),
-    note: joinNotes(
-      `${decoded.error} The unreadable save was quarantined and a new expedition was started.`,
-      legacyPresent ? legacyNote() : null,
-    ),
-    legacyPresent,
+    note: `${decoded.error} The unreadable save was quarantined and a new expedition was started.`,
     quarantined: true,
   };
 }
@@ -175,15 +172,6 @@ export function describeImport(state: GameState): string {
   const hours = Math.floor(state.elapsed / 3600);
   const minutes = Math.floor((state.elapsed % 3600) / 60);
   return `Act ${state.act} · ${Math.floor(state.flock)} birds · ${state.wins} win${state.wins === 1 ? "" : "s"} · ${state.marks} marks · ${hours}h ${minutes}m in the field`;
-}
-
-function legacyNote(): string {
-  return "An older expedition is still stored in this browser. This is a new campaign. That save was left untouched.";
-}
-
-function joinNotes(a: string | null, b: string | null): string | null {
-  if (a && b) return `${a} ${b}`;
-  return a ?? b;
 }
 
 function quarantine(store: KeyValueStore, raw: string): void {

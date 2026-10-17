@@ -9,6 +9,7 @@ import {
   createInitialState,
   expeditionSpeed,
   getIdleBirds,
+  getSeason,
   getStorage,
   listProjects,
   migrate,
@@ -22,7 +23,6 @@ import {
 import { RESOURCE_CEILING, clampResource } from "../src/game/number";
 import {
   BACKUP_KEY,
-  LEGACY_SAVE_KEY,
   QUARANTINE_KEY,
   SAVE_KEY,
   checksumOf,
@@ -199,24 +199,49 @@ describe("projects and storage", () => {
     expect(getIdleBirds(state)).toBe(2);
   });
 
-  it("changes expedition speed with the season", () => {
-    const calm = createInitialState(0);
+  it("lets a season change gathering and not launch speed", () => {
+    const calm = {
+      ...startProject(afford(createInitialState(0), "seed-cache"), "seed-cache"),
+      elapsed: 0,
+      roles: {
+        foragers: 2,
+        weavers: 2,
+        scouts: 0,
+        broodkeepers: 0,
+        scholars: 0,
+        envoys: 0,
+        navigators: 0,
+      },
+    };
     const wind = { ...calm, elapsed: 70 };
-    expect(expeditionSpeed(calm)).not.toBeCloseTo(expeditionSpeed(wind), 5);
+    expect(getSeason(calm).id).toBe("sunlit");
+    expect(getSeason(wind).id).toBe("crosswind");
+    expect(expeditionSpeed(calm)).toBeCloseTo(expeditionSpeed(wind), 5);
+    expect(calculateRates(wind).twigs).toBeGreaterThan(calculateRates(calm).twigs);
+    expect(calculateRates(wind).seeds).toBeLessThan(calculateRates(calm).seeds);
   });
 });
 
 describe("saves", () => {
-  it("round-trips, migrates a v1 notebook, and leaves the legacy key alone", () => {
+  it("deletes pre-rebuild saves on load and does not import them", () => {
     const store = new MemoryStore();
-    store.setItem(LEGACY_SAVE_KEY, "{\"version\":3,\"secrets\":true}");
+    store.setItem("birds-vs-everything-v3", "{\"version\":3,\"secrets\":true}");
+    store.setItem("birdGameSave", "{\"seeds\":999}");
+    const loaded = loadGame(store, 90_000_000);
+    expect(store.getItem("birds-vs-everything-v3")).toBeNull();
+    expect(store.getItem("birdGameSave")).toBeNull();
+    expect(loaded.state.resources.seeds).toBe(12);
+    expect(loaded.note).toBeNull();
+    expect(JSON.stringify(loaded.state)).not.toContain("secrets");
+  });
+
+  it("round-trips and migrates a v1 notebook", () => {
+    const store = new MemoryStore();
     const now = 50_000_000;
     const played = tick(createInitialState(now - 30_000), 30);
     saveGame(store, played, now);
     const loaded = loadGame(store, now + 10_000);
-    expect(loaded.legacyPresent).toBe(true);
     expect(loaded.state.elapsed).toBeGreaterThan(30);
-    expect(store.getItem(LEGACY_SAVE_KEY)).toContain("secrets");
     expect(store.getItem(BACKUP_KEY)).toBeNull();
 
     saveGame(store, loaded.state, now + 10_000);

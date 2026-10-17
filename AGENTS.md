@@ -31,7 +31,7 @@ pnpm playtest:check
 - `engine.ts` stays pure and deterministic. Same state and same duration, same result. No `Date.now()`, no DOM, no randomness.
 - Every balance number lives in `content.ts` (`TUNE`, costs, durations, event effects). The engine reads those values; it does not invent new ones.
 - A save-format change bumps `SAVE_VERSION`, migrates older payloads in `save.ts`, and adds a test that a previous envelope still loads. A bad checksum or a damaged payload is quarantined, not deleted and not applied.
-- The old browser key `birds-vs-everything-v3` is never read and never removed.
+- On startup, delete `birds-vs-everything-v3` and `birdGameSave`. Do not read them, import them, or show a notice about them.
 
 ## Off limits
 
