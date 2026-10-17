@@ -35,6 +35,18 @@ export const TUNE = {
   seasonLater: 180,
   offlineHours: 8,
   resourceCeilingNote: 1e12,
+  /** Passive knowledge after the canopy survey, so the number moves before anyone is a scholar. */
+  fieldNotes: 0.02,
+  /** Flat rest after Welcome a brood. The card shows this and the time left. */
+  broodRest: 120,
+  ingenuityGift: 40,
+  wanderlustGift: 2,
+  /** Below one worker of that resource, the Now line names the role. */
+  stallSeed: 0.05,
+  stallTwig: 0.04,
+  stallKnowledge: 0.07,
+  stallInfluence: 0.002,
+  stallStarlight: 0.004,
 };
 
 export const ACT_NAMES: Record<Act, string> = {
@@ -62,43 +74,43 @@ export const ROLE_DEFS: Array<{
   {
     id: "foragers",
     name: "Foragers",
-    blurb: "Work the seed heads. The flock eats whether or not they do.",
+    blurb: "Gather seeds.",
     resource: "seeds",
   },
   {
     id: "weavers",
     name: "Weavers",
-    blurb: "Turn fallen wood into anything that has to last the night.",
+    blurb: "Gather twigs.",
     resource: "twigs",
   },
   {
     id: "scouts",
     name: "Scouts",
-    blurb: "A route is just a branch someone trusted twice.",
+    blurb: "Gather knowledge.",
     resource: "knowledge",
   },
   {
     id: "broodkeepers",
     name: "Broodkeepers",
-    blurb: "Grow the flock while the seed reserve holds.",
+    blurb: "Grow the flock.",
     resource: "population",
   },
   {
     id: "scholars",
     name: "Scholars",
-    blurb: "Slower than a scout, and then much faster.",
+    blurb: "Gather knowledge, faster.",
     resource: "knowledge",
   },
   {
     id: "envoys",
     name: "Envoys",
-    blurb: "Carry a decision farther than a song will travel.",
+    blurb: "Gather influence.",
     resource: "influence",
   },
   {
     id: "navigators",
     name: "Navigators",
-    blurb: "Starlight is a fix, not a feeling. They bring it home.",
+    blurb: "Gather starlight.",
     resource: "starlight",
   },
 ];
@@ -112,22 +124,20 @@ export const DOCTRINES: Array<{
   {
     id: "stewardship",
     name: "Stewardship",
-    summary: "Keep more than you spend. The flock flies heavy and lands soft.",
-    tradeoff:
-      "Stores +25% · gathering +8% · upkeep −8% · expeditions −6% · offline twilight +25%",
+    summary: "Gather more, spend less, fly a bit slower.",
+    tradeoff: "Felt now: gathering +8%, upkeep −8%, stores +25%. Expeditions −6%. Offline +25%.",
   },
   {
     id: "ingenuity",
     name: "Ingenuity",
-    summary: "Write it down, then do it faster than is comfortable.",
-    tradeoff: "Knowledge +30% · expeditions +15% · upkeep +10%",
+    summary: "Learn faster, and eat a little more.",
+    tradeoff: `Felt now: a scholar joins and +${TUNE.ingenuityGift} knowledge. Knowledge +30%. Expeditions +15%. Upkeep +10%.`,
   },
   {
     id: "wanderlust",
     name: "Wanderlust",
-    summary: "The route is the point. A nest is how you rest.",
-    tradeoff:
-      "Route bonus +40% · starlight +30% · scouting +40% · expeditions +10% · gathering −6%",
+    summary: "More routes and scouts. Less gathering.",
+    tradeoff: `Felt now: +${TUNE.wanderlustGift} routes. Routes +40%. Scouts +40%. Starlight +30%. Expeditions +10%. Gathering −6%.`,
   },
 ];
 
@@ -151,7 +161,7 @@ export const TECHS: TechDef[] = [
     id: "seed-ledgers",
     act: 1,
     name: "Seed Ledgers",
-    summary: "Foragers bring home 18% more seed, and the cache holds 10% more.",
+    summary: "Foragers bring home 18% more seed. The cache holds 10% more.",
     cost: { seeds: 90, twigs: 30 },
   },
   {
@@ -165,7 +175,7 @@ export const TECHS: TechDef[] = [
     id: "roost-logistics",
     act: 2,
     name: "Roost Logistics",
-    summary: "Expeditions resolve 12% faster. Someone finally wrote the order down.",
+    summary: "Expeditions resolve 12% faster.",
     cost: { knowledge: 60, twigs: 110 },
   },
   {
@@ -186,7 +196,7 @@ export const TECHS: TechDef[] = [
     id: "reserve-granaries",
     act: 3,
     name: "Reserve Granaries",
-    summary: "Seed and twig stores grow by 35%. Useful, and not required to finish.",
+    summary: "Seed and twig stores grow by 35%.",
     cost: { knowledge: 120, twigs: 260 },
   },
   {
@@ -200,14 +210,14 @@ export const TECHS: TechDef[] = [
     id: "range-equation",
     act: 4,
     name: "Range Equation",
-    summary: "An expedition is a fuel problem. Better fixes, 12% less time in the wind.",
+    summary: "Expeditions take 12% less time.",
     cost: { knowledge: 180, starlight: 50 },
   },
   {
     id: "fat-stores",
     act: 4,
     name: "Fat Stores",
-    summary: "Migrants fuel on fat, not hope. The flock eats 15% less.",
+    summary: "The flock eats 15% less.",
     cost: { knowledge: 140, seeds: 400 },
   },
 ];
@@ -223,37 +233,37 @@ export const UPGRADES: UpgradeDef[] = [
   {
     id: "fledgling",
     name: "Fledgling memory",
-    summary: "The next expedition starts with one more bird, already housed. They begin idle.",
+    summary: "The next flight starts with one more bird.",
     costs: [1, 2, 3],
   },
   {
     id: "headings",
     name: "Inherited headings",
-    summary: "The next expedition starts with a surveyed route.",
+    summary: "The next flight starts with a route.",
     costs: [1, 2],
   },
   {
     id: "twilight",
     name: "Longer twilight",
-    summary: "Offline progress counts for two more hours.",
+    summary: "Offline progress lasts two more hours.",
     costs: [2, 3],
   },
   {
     id: "airframe",
     name: "Cleaner airframe",
-    summary: "Expeditions resolve 5% faster on every future flight.",
+    summary: "Future flights resolve 5% faster.",
     costs: [1, 2, 3],
   },
   {
     id: "second-look",
     name: "Second look",
-    summary: "On a later expedition, the doctrine can be changed once.",
+    summary: "A later flight can change doctrine once.",
     costs: [3],
   },
   {
     id: "charts",
     name: "Star charts",
-    summary: "Knowledge and starlight come in 10% faster.",
+    summary: "Knowledge and starlight arrive 10% faster.",
     costs: [2, 3, 4],
   },
   {
@@ -272,7 +282,6 @@ export interface ProjectDef {
   era: boolean;
   category: string;
   summary: string;
-  forecast: string;
   duration: (state: GameState) => number;
   birds: number;
   costs: (state: GameState) => Partial<Resources>;
@@ -290,6 +299,20 @@ function allyDiscount(state: GameState): number {
   return state.flags.includes("ally") ? 0.85 : 1;
 }
 
+/** How many of a repeatable plan fit on one flight. Chips and visibility share this. */
+export const PLAN_CAPS = {
+  nest: 8,
+  archive: 3,
+  beacon: 5,
+  corridor: 6,
+  treaty: 6,
+  solar: 3,
+  ark: 8,
+  scan: 4,
+  brood: 8,
+  civic: 3,
+} as const;
+
 export const PROJECTS: ProjectDef[] = [
   {
     id: "seed-cache",
@@ -297,8 +320,7 @@ export const PROJECTS: ProjectDef[] = [
     act: 1,
     era: true,
     category: "Foundation",
-    summary: "Line a hollow with dry grass so the seed stops blowing away.",
-    forecast: "Unlocks twigs, Weavers, and a store that can hold a plan.",
+    summary: "Store seeds so they stop blowing away.",
     duration: () => 0,
     birds: 0,
     costs: () => ({ seeds: 58 }),
@@ -312,8 +334,7 @@ export const PROJECTS: ProjectDef[] = [
     act: 1,
     era: true,
     category: "Foundation",
-    summary: "A cup of twigs, and somewhere the next bird can stand.",
-    forecast: "Unlocks field plans and research. +5 flock capacity.",
+    summary: "A twig cup. Unlocks plans and research.",
     duration: () => 0,
     birds: 0,
     costs: () => ({ seeds: 48, twigs: 16 }),
@@ -328,8 +349,7 @@ export const PROJECTS: ProjectDef[] = [
     act: 1,
     era: true,
     category: "Expedition",
-    summary: "Walk the branches until the good ones are obvious.",
-    forecast: "+2 routes. Unlocks knowledge and Scouts.",
+    summary: "Mark the branches worth flying again.",
     duration: () => 28,
     birds: 2,
     costs: () => ({ seeds: 36, twigs: 12 }),
@@ -344,8 +364,7 @@ export const PROJECTS: ProjectDef[] = [
     act: 1,
     era: false,
     category: "Structure",
-    summary: "Another cup in the tree. Capacity, and a little more room in the stores.",
-    forecast: "+5 flock capacity · larger seed and twig stores.",
+    summary: "More housing, and bigger stores.",
     duration: (state) => 24 + count(state, "nest") * 4,
     birds: 2,
     costs: (state) => ({
@@ -354,7 +373,7 @@ export const PROJECTS: ProjectDef[] = [
     }),
     repeatable: true,
     goal: false,
-    visible: (state) => state.flags.includes("first-nest") && count(state, "nest") < 8,
+    visible: (state) => state.flags.includes("first-nest") && count(state, "nest") < PLAN_CAPS.nest,
   },
   {
     id: "seedfall",
@@ -362,8 +381,7 @@ export const PROJECTS: ProjectDef[] = [
     act: 1,
     era: false,
     category: "Season",
-    summary: "Point every free beak at a brief, stupid abundance.",
-    forecast: "+1 route · gathering surges for 75 seconds.",
+    summary: "A short burst of gathering.",
     duration: () => 22,
     birds: 3,
     costs: () => ({ seeds: 30, twigs: 12 }),
@@ -384,10 +402,9 @@ export const PROJECTS: ProjectDef[] = [
     act: 1,
     era: true,
     category: "Era",
-    summary: "Bind the nests into a place that is still there tomorrow.",
-    forecast: "Begins the aerie. Unlocks doctrine, scholarship, and brood.",
-    duration: () => 55,
-    birds: 4,
+    summary: "Turn the nests into a roost.",
+    duration: () => 42,
+    birds: 3,
     costs: () => ({ seeds: 170, twigs: 95, knowledge: 8 }),
     repeatable: false,
     goal: true,
@@ -402,8 +419,7 @@ export const PROJECTS: ProjectDef[] = [
     act: 2,
     era: false,
     category: "Knowledge",
-    summary: "A wind-sheltered room where a note can outlive the bird who wrote it.",
-    forecast: "A larger knowledge store, and a little scholarship even when no one is reading.",
+    summary: "A bigger knowledge store.",
     duration: (state) => 36 + count(state, "archive") * 8,
     birds: 3,
     costs: (state) => ({
@@ -413,7 +429,7 @@ export const PROJECTS: ProjectDef[] = [
     }),
     repeatable: true,
     goal: false,
-    visible: (state) => state.act >= 2 && count(state, "archive") < 3,
+    visible: (state) => state.act >= 2 && count(state, "archive") < PLAN_CAPS.archive,
   },
   {
     id: "brood",
@@ -421,18 +437,18 @@ export const PROJECTS: ProjectDef[] = [
     act: 2,
     era: false,
     category: "Flock",
-    summary: "Spend stores to bring three young birds up now, instead of waiting on the keepers.",
-    forecast: "+3 birds, if there is room on the branches.",
+    summary: "Three birds now, then the nursery rests.",
     duration: () => 30,
     birds: 2,
     costs: () => ({ seeds: 70, twigs: 24 }),
     repeatable: true,
     goal: false,
-    visible: (state) => state.act >= 2 && count(state, "brood") < 8,
+    visible: (state) => state.act >= 2 && count(state, "brood") < PLAN_CAPS.brood,
     blocked: (state) => {
       const readyAt = state.cooldowns.brood ?? 0;
       if (state.elapsed + 0.01 < readyAt) {
-        return `The nursery needs ${Math.ceil(readyAt - state.elapsed)}s.`;
+        const left = Math.ceil(readyAt - state.elapsed);
+        return `Nursery rests ${TUNE.broodRest}s after a brood. ${left}s left.`;
       }
       if (state.flock + 3 > capacityPreview(state) + 0.01) {
         return "The branches are full. Raise capacity before another brood.";
@@ -446,8 +462,7 @@ export const PROJECTS: ProjectDef[] = [
     act: 2,
     era: false,
     category: "Expedition",
-    summary: "Send scouts past the hedgerow and bring back a line someone else can fly.",
-    forecast: "+1 route.",
+    summary: "Scouts bring back one route.",
     duration: () => 34,
     birds: 3,
     costs: (state) => ({
@@ -456,7 +471,8 @@ export const PROJECTS: ProjectDef[] = [
     }),
     repeatable: true,
     goal: false,
-    visible: (state) => state.act >= 2 && state.routes < TUNE.maxRoutes && count(state, "corridor") < 6,
+    visible: (state) =>
+      state.act >= 2 && state.routes < TUNE.maxRoutes && count(state, "corridor") < PLAN_CAPS.corridor,
   },
   {
     id: "council",
@@ -464,8 +480,7 @@ export const PROJECTS: ProjectDef[] = [
     act: 2,
     era: true,
     category: "Era",
-    summary: "A flock that can argue can make a promise larger than one tree.",
-    forecast: "Begins dominion. Unlocks influence and Envoys.",
+    summary: "A promise bigger than one tree.",
     duration: () => 80,
     birds: 5,
     costs: () => ({ seeds: 520, twigs: 280, knowledge: 300 }),
@@ -485,8 +500,7 @@ export const PROJECTS: ProjectDef[] = [
     act: 3,
     era: false,
     category: "Civic",
-    summary: "A post the outer roosts can see, so the accord is not only a rumor.",
-    forecast: "Passive influence, and a taller store of it.",
+    summary: "Passive influence the roosts can see.",
     duration: (state) => 48 + count(state, "beacon") * 6,
     birds: 4,
     costs: (state) => {
@@ -500,7 +514,7 @@ export const PROJECTS: ProjectDef[] = [
     },
     repeatable: true,
     goal: false,
-    visible: (state) => state.act >= 3 && count(state, "beacon") < 5,
+    visible: (state) => state.act >= 3 && count(state, "beacon") < PLAN_CAPS.beacon,
   },
   {
     id: "treaty",
@@ -508,14 +522,13 @@ export const PROJECTS: ProjectDef[] = [
     act: 3,
     era: false,
     category: "Diplomacy",
-    summary: "A slow pass over a roost that has not decided about you yet.",
-    forecast: "+14 influence · Envoys work faster for 90 seconds.",
+    summary: "A visit that brings influence.",
     duration: () => 36,
     birds: 3,
     costs: () => ({ seeds: 120, knowledge: 40 }),
     repeatable: true,
     goal: false,
-    visible: (state) => state.act >= 3 && count(state, "treaty") < 6,
+    visible: (state) => state.act >= 3 && count(state, "treaty") < PLAN_CAPS.treaty,
     blocked: (state) => {
       const readyAt = state.cooldowns.treaty ?? 0;
       if (state.elapsed + 0.01 < readyAt) {
@@ -530,14 +543,13 @@ export const PROJECTS: ProjectDef[] = [
     act: 3,
     era: false,
     category: "Civic roost",
-    summary: "A roost that exists to be full. Specialization is permanent.",
-    forecast: "A deep seed store and a trickle of seed that does not need a beak.",
+    summary: "A roost that stores seed.",
     duration: () => 50,
     birds: 4,
     costs: (state) => roostCost(state),
     repeatable: true,
     goal: false,
-    visible: (state) => state.act >= 3 && civicRoosts(state) < 3,
+    visible: (state) => state.act >= 3 && civicRoosts(state) < PLAN_CAPS.civic,
   },
   {
     id: "academy",
@@ -545,14 +557,13 @@ export const PROJECTS: ProjectDef[] = [
     act: 3,
     era: false,
     category: "Civic roost",
-    summary: "A roost that keeps the arguments, not the grain.",
-    forecast: "A deep knowledge store and passive scholarship.",
+    summary: "A roost that stores knowledge.",
     duration: () => 50,
     birds: 4,
     costs: (state) => roostCost(state),
     repeatable: true,
     goal: false,
-    visible: (state) => state.act >= 3 && civicRoosts(state) < 3,
+    visible: (state) => state.act >= 3 && civicRoosts(state) < PLAN_CAPS.civic,
   },
   {
     id: "eyrie",
@@ -560,14 +571,13 @@ export const PROJECTS: ProjectDef[] = [
     act: 3,
     era: false,
     category: "Civic roost",
-    summary: "A roost built as a ledge. More birds, sooner.",
-    forecast: "+6 flock capacity and a faster brood.",
+    summary: "A roost with more housing.",
     duration: () => 50,
     birds: 4,
     costs: (state) => roostCost(state),
     repeatable: true,
     goal: false,
-    visible: (state) => state.act >= 3 && civicRoosts(state) < 3,
+    visible: (state) => state.act >= 3 && civicRoosts(state) < PLAN_CAPS.civic,
   },
   {
     id: "accord",
@@ -575,8 +585,7 @@ export const PROJECTS: ProjectDef[] = [
     act: 3,
     era: true,
     category: "Era",
-    summary: "Turn a cluster of roosts into a route with a name.",
-    forecast: "Begins the crossing. Unlocks starlight, Navigators, and a home star.",
+    summary: "Name the route and leave the tree.",
     duration: () => 110,
     birds: 8,
     costs: () => ({ seeds: 1100, twigs: 640, knowledge: 280, influence: 150 }),
@@ -594,8 +603,7 @@ export const PROJECTS: ProjectDef[] = [
     act: 4,
     era: false,
     category: "Harbor",
-    summary: "A bright ledge between legs of the route. Optional, and hungry.",
-    forecast: "Capacity, stores, and a thread of starlight.",
+    summary: "Housing and a thread of starlight.",
     duration: (state) => 55 + count(state, "solar") * 8,
     birds: 5,
     costs: (state) => ({
@@ -605,7 +613,7 @@ export const PROJECTS: ProjectDef[] = [
     }),
     repeatable: true,
     goal: false,
-    visible: (state) => state.act >= 4 && count(state, "solar") < 3,
+    visible: (state) => state.act >= 4 && count(state, "solar") < PLAN_CAPS.solar,
   },
   {
     id: "ark",
@@ -613,8 +621,7 @@ export const PROJECTS: ProjectDef[] = [
     act: 4,
     era: false,
     category: "Crossing",
-    summary: "A self-sufficient roost with enough range to make the next star a stop.",
-    forecast: "+1 star system. The store grows with the route.",
+    summary: "A roost that becomes a star system.",
     duration: (state) => 70 + count(state, "ark") * 6,
     birds: 6,
     costs: (state) => {
@@ -628,7 +635,7 @@ export const PROJECTS: ProjectDef[] = [
     },
     repeatable: true,
     goal: false,
-    visible: (state) => state.act >= 4 && count(state, "ark") < 8,
+    visible: (state) => state.act >= 4 && count(state, "ark") < PLAN_CAPS.ark,
   },
   {
     id: "scan",
@@ -636,14 +643,13 @@ export const PROJECTS: ProjectDef[] = [
     act: 4,
     era: false,
     category: "Crossing",
-    summary: "Trade speed for a cheaper star. It does not build you a harbor.",
-    forecast: "+1 star system · +1 route.",
+    summary: "A cheaper star, and one route.",
     duration: () => 48,
     birds: 4,
     costs: () => ({ knowledge: 70, starlight: 22 }),
     repeatable: true,
     goal: false,
-    visible: (state) => state.act >= 4 && count(state, "scan") < 4 && state.systems < 12,
+    visible: (state) => state.act >= 4 && count(state, "scan") < PLAN_CAPS.scan && state.systems < 12,
   },
   {
     id: "murmur",
@@ -651,8 +657,7 @@ export const PROJECTS: ProjectDef[] = [
     act: 4,
     era: true,
     category: "Era",
-    summary: "Commit the route. After this, home is a heading.",
-    forecast: "Completes the expedition. The ending remembers your doctrine.",
+    summary: "Finish the route and end the flight.",
     duration: () => 150,
     birds: 10,
     costs: () => ({ seeds: 1680, twigs: 980, knowledge: 640, starlight: 340 }),
@@ -701,6 +706,15 @@ export function projectById(id: string): ProjectDef | undefined {
   return PROJECTS.find((project) => project.id === id);
 }
 
+/** Repeatable archives share one card. The title says which tier is next. */
+export function projectTitle(state: GameState, project: ProjectDef): string {
+  if (project.id !== "archive") return project.name;
+  const next = count(state, "archive") + 1;
+  if (next <= 1) return "Raise an archive";
+  if (next === 2) return "Raise a second archive";
+  return "Raise the last archive";
+}
+
 export interface EventOptionDef {
   id: string;
   name: string;
@@ -722,20 +736,20 @@ export const EVENTS: EventDef[] = [
   {
     id: "summer-gale",
     act: 1,
-    eyebrow: "A change in the weather",
-    title: "A warm gale bends the western boughs",
-    text: "The route is fast and exposed. Ride it, or keep the young nests from learning bad habits.",
+    eyebrow: "Weather",
+    title: "A warm gale",
+    text: "Ride the wind, or hold the nests still.",
     options: [
       {
         id: "ride",
         name: "Ride the gale",
-        effect: "+2 routes, and 28 seeds blown out of the cache.",
+        effect: "+2 routes. Costs 28 seeds.",
         cost: { seeds: 28 },
       },
       {
         id: "brace",
         name: "Brace and let it pass",
-        effect: "Morale recovers. The route can wait.",
+        effect: "Morale rises. Influence and growth speed up. No stores spent.",
       },
     ],
     when: (state) => state.flags.includes("survey"),
@@ -744,19 +758,19 @@ export const EVENTS: EventDef[] = [
     id: "night-frost",
     act: 1,
     eyebrow: "A cold night",
-    title: "Frost walks the windward twigs",
-    text: "You can spend wood to keep the cups warm, or huddle and write down which branches failed.",
+    title: "Night frost",
+    text: "Burn twigs for warmth, or huddle and learn.",
     options: [
       {
         id: "burn",
         name: "Burn a little wood",
-        effect: "Spend 16 twigs. The flock sleeps.",
+        effect: "Costs 16 twigs. Morale rises. The flock sleeps.",
         cost: { twigs: 16 },
       },
       {
         id: "huddle",
         name: "Huddle and watch",
-        effect: "Gathering slows for two minutes. The scouts learn something.",
+        effect: "+8 knowledge. Gathering −15% for 2 min.",
       },
     ],
     when: (state) => count(state, "nest") >= 2 && state.seenEvents.includes("summer-gale"),
@@ -764,19 +778,19 @@ export const EVENTS: EventDef[] = [
   {
     id: "garden-treaty",
     act: 2,
-    eyebrow: "Someone has noticed",
-    title: "Grain under the council tree",
-    text: "A gardener is leaving seed where the flock can see it. Taking it means being seen back.",
+    eyebrow: "Someone noticed",
+    title: "Seed under the council tree",
+    text: "Take the seed and be seen, or just watch.",
     options: [
       {
         id: "accept",
         name: "Accept, in the open",
-        effect: "A larger seed store and busier foragers. You are no longer a secret.",
+        effect: "Seed store +220. Foragers +10%. +6 influence.",
       },
       {
         id: "study",
         name: "Watch from cover",
-        effect: "+45 knowledge and a route. The grain stays where it was.",
+        effect: "+45 knowledge. +1 route.",
       },
     ],
     when: (state) => state.flags.includes("roost") && state.elapsed > state.actStartedAt + 50,
@@ -785,19 +799,19 @@ export const EVENTS: EventDef[] = [
     id: "cuckoo",
     act: 2,
     eyebrow: "A guest",
-    title: "Something else is using the hedge",
-    text: "Drive it off and keep the brood's pace, or tolerate it and learn how it hides.",
+    title: "A guest in the hedge",
+    text: "Drive it off, or learn how it hides.",
     options: [
       {
         id: "drive",
         name: "Drive it off",
-        effect: "Spend 24 knowledge. The brood keeps its pace.",
+        effect: "Costs 24 knowledge. Brood pace stays the same.",
         cost: { knowledge: 24 },
       },
       {
         id: "tolerate",
         name: "Let it stay the week",
-        effect: "+35 knowledge. Growth slows for a few minutes.",
+        effect: "+35 knowledge. Growth −20% for 3 min.",
       },
     ],
     when: (state) => count(state, "archive") >= 1,
@@ -806,18 +820,18 @@ export const EVENTS: EventDef[] = [
     id: "song-school",
     act: 2,
     eyebrow: "What gets taught",
-    title: "The young birds will learn one song properly",
-    text: "There is time to teach a hunting song or a building song. Not both, not well.",
+    title: "One song for the young",
+    text: "Teach hunting or building. Not both.",
     options: [
       {
         id: "hunt",
         name: "Teach the hunting song",
-        effect: "Foragers permanently a little quicker.",
+        effect: "Foragers +6% from now on.",
       },
       {
         id: "build",
         name: "Teach the building song",
-        effect: "Weavers permanently a little quicker.",
+        effect: "Weavers +6% from now on.",
       },
     ],
     when: (state) =>
@@ -826,20 +840,20 @@ export const EVENTS: EventDef[] = [
   {
     id: "civic-doubt",
     act: 3,
-    eyebrow: "A question of pace",
-    title: "The outer roosts say the council is in a hurry",
-    text: "You can spend scholarship to answer them, or let the complaint stand and lose a little nerve.",
+    eyebrow: "Pace",
+    title: "The outer roosts are impatient",
+    text: "Answer them, or let the complaint stand.",
     options: [
       {
         id: "congress",
         name: "Call a congress",
-        effect: "Spend 50 knowledge. Influence jumps.",
+        effect: "Costs 50 knowledge. +18 influence.",
         cost: { knowledge: 50 },
       },
       {
         id: "leave",
         name: "Let the complaint stand",
-        effect: "A little influence. Morale dips. No stores spent.",
+        effect: "+4 influence. Morale dips. No stores spent.",
       },
     ],
     when: (state) => state.flags.includes("council") && state.elapsed > state.actStartedAt + 40,
@@ -849,17 +863,17 @@ export const EVENTS: EventDef[] = [
     act: 3,
     eyebrow: "A hard season",
     title: "The seed heads close early",
-    text: "Open the stores for the outer roosts, or keep what you have and be disliked for it.",
+    text: "Share the stores, or keep them and be disliked.",
     options: [
       {
         id: "open",
         name: "Open the granaries",
-        effect: "Lose about 12% of your seeds. Morale and influence rise.",
+        effect: "Lose 12% of your seeds. +12 influence. Morale rises.",
       },
       {
         id: "hold",
         name: "Keep the reserve",
-        effect: "The stores stay. The outer roosts remember.",
+        effect: "Stores stay. Morale dips.",
       },
     ],
     when: (state) => count(state, "beacon") >= 1,
@@ -868,19 +882,19 @@ export const EVENTS: EventDef[] = [
     id: "rival-aerie",
     act: 3,
     eyebrow: "Another flock",
-    title: "A rival aerie is flying the same corridor",
-    text: "Contest the route, or trade a little pride for a cheaper beacon.",
+    title: "Another flock on your route",
+    text: "Contest the corridor, or share a beacon.",
     options: [
       {
         id: "contest",
         name: "Contest the corridor",
-        effect: "+1 route and influence. Spend seeds and twigs.",
+        effect: "Costs 160 seeds and 80 twigs. +1 route. +10 influence.",
         cost: { seeds: 160, twigs: 80 },
       },
       {
         id: "ally",
         name: "Offer the next beacon",
-        effect: "A small gain of influence. Your next beacons cost less.",
+        effect: "+4 influence. Later beacons cost 15% less.",
       },
     ],
     when: (state) => count(state, "beacon") >= 2,
@@ -888,20 +902,20 @@ export const EVENTS: EventDef[] = [
   {
     id: "quiet-signal",
     act: 4,
-    eyebrow: "From past the mapped dark",
-    title: "A repeating signal answers the first ark",
-    text: "Follow it and spend the fix you have, or copy the pattern and leave the question in the archive.",
+    eyebrow: "A signal",
+    title: "A signal answers the first ark",
+    text: "Follow it, or copy it and stay.",
     options: [
       {
         id: "follow",
         name: "Follow the signal",
-        effect: "+1 system. Spend 24 starlight.",
+        effect: "Costs 24 starlight. +1 system.",
         cost: { starlight: 24 },
       },
       {
         id: "archive",
         name: "Archive the pattern",
-        effect: "+90 knowledge and +24 starlight.",
+        effect: "+90 knowledge. +24 starlight.",
       },
     ],
     when: (state) => state.flags.includes("accord") && state.elapsed > state.actStartedAt + 40,
@@ -910,13 +924,13 @@ export const EVENTS: EventDef[] = [
     id: "headwind",
     act: 4,
     eyebrow: "Range",
-    title: "The next leg is longer than the fix",
-    text: "Burn starlight to punch through, or wait for a cleaner window and study the error.",
+    title: "The next leg is too long",
+    text: "Burn starlight, or wait and study.",
     options: [
       {
         id: "burn",
         name: "Burn reserve starlight",
-        effect: "Spend 30 starlight. The active expedition, or the next one, runs hot for a minute.",
+        effect: "Costs 30 starlight. Launches +35% for about a minute.",
         cost: { starlight: 30 },
       },
       {
@@ -931,18 +945,18 @@ export const EVENTS: EventDef[] = [
     id: "last-ground",
     act: 4,
     eyebrow: "The last soil",
-    title: "One ground still grows something you did not plant",
-    text: "Leave it as a sanctuary, or take the seed and the twigs and do not pretend otherwise.",
+    title: "One wild ground left",
+    text: "Leave it, or take the seed and twigs.",
     options: [
       {
         id: "sanctuary",
         name: "Leave it wild",
-        effect: "Gathering is permanently a little poorer. The ending will say so.",
+        effect: "Gathering −4% from now on. The ending remembers.",
       },
       {
         id: "harvest",
         name: "Take the seed",
-        effect: "+180 seeds and +70 twigs. The ending will say so.",
+        effect: "+180 seeds. +70 twigs. The ending remembers.",
       },
     ],
     when: (state) => state.systems >= 4,
@@ -976,7 +990,7 @@ export const SEASONS: Array<{
   {
     id: "rain",
     name: "Soft rain",
-    detail: "The flock preens and writes. Gathering slows; morale recovers.",
+    detail: "Gathering slows. Morale recovers.",
     seed: 0.9,
     twig: 1.04,
     knowledge: 1.18,
@@ -984,7 +998,7 @@ export const SEASONS: Array<{
   {
     id: "dearth",
     name: "Dearth",
-    detail: "The heads are closed. Live on what you stored.",
+    detail: "Seed heads are closed. Use the cache.",
     seed: 0.68,
     twig: 1.02,
     knowledge: 0.95,

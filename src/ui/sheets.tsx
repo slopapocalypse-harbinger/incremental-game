@@ -5,6 +5,7 @@ import {
   canChooseOption,
   capBreakdown,
   formatCosts,
+  growthPause,
   marksForRun,
   migrate,
 } from "../game/engine";
@@ -51,7 +52,9 @@ export function EventSheet({
                 {option.name}
               </button>
               <p className="forecast">{option.effect}</p>
-              {option.cost ? <p className="reason">Costs {formatCosts(option.cost)}.</p> : <p className="reason">No stores spent.</p>}
+              {option.cost && !/cost/i.test(option.effect) ? (
+                <p className="reason">Costs {formatCosts(option.cost)}.</p>
+              ) : null}
               {!readiness.ok ? <p className="reason">{readiness.reason}</p> : null}
             </li>
           );
@@ -59,11 +62,9 @@ export function EventSheet({
       </ul>
       {waiting > 0 ? (
         <p className="aside">
-          {waiting} more moment{waiting === 1 ? "" : "s"} waiting after this one. The flock keeps working underneath.
+          {waiting} more choice{waiting === 1 ? "" : "s"} after this.
         </p>
-      ) : (
-        <p className="aside">The flock keeps working while you choose.</p>
-      )}
+      ) : null}
     </Sheet>
   );
 }
@@ -72,18 +73,26 @@ export function CapSheet({
   game,
   id,
   onClose,
+  onStaff,
 }: {
   game: GameState;
   id: ResourceId | "flock";
   onClose: () => void;
+  onStaff?: () => void;
 }) {
   const lines = capBreakdown(game, id);
-  const title = id === "flock" ? "Flock capacity" : `${RESOURCE_LABEL[id]} cap`;
-  const held = id === "flock" ? formatBirds(game.flock) : formatAmount(game.resources[id], 1);
+  const flock = id === "flock";
+  const pause = flock ? growthPause(game) : null;
+  const title = flock ? "Housing limit" : `${RESOURCE_LABEL[id]} cap`;
+  const held = flock ? formatBirds(game.flock) : formatAmount(game.resources[id], 1);
   return (
-    <Sheet title={title} eyebrow="Why it stops here" onClose={onClose} testId={`cap-${id}`}>
+    <Sheet title={title} eyebrow={flock ? "Not the roster" : "Why it stops here"} onClose={onClose} testId={`cap-${id}`}>
+      {flock ? (
+        <p>How many birds the branches can hold.</p>
+      ) : null}
+      {pause ? <p data-testid="growth-reason">{pause}</p> : null}
       <p className="stat">
-        <strong>{held}</strong> on hand
+        <strong>{held}</strong> {flock ? "housed" : "on hand"}
       </p>
       <ul className="breakdown">
         {lines.map((line) => (
@@ -93,7 +102,13 @@ export function CapSheet({
           </li>
         ))}
       </ul>
-      <p className="aside">A full store stops that income. Spending, or building a larger hold, is how it moves again.</p>
+      {flock && onStaff ? (
+        <button type="button" className="btn" onClick={onStaff}>
+          Staff the flock
+        </button>
+      ) : (
+        <p className="aside">A full store stops that income until you spend or build.</p>
+      )}
     </Sheet>
   );
 }
@@ -227,11 +242,15 @@ export function SettingsSheet({
         </button>
       </div>
 
-      <h3>Leave the flight</h3>
-      <p>Migration spends marks and starts a new flock. It does not erase the export you already copied.</p>
-      <button type="button" className="btn ghost" onClick={onMigrate} disabled={game.act < 2 && !game.won}>
-        {game.act < 2 && !game.won ? "Migration opens after the roost" : "Open migration"}
-      </button>
+      {game.act >= 2 || game.won ? (
+        <>
+          <h3>Leave the flight</h3>
+          <p>Migration spends marks and starts a new flock. It does not erase the export you already copied.</p>
+          <button type="button" className="btn ghost" onClick={onMigrate}>
+            Open migration
+          </button>
+        </>
+      ) : null}
     </Sheet>
   );
 }

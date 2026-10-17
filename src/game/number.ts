@@ -33,6 +33,17 @@ export function formatRate(value: number): string {
   return value > 0 ? `+${body}/s` : `-${body}/s`;
 }
 
+/** Slow flock growth is easier to read as a wait than as a fraction of a bird per second. */
+export function formatPopulationRate(value: number): string {
+  if (!Number.isFinite(value) || value < 0.0005) return "+0/s";
+  if (value >= 0.1) return formatRate(value);
+  const seconds = 1 / value;
+  if (seconds < 90) return `+1 bird / ~${Math.max(1, Math.round(seconds))}s`;
+  const minutes = Math.round((seconds / 60) * 2) / 2;
+  const shown = Number.isInteger(minutes) ? String(minutes) : minutes.toFixed(1);
+  return `+1 bird / ~${shown}m`;
+}
+
 export function formatDuration(seconds: number): string {
   if (!Number.isFinite(seconds)) return "0s";
   const safe = Math.max(0, Math.ceil(seconds));

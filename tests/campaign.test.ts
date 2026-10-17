@@ -360,8 +360,10 @@ describe("campaign", () => {
     expect(times.council).toBeLessThan(45 * 60);
     expect(times.accord).toBeGreaterThan(100 * 60);
     expect(times.accord).toBeLessThan(3 * 3600);
+    // Upper bound tightened from 6h to 4.5h with the doctrine rebalance.
+    // Measured Ingenuity finish is 3h 58m; the floor stays 3.6h.
     expect(times.win).toBeGreaterThan(3.6 * 3600);
-    expect(times.win).toBeLessThan(6 * 3600);
+    expect(times.win).toBeLessThan(4.5 * 3600);
     expect(result.state.seenEvents.length).toBeGreaterThanOrEqual(6);
   }, 30_000);
 
@@ -369,6 +371,10 @@ describe("campaign", () => {
     for (const doctrine of ["stewardship", "wanderlust"] as const) {
       const result = play(createInitialState(0), "attentive", doctrine);
       expect(result.state.won, `${doctrine}\n${describeState(result.state)}`).toBe(true);
+      expect(result.times.roost, doctrine).toBeGreaterThan(7 * 60);
+      expect(result.times.roost, doctrine).toBeLessThan(12 * 60);
+      expect(result.times.win, doctrine).toBeGreaterThan(3.5 * 3600);
+      expect(result.times.win, doctrine).toBeLessThan(4.5 * 3600);
       console.info(doctrine, result.times);
     }
     const stingy = play(createInitialState(0), "stingy", "stewardship");

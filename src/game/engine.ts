@@ -11,14 +11,16 @@ import {
   UPGRADES,
   capacityPreview,
   count,
+  civicRoosts,
   emptyResources,
+  PLAN_CAPS,
   emptyRoles,
   projectById,
   type EventDef,
   type ProjectDef,
 } from "./content";
-import { clampResource, formatAmount, formatDuration } from "./number";
-import { doctrineRemark, eventRemark, projectRemark } from "./voice";
+import { clampResource, formatAmount, formatDuration, formatPopulationRate, formatRate } from "./number";
+import { doctrineRemark, isBirdLine, repeatRemark, roleArrival } from "./voice";
 import {
   SAVE_VERSION,
   type Act,
@@ -75,17 +77,11 @@ export function createInitialState(now: number, meta?: Partial<RunMeta>): GameSt
       {
         id: 1,
         at: 0,
-        text: "Six birds in the sunward canopy. Three are already working the seed heads. Three are watching.",
-        tone: "story",
-      },
-      {
-        id: 2,
-        at: 0,
-        text: "Pip: Six. I counted the ones working and the ones watching.",
+        text: "Six birds. Three working, three idle.",
         tone: "story",
       },
     ],
-    logSeq: 2,
+    logSeq: 1,
     won: false,
     marks: meta?.marks ?? 0,
     ranks,
@@ -262,6 +258,10 @@ export function isRoleUnlocked(state: GameState, role: RoleId): boolean {
   return state.act >= 4;
 }
 
+export function visibleRoles(state: GameState): RoleId[] {
+  return ROLE_DEFS.map((role) => role.id).filter((id) => isRoleUnlocked(state, id));
+}
+
 export function isResourceUnlocked(state: GameState, resource: ResourceId): boolean {
   if (resource === "seeds") return true;
   if (resource === "twigs") return state.flags.includes("seed-cache");
@@ -326,12 +326,14 @@ export function calculateRates(state: GameState): Rates {
   const twigs =
     (state.roles.weavers * TUNE.weaver * season.twig * (1 + route) * steady * twigTech * seedfallTwig * build * huddle +
       count(state, "nest") * TUNE.nestTwig);
+  const notes = state.flags.includes("survey") ? TUNE.fieldNotes : 0;
   const knowledge =
     (state.roles.scholars * TUNE.scholar +
       state.roles.scouts * TUNE.scout * scoutDoctrine +
       count(state, "archive") * TUNE.archiveKnowledge +
       count(state, "academy") * TUNE.academyKnowledge +
-      state.systems * TUNE.systemKnowledge) *
+      state.systems * TUNE.systemKnowledge +
+      notes) *
     season.knowledge *
     memory *
     ingenuity *
@@ -360,6 +362,18 @@ export function calculateRates(state: GameState): Rates {
   return { seeds, twigs, knowledge, influence, starlight, population, upkeep };
 }
 
+/** Why the flock number is not moving. Null when young are actually arriving. */
+export function growthPause(state: GameState): string | null {
+  if (calculateRates(state).population >= 0.0005) return null;
+  if (state.act < 2) return "The flock grows once there is a roost to raise young in";
+  const raising = state.roles.broodkeepers > 0 || count(state, "eyrie") > 0;
+  if (!raising) return "Assign Broodkeepers to raise young";
+  if (state.flock >= getCapacity(state) - 0.05) return "At capacity";
+  const need = state.flock * 5;
+  const shown = Number.isInteger(need) ? formatAmount(need, 0) : formatAmount(need, 1);
+  return `Seed reserve too low: growth needs more than ${shown} seeds`;
+}
+
 export function roleYield(state: GameState, role: RoleId): string {
   const definition = ROLE_DEFS.find((item) => item.id === role);
   if (!definition) return "";
@@ -370,9 +384,9 @@ export function roleYield(state: GameState, role: RoleId): string {
   });
   const key = definition.resource;
   const gain = Math.max(0, after[key] - before[key]);
+  if (key === "population") return `${formatPopulationRate(gain)} each`;
   const digits = gain < 0.1 ? 3 : 2;
-  const unit = key === "population" ? "birds" : key;
-  return `+${formatAmount(gain, digits)} ${unit}/s each`;
+  return `+${formatAmount(gain, digits)} ${key}/s each`;
 }
 
 export function assignRole(state: GameState, role: RoleId, delta: -1 | 1): GameState {
@@ -410,14 +424,18 @@ export function canStart(state: GameState, projectId: string): Readiness {
   const blocked = project.blocked?.(state);
   if (blocked) return { ok: false, reason: blocked };
   const costs = project.costs(state);
-  if (!hasCosts(state, costs)) return { ok: false, reason: formatMissing(state, costs) };
+  const missingCost = !hasCosts(state, costs) ? formatMissing(state, costs) : "";
   const idle = getIdleBirds(state);
-  if (idle < project.birds) {
-    const missing = project.birds - idle;
-    return {
-      ok: false,
-      reason: `Free ${missing} more bird${missing === 1 ? "" : "s"} from their roles.`,
-    };
+  const missingBirds = Math.max(0, project.birds - idle);
+  const impact =
+    project.birds > 0 ? borrowImpact(state, project.birds, wallTime(state, project)) : "";
+  if (missingCost || missingBirds > 0) {
+    const free =
+      missingBirds > 0
+        ? `Free ${missingBirds} more bird${missingBirds === 1 ? "" : "s"}.`
+        : "";
+    const reason = [missingCost, free, impact].filter(Boolean).join(" ");
+    return { ok: false, reason };
   }
   return { ok: true, reason: project.duration(state) === 0 ? "Ready to build." : "Ready to launch." };
 }
@@ -434,12 +452,13 @@ export function startProject(state: GameState, projectId: string): GameState {
   if (duration <= 0) {
     return completeProject(spent, project.id);
   }
+  const away = project.birds > 0 ? ` ${project.birds} birds step off the job.` : "";
   return pushLog(
     {
       ...spent,
       active: { id: project.id, remaining: duration, duration, birds: project.birds },
     },
-    `${project.name} begins. ${project.birds} birds leave their ordinary work.`,
+    `${project.name} starts.${away}`,
     "story",
   );
 }
@@ -449,7 +468,7 @@ export function recallProject(state: GameState): GameState {
   const project = projectById(state.active.id);
   return pushLog(
     { ...state, active: null },
-    `${project?.name ?? "The expedition"} is recalled. What you spent stays spent.`,
+    `${project?.name ?? "The plan"} recalled. Stores stay spent.`,
     "warning",
   );
 }
@@ -462,22 +481,142 @@ export function wallTime(state: GameState, project: ProjectDef): number {
 }
 
 export function timeToAfford(state: GameState, costs: Partial<Resources>): string {
-  if (hasCosts(state, costs)) return "Stores cover this.";
+  const limit = limitingResource(state, costs);
+  if (!limit) return "Stores cover this.";
+  const hint = limit.rate < stallFloor(limit.id) ? ` ${roleFix(state, limit.id)}` : "";
+  if (limit.rate <= 0.001) {
+    const falling = limit.rate < -0.001;
+    return `${RESOURCE_LABEL[limit.id]} ${falling ? "is falling" : "is not increasing"}.${hint}`;
+  }
+  return `About ${formatDuration(limit.seconds)} at the current rates.${hint}`;
+}
+
+const PULL_ORDER: RoleId[] = [
+  "foragers",
+  "weavers",
+  "scouts",
+  "scholars",
+  "broodkeepers",
+  "envoys",
+  "navigators",
+];
+
+/** What leaving roles for a launch does to income. Empty when idle birds cover it. */
+export function borrowImpact(state: GameState, birds: number, seconds: number): string {
+  if (birds <= 0) return "";
+  const pull = Math.max(0, birds - getIdleBirds(state));
+  if (pull <= 0) return "";
+  const roles = { ...state.roles };
+  const taken: Partial<Record<RoleId, number>> = {};
+  let left = pull;
+  while (left > 0) {
+    const role = [...PULL_ORDER]
+      .filter((id) => roles[id] > 0)
+      .sort((a, b) => roles[b] - roles[a] || PULL_ORDER.indexOf(a) - PULL_ORDER.indexOf(b))[0];
+    if (!role) break;
+    roles[role] -= 1;
+    taken[role] = (taken[role] ?? 0) + 1;
+    left -= 1;
+  }
+  if (left > 0) return "";
+  const before = calculateRates(state);
+  const after = calculateRates({ ...state, roles });
+  const changes = rateChanges(before, after);
+  const who = describeTaken(taken);
+  const clock = formatDuration(seconds);
+  return changes ? `Pulls ${who}; ${changes} for ${clock}.` : `Pulls ${who} for ${clock}.`;
+}
+
+export function actionLabel(reason: string, ready: boolean, instant: boolean): string {
+  if (ready) return instant ? "Build" : "Launch";
+  const free = reason.match(/^Free (\d+) more bird/);
+  if (free) return `Free ${free[1]} ${Number(free[1]) === 1 ? "bird" : "birds"}`;
+  const sentence = reason.split(". ")[0] ?? reason;
+  if (sentence.startsWith("Need ") && sentence.length <= 36) return sentence.replace(/\.$/, "");
+  return instant ? "Build" : "Launch";
+}
+
+export function stallFloor(id: ResourceId): number {
+  switch (id) {
+    case "seeds":
+      return TUNE.stallSeed;
+    case "twigs":
+      return TUNE.stallTwig;
+    case "knowledge":
+      return TUNE.stallKnowledge;
+    case "influence":
+      return TUNE.stallInfluence;
+    case "starlight":
+      return TUNE.stallStarlight;
+  }
+}
+
+export function roleFix(state: GameState, id: ResourceId): string {
+  if (id === "knowledge" && !isRoleUnlocked(state, "scholars")) return "Assign a Scout.";
+  const noun: Record<ResourceId, string> = {
+    seeds: "Forager",
+    twigs: "Weaver",
+    knowledge: "Scholar",
+    influence: "Envoy",
+    starlight: "Navigator",
+  };
+  return `Assign a ${noun[id]}.`;
+}
+
+interface ResourceLimit {
+  id: ResourceId;
+  rate: number;
+  seconds: number;
+}
+
+export function limitingResource(state: GameState, costs: Partial<Resources>): ResourceLimit | null {
   const rates = calculateRates(state);
-  let worst = 0;
-  let blocked: string | null = null;
+  let worst: ResourceLimit | null = null;
   for (const [key, cost] of Object.entries(costs) as Array<[ResourceId, number]>) {
     const short = cost - state.resources[key];
-    if (short <= 0) continue;
+    if (short <= 0.05) continue;
     const rate = rates[key];
-    if (rate <= 0.001) {
-      blocked = `${RESOURCE_LABEL[key]} ${rate < -0.001 ? "is falling" : "is not increasing"}.`;
-      break;
-    }
-    worst = Math.max(worst, short / rate);
+    const seconds = rate <= 0.001 ? Number.POSITIVE_INFINITY : short / rate;
+    if (!worst || seconds > worst.seconds) worst = { id: key, rate, seconds };
   }
-  if (blocked) return blocked;
-  return `About ${formatDuration(worst)} at the current rates.`;
+  return worst;
+}
+
+/** Short Now-line when the goal is waiting on a resource that is barely coming in. */
+export function stallHint(state: GameState, costs: Partial<Resources>): string | null {
+  const limit = limitingResource(state, costs);
+  if (!limit || limit.rate >= stallFloor(limit.id)) return null;
+  const label = RESOURCE_LABEL[limit.id];
+  const fix = roleFix(state, limit.id);
+  if (limit.rate < -0.001) return `${label} is falling. ${fix}`;
+  if (limit.rate <= 0.001) return `${label} is not increasing. ${fix}`;
+  return `${label} is barely coming in. ${fix}`;
+}
+
+function rateChanges(before: Rates, after: Rates): string {
+  const keys: ResourceId[] = ["seeds", "twigs", "knowledge", "influence", "starlight"];
+  const parts: string[] = [];
+  for (const key of keys) {
+    if (Math.abs(before[key] - after[key]) < 0.015) continue;
+    parts.push(`${key} ${formatRate(before[key])} to ${formatRate(after[key])}`);
+    if (parts.length === 2) break;
+  }
+  return parts.join(", ");
+}
+
+function describeTaken(taken: Partial<Record<RoleId, number>>): string {
+  const parts = (Object.entries(taken) as Array<[RoleId, number]>)
+    .filter(([, amount]) => amount > 0)
+    .map(([role, amount]) => `${amount} ${roleNoun(role, amount)}`);
+  if (parts.length === 0) return "birds";
+  if (parts.length === 1) return parts[0] ?? "birds";
+  return `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
+}
+
+function roleNoun(role: RoleId, amount: number): string {
+  const name = ROLE_DEFS.find((item) => item.id === role)?.name.toLowerCase() ?? role;
+  if (amount === 1 && name.endsWith("s")) return name.slice(0, -1);
+  return name;
 }
 
 export function canBuyTech(state: GameState, techId: string): boolean {
@@ -505,16 +644,38 @@ export function buyTech(state: GameState, techId: string): GameState {
 export function chooseDoctrine(state: GameState, doctrine: DoctrineId): GameState {
   if (state.act < 2 || state.doctrine) return state;
   if (!DOCTRINES.some((item) => item.id === doctrine)) return state;
-  const definition = DOCTRINES.find((item) => item.id === doctrine);
-  return pushLog(
-    pushLog(
-      { ...state, doctrine },
-      `${definition?.name ?? "A doctrine"} becomes the way this flock flies.`,
-      "story",
-    ),
-    doctrineRemark(doctrine),
-    "story",
-  );
+  const next = applyDoctrineGift({ ...state, doctrine }, doctrine);
+  const gift = doctrineGiftNote(doctrine);
+  const line = gift ? `${doctrineRemark(doctrine)} ${gift}` : doctrineRemark(doctrine);
+  return pushNotable(next, line);
+}
+
+function applyDoctrineGift(state: GameState, doctrine: DoctrineId): GameState {
+  if (doctrine === "ingenuity") {
+    let next = state;
+    if (next.flock + 1 <= getCapacity(next) + 0.01) {
+      next = {
+        ...next,
+        flock: next.flock + 1,
+        roles: { ...next.roles, scholars: next.roles.scholars + 1 },
+      };
+    }
+    return { ...next, resources: gain(next, { knowledge: TUNE.ingenuityGift }) };
+  }
+  if (doctrine === "wanderlust") {
+    return { ...state, routes: Math.min(TUNE.maxRoutes, state.routes + TUNE.wanderlustGift) };
+  }
+  return state;
+}
+
+function doctrineGiftNote(doctrine: DoctrineId): string {
+  if (doctrine === "ingenuity") {
+    return `A scholar joins. +${TUNE.ingenuityGift} knowledge.`;
+  }
+  if (doctrine === "wanderlust") {
+    return `+${TUNE.wanderlustGift} routes already flown.`;
+  }
+  return "";
 }
 
 export function respecDoctrine(state: GameState, doctrine: DoctrineId): GameState {
@@ -523,14 +684,9 @@ export function respecDoctrine(state: GameState, doctrine: DoctrineId): GameStat
   if (state.doctrine === doctrine) return state;
   if (state.act < 2) return state;
   const definition = DOCTRINES.find((item) => item.id === doctrine);
-  return pushLog(
-    pushLog(
-      { ...state, doctrine, doctrineChanges: state.doctrineChanges + 1 },
-      `Second look: the flock turns toward ${definition?.name ?? doctrine}.`,
-      "story",
-    ),
-    doctrineRemark(doctrine),
-    "story",
+  return pushNotable(
+    { ...state, doctrine, doctrineChanges: state.doctrineChanges + 1 },
+    `Second look: ${definition?.name ?? doctrine}. ${doctrineRemark(doctrine)}`,
   );
 }
 
@@ -560,9 +716,7 @@ export function resolveEvent(state: GameState, eventId: string, optionId: string
       : [...state.flags, `event:${eventId}:${optionId}`],
   };
   next = applyEvent(next, eventId, optionId);
-  next = pushLog(next, `${event.title} — ${option.name}.`, "story");
-  const aside = eventRemark(eventId);
-  if (aside) next = pushLog(next, aside, "story");
+  next = pushLog(next, `${event.title}: ${option.name}.`, "story");
   return promoteQueue(next);
 }
 
@@ -585,6 +739,36 @@ export interface Objective {
 }
 
 export function getObjective(state: GameState): Objective {
+  const objective = objectiveBody(state);
+  if (state.active && state.active.id === objective.projectId) return objective;
+  const project = objective.projectId ? projectById(objective.projectId) : undefined;
+  const hint = project ? stallHint(state, project.costs(state)) : null;
+  if (hint) return { ...objective, next: hint };
+  const later = eraStall(state);
+  if (later) return { ...objective, next: later };
+  return objective;
+}
+
+function eraStall(state: GameState): string | null {
+  const id =
+    state.act === 2 && state.doctrine && !state.flags.includes("council")
+      ? "council"
+      : state.act === 3 && !state.flags.includes("accord")
+        ? "accord"
+        : state.act === 4 && !state.won
+          ? "murmur"
+          : null;
+  if (!id || id === getImmediateId(state)) return null;
+  const project = projectById(id);
+  if (!project) return null;
+  return stallHint(state, project.costs(state));
+}
+
+function getImmediateId(state: GameState): string | null {
+  return objectiveBody(state).projectId;
+}
+
+function objectiveBody(state: GameState): Objective {
   if (state.won) {
     const ending = endingText(state);
     return {
@@ -657,7 +841,7 @@ export function getObjective(state: GameState): Objective {
           ? "Raise an archive."
           : state.flock < 16
             ? `Grow the flock to 16 (${formatAmount(Math.floor(state.flock), 0)}/16).`
-            : "Bank the council's stores.",
+            : "Save up for the council.",
       projectId,
     };
   }
@@ -673,7 +857,7 @@ export function getObjective(state: GameState): Objective {
           ? `Raise beacons (${count(state, "beacon")}/2).`
           : state.flock < 24
             ? `Grow the flock to 24 (${formatAmount(Math.floor(state.flock), 0)}/24).`
-            : "Bank the accord.",
+            : "Save up for the accord.",
       projectId,
     };
   }
@@ -687,7 +871,7 @@ export function getObjective(state: GameState): Objective {
         ? `Reach six systems (${state.systems}/6). Arks build harbors; scans are cheaper.`
         : state.flock < 32
           ? `Grow the flock to 32 (${formatAmount(Math.floor(state.flock), 0)}/32).`
-          : "Bank the murmuration.",
+          : "Save up for the murmuration.",
     projectId,
   };
 }
@@ -695,30 +879,28 @@ export function getObjective(state: GameState): Objective {
 export function endingText(state: GameState): { title: string; body: string } {
   let body: string;
   if (state.doctrine === "stewardship") {
-    body =
-      "The murmuration settles as a chain of gardens. Every world is left with more cover than the flock found.";
+    body = "Every world keeps more cover than the flock found.";
   } else if (state.doctrine === "ingenuity") {
-    body =
-      "The murmuration becomes a library written across suns. The route learns to remember itself.";
+    body = "The route writes itself down, and remembers.";
   } else {
-    body = "The murmuration never settles. A galaxy of routes is the flock's last, endless home.";
+    body = "The flock never settles. The routes are home.";
   }
   if (state.flags.includes("event:garden-treaty:accept")) {
-    body += " The first garden is still on the route.";
+    body += " The first garden stays on the route.";
   }
   if (state.flags.includes("event:quiet-signal:follow")) {
     body += " The signal became a heading.";
   }
   if (state.flags.includes("event:quiet-signal:archive")) {
-    body += " The signal was copied down and left unanswered.";
+    body += " The signal was copied and left alone.";
   }
   if (state.flags.includes("sanctuary")) {
-    body += " One ground was left wild on purpose.";
+    body += " One ground was left wild.";
   }
   if (state.flags.includes("took-seed")) {
-    body += " The last ground was harvested down to the soil.";
+    body += " The last ground was harvested.";
   }
-  return { title: "The sky is a habitat", body };
+  return { title: "The route is written", body };
 }
 
 export function marksForRun(state: GameState): number {
@@ -787,8 +969,8 @@ export function migrate(
     state: pushLog(
       fresh,
       state.won
-        ? "The route is written down. A new flock gathers under the same headings."
-        : "The expedition turns back early. A few headings are all that travel with you.",
+        ? "New flock. The old headings came along."
+        : "Turned back early. A few headings carry over.",
       "story",
     ),
   };
@@ -931,6 +1113,16 @@ function clampUnit(value: number): number {
 }
 
 function completeProject(state: GameState, id: string): GameState {
+  const next = resolveProject(state, id);
+  return pushStory(next, projectLogLine(next, id));
+}
+
+/** Mechanical result of finishing a plan, with no log line. */
+export function previewProject(state: GameState, id: string): GameState {
+  return resolveProject(state, id);
+}
+
+function resolveProject(state: GameState, id: string): GameState {
   let next: GameState = state;
   const once = !projectById(id)?.repeatable;
   if (once) {
@@ -939,51 +1131,32 @@ function completeProject(state: GameState, id: string): GameState {
     next = { ...next, counts: { ...next.counts, [id]: count(next, id) + 1 } };
   }
   switch (id) {
-    case "seed-cache":
-      next = pushLog(next, "Dry grass in a hollow. The seed stays where it was put.", "story");
-      break;
     case "first-nest":
       next = { ...next, counts: { ...next.counts, nest: count(next, "nest") + 1 } };
-      next = pushLog(next, "The first nest takes a bird's weight. Plans can start.", "story");
       break;
     case "survey":
       next = { ...next, routes: Math.min(TUNE.maxRoutes, next.routes + 2) };
-      next = pushLog(next, "Two branches are worth the name of a route.", "story");
-      break;
-    case "nest":
-      next = pushLog(next, "Another nest cups into the tree.");
       break;
     case "seedfall":
       next = {
         ...next,
         routes: Math.min(TUNE.maxRoutes, next.routes + 1),
         cooldowns: { ...next.cooldowns, seedfall: next.elapsed + 240 },
-        effects: upsertEffect(next, "seedfall", 75),
+        effects: upsertEffect(next, "seedfall", BOOST_SECONDS.seedfall),
       };
-      next = pushLog(next, "The flock hits the seedfall. A new route is scratched into bark.");
       break;
     case "roost":
       next = setAct(next, 2);
-      next = pushLog(
-        next,
-        "The first roost holds through the night. At dawn someone starts keeping a record.",
-        "story",
-      );
-      break;
-    case "archive":
-      next = pushLog(next, "An archive opens under a roof of woven leaves.");
       break;
     case "brood":
       next = {
         ...next,
         flock: Math.min(getCapacity(next), next.flock + 3),
-        cooldowns: { ...next.cooldowns, brood: next.elapsed + 120 },
+        cooldowns: { ...next.cooldowns, brood: next.elapsed + TUNE.broodRest },
       };
-      next = pushLog(next, "Three young birds join the count.");
       break;
     case "corridor":
       next = { ...next, routes: Math.min(TUNE.maxRoutes, next.routes + 1) };
-      next = pushLog(next, "A corridor is flown twice, and then it is a route.");
       break;
     case "council":
       next = setAct(next, 3);
@@ -991,28 +1164,14 @@ function completeProject(state: GameState, id: string): GameState {
         ...next,
         resources: { ...next.resources, influence: Math.max(next.resources.influence, 8) },
       };
-      next = pushLog(next, "The Sky Council sits. Nobody agrees who called it.", "story");
-      break;
-    case "beacon":
-      next = pushLog(next, "A chorus beacon takes the light past the last familiar tree.");
       break;
     case "treaty":
       next = {
         ...next,
         resources: gain(next, { influence: 14 }),
         cooldowns: { ...next.cooldowns, treaty: next.elapsed + 180 },
-        effects: upsertEffect(next, "tailwind", 90),
+        effects: upsertEffect(next, "tailwind", BOOST_SECONDS.tailwind),
       };
-      next = pushLog(next, "The treaty flight comes home lighter and louder.");
-      break;
-    case "granary":
-      next = pushLog(next, "A granary roost is raised. It exists to be full.");
-      break;
-    case "academy":
-      next = pushLog(next, "An academy roost opens. The arguments finally have a shelf.");
-      break;
-    case "eyrie":
-      next = pushLog(next, "An eyrie roost juts out over the drop. There is room for more birds.");
       break;
     case "accord":
       next = setAct(next, 4);
@@ -1021,18 +1180,9 @@ function completeProject(state: GameState, id: string): GameState {
         systems: Math.max(1, next.systems),
         resources: gain(next, { starlight: 24 }),
       };
-      next = pushLog(
-        next,
-        "The Open-Sky Accord is ratified. The sun becomes a destination, not only a clock.",
-        "story",
-      );
-      break;
-    case "solar":
-      next = pushLog(next, "A solar nursery catches the light between two legs of the route.");
       break;
     case "ark":
       next = { ...next, systems: next.systems + 1 };
-      next = pushLog(next, "A seed ark roots itself under an unfamiliar star.");
       break;
     case "scan":
       next = {
@@ -1040,19 +1190,259 @@ function completeProject(state: GameState, id: string): GameState {
         systems: next.systems + 1,
         routes: Math.min(TUNE.maxRoutes, next.routes + 1),
       };
-      next = pushLog(next, "The deep sky gives up one quiet star and a line through the dark.");
       break;
     case "murmur":
       next = setAct(next, 5);
       next = { ...next, won: true, paused: false };
-      next = pushLog(next, endingText(next).body, "story");
       break;
     default:
       break;
   }
-  const aside = projectRemark(id);
-  if (aside) next = pushLog(next, aside, "story");
   return next;
+}
+
+const BOOST_SECONDS = {
+  seedfall: 75,
+  tailwind: 90,
+} as const;
+
+const BOOST_LABEL: Record<string, string> = {
+  seedfall: "Seedfall",
+  huddle: "Huddled",
+  burn: "Hot launch",
+  tailwind: "Tailwind",
+  cuckoo: "Cuckoo",
+};
+
+export function activeBoosts(state: GameState): Array<{ id: string; label: string; remaining: number }> {
+  return state.effects
+    .filter((effect) => effect.until > state.elapsed)
+    .map((effect) => ({
+      id: effect.id,
+      label: BOOST_LABEL[effect.id] ?? effect.id,
+      remaining: effect.until - state.elapsed,
+    }));
+}
+
+export function planChip(state: GameState, id: string): string {
+  switch (id) {
+    case "seed-cache":
+    case "first-nest":
+    case "survey":
+    case "roost":
+    case "council":
+    case "accord":
+      return "Unlock";
+    case "nest":
+      return buildingChip(count(state, "nest"), PLAN_CAPS.nest);
+    case "archive":
+      return buildingChip(count(state, "archive"), PLAN_CAPS.archive);
+    case "beacon":
+      return buildingChip(count(state, "beacon"), PLAN_CAPS.beacon);
+    case "granary":
+    case "academy":
+    case "eyrie":
+      return buildingChip(civicRoosts(state), PLAN_CAPS.civic);
+    case "solar":
+      return buildingChip(count(state, "solar"), PLAN_CAPS.solar);
+    case "ark":
+      return buildingChip(count(state, "ark"), PLAN_CAPS.ark);
+    case "corridor":
+      return buildingChip(count(state, "corridor"), PLAN_CAPS.corridor);
+    case "scan":
+      return buildingChip(count(state, "scan"), PLAN_CAPS.scan);
+    case "seedfall":
+      return `Boost · ${BOOST_SECONDS.seedfall}s`;
+    case "treaty":
+      return `Boost · ${BOOST_SECONDS.tailwind}s`;
+    case "brood":
+      return "Instant";
+    case "murmur":
+      return "Finale";
+    default:
+      return "";
+  }
+}
+
+function buildingChip(built: number, max: number): string {
+  return `Building · ${built}/${max}`;
+}
+
+const STORE_WORD: Record<ResourceId, string> = {
+  seeds: "seed",
+  twigs: "twig",
+  knowledge: "knowledge",
+  influence: "influence",
+  starlight: "starlight",
+};
+
+/** What the next build changes, measured from the same rules as the simulation. */
+export function projectForecast(state: GameState, id: string): string {
+  if (id === "murmur") return "Ends the expedition.";
+  const after = resolveProject(state, id);
+  const lasting: GameState = { ...after, effects: state.effects };
+  const parts: string[] = [];
+  const cap = getCapacity(lasting) - getCapacity(state);
+  if (cap) parts.push(`+${formatAmount(cap, 0)} flock cap`);
+  const birds = after.flock - state.flock;
+  if (birds > 0.05) parts.push(`+${formatAmount(birds, 0)} birds`);
+  const routes = lasting.routes - state.routes;
+  if (routes > 0) {
+    const permanent = id === "seedfall" || id === "corridor" || id === "scan";
+    parts.push(`+${routes} route${routes === 1 ? "" : "s"}${permanent ? " (permanent)" : ""}`);
+  }
+  const systems = lasting.systems - state.systems;
+  if (systems > 0) parts.push(`+${systems} system${systems === 1 ? "" : "s"}`);
+  for (const key of ["seeds", "twigs", "knowledge", "influence", "starlight"] as const) {
+    const grant = after.resources[key] - state.resources[key];
+    if (grant >= 1) parts.push(`+${formatAmount(Math.round(grant), 0)} ${key}`);
+    const store = getStorage(lasting)[key] - getStorage(state)[key];
+    if (Math.abs(store) >= 1) {
+      parts.push(`${STORE_WORD[key]} store ${signedAmount(store)}`);
+    }
+  }
+  const beforeRates = calculateRates(growthReady(state));
+  const afterRates = calculateRates(growthReady(lasting));
+  if (id !== "brood") {
+    for (const key of ["seeds", "twigs", "knowledge", "influence", "starlight", "population"] as const) {
+      const delta = afterRates[key] - beforeRates[key];
+      if (Math.abs(delta) < 0.0005) continue;
+      const unit = key === "population" ? "birds" : key;
+      parts.push(`passive ${signedRate(delta)} ${unit}/s`);
+    }
+  }
+  const boost = boostClause(id);
+  if (boost) parts.push(boost);
+  if (id === "brood") parts.push(`nursery rests ${TUNE.broodRest}s`);
+  const unlocked = unlockClause(state, after);
+  if (unlocked) parts.push(unlocked);
+  return parts.join(" · ");
+}
+
+function growthReady(state: GameState): GameState {
+  const room = Math.min(getCapacity(state) - 1, Math.max(state.flock, 1));
+  const flock = Math.max(0, room);
+  return {
+    ...state,
+    flock,
+    resources: { ...state.resources, seeds: Math.max(state.resources.seeds, flock * 5 + 50) },
+  };
+}
+
+function signedAmount(value: number): string {
+  const rounded = Math.round(value);
+  const body = formatAmount(Math.abs(rounded), 0);
+  return rounded >= 0 ? `+${body}` : `-${body}`;
+}
+
+function signedRate(value: number): string {
+  const digits = Math.abs(value) < 0.1 ? 3 : 2;
+  const body = formatAmount(Math.abs(value), digits);
+  return value >= 0 ? `+${body}` : `-${body}`;
+}
+
+function boostClause(id: string): string | null {
+  if (id === "seedfall") {
+    const seeds = boostPercent("seedfall", "seeds");
+    const twigs = boostPercent("seedfall", "twigs");
+    return `gather +${seeds}% seeds · +${twigs}% twigs for ${BOOST_SECONDS.seedfall}s`;
+  }
+  if (id === "treaty") {
+    const influence = boostPercent("tailwind", "influence");
+    return `influence +${influence}% for ${BOOST_SECONDS.tailwind}s`;
+  }
+  return null;
+}
+
+function boostPercent(effectId: string, key: "seeds" | "twigs" | "influence"): number {
+  const state = createInitialState(0);
+  const staffed: GameState = {
+    ...state,
+    flock: 0,
+    morale: 1,
+    roles: { ...state.roles, foragers: 8, weavers: 8, envoys: 8 },
+  };
+  const off = calculateRates(staffed)[key];
+  const on = calculateRates({
+    ...staffed,
+    effects: [{ id: effectId, until: state.elapsed + 30 }],
+  })[key];
+  if (off <= 0.0001) return 0;
+  return Math.round((on / off - 1) * 100);
+}
+
+function unlockClause(before: GameState, after: GameState): string | null {
+  const bits: string[] = [];
+  if (!before.flags.includes("first-nest") && after.flags.includes("first-nest")) bits.push("research");
+  for (const key of ["twigs", "knowledge", "influence", "starlight"] as const) {
+    if (!isResourceUnlocked(before, key) && isResourceUnlocked(after, key)) bits.push(key);
+  }
+  if (before.act < 2 && after.act >= 2) bits.push("doctrine");
+  const roles = ROLE_DEFS.filter(
+    (role) => !isRoleUnlocked(before, role.id) && isRoleUnlocked(after, role.id),
+  ).map((role) => role.name);
+  const phrase = [...bits, roles.join(" and ")].filter(Boolean);
+  if (phrase.length === 0) return null;
+  return `Unlocks ${phrase.join(" · ")}`;
+}
+
+/** One line per completion. A quip only when the previous line was not a bird. */
+function projectLogLine(state: GameState, id: string): string {
+  switch (id) {
+    case "seed-cache":
+      return roleArrival("weavers");
+    case "first-nest":
+      return "The first nest is up. Plans can start.";
+    case "survey":
+      return roleArrival("scouts");
+    case "roost":
+      return `The roost is up. ${roleArrival("broodkeepers")} ${roleArrival("scholars")}`;
+    case "council":
+      return `The council sits. ${roleArrival("envoys")}`;
+    case "accord":
+      return `The accord is set. ${roleArrival("navigators")}`;
+    case "murmur":
+      return endingText(state).body;
+    default: {
+      const nth = Math.max(1, count(state, id));
+      const last = state.logs[state.logs.length - 1]?.text ?? "";
+      if (nth % 2 === 1 && !isBirdLine(last)) return repeatRemark(id, nth);
+      return plainResult(id);
+    }
+  }
+}
+
+function plainResult(id: string): string {
+  switch (id) {
+    case "nest":
+      return "Another nest. More housing.";
+    case "seedfall":
+      return "Seedfall hit. One new route.";
+    case "archive":
+      return "Archive raised. Knowledge store grows.";
+    case "brood":
+      return "Three birds join the flock.";
+    case "corridor":
+      return "One new route.";
+    case "beacon":
+      return "Beacon raised. Influence grows.";
+    case "treaty":
+      return "Treaty flight home. Influence up.";
+    case "granary":
+      return "Granary roost raised.";
+    case "academy":
+      return "Academy roost raised.";
+    case "eyrie":
+      return "Eyrie roost raised.";
+    case "solar":
+      return "Solar nursery woven.";
+    case "ark":
+      return "Seed ark launched. One new system.";
+    case "scan":
+      return "One star read. One new route.";
+    default:
+      return "Done.";
+  }
 }
 
 function setAct(state: GameState, act: Act): GameState {
@@ -1184,7 +1574,7 @@ function enqueueDue(state: GameState): GameState {
   if (dropped.length > 0) {
     next = pushLog(
       next,
-      "Some weather passed while the flock was busy. The notebook skipped ahead.",
+      "A choice passed while the flock was busy.",
       "warning",
     );
   }
@@ -1238,6 +1628,28 @@ export function formatCosts(costs: Partial<Resources>): string {
 function pushLog(state: GameState, text: string, tone: GameLog["tone"] = "good"): GameState {
   const entry: GameLog = { id: state.logSeq + 1, at: state.elapsed, text, tone };
   return { ...state, logSeq: entry.id, logs: [...state.logs.slice(-79), entry] };
+}
+
+/** One bird line at a time. A second voice folds into the line already showing. */
+function pushStory(state: GameState, text: string): GameState {
+  const last = state.logs[state.logs.length - 1];
+  if (last && isBirdLine(last.text) && isBirdLine(text)) {
+    const logs = state.logs.slice(0, -1);
+    logs.push({ ...last, text: `${last.text} ${text}` });
+    return { ...state, logs };
+  }
+  return pushLog(state, text, "story");
+}
+
+/** Keeps a bird from answering the bird on the previous line. */
+function pushNotable(state: GameState, text: string, tone: GameLog["tone"] = "story"): GameState {
+  const last = state.logs[state.logs.length - 1];
+  if (last && isBirdLine(last.text) && isBirdLine(text)) {
+    const plain = text.replace(/\b(Pip|Bram|Nell|Quill):\s*/g, "").trim();
+    if (!plain) return state;
+    return pushLog(state, plain, tone);
+  }
+  return pushLog(state, text, tone);
 }
 
 export function actName(act: Act): string {

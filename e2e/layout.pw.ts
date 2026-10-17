@@ -11,8 +11,6 @@ const PHONES = [
   { name: "412x915", width: 412, height: 915 },
 ] as const;
 
-const TABS = ["flock", "plans", "study", "world", "log"] as const;
-
 test("fresh game and Act II stay inside the phone viewport", async ({ page }) => {
   test.setTimeout(60_000);
   await page.addInitScript(() => {
@@ -43,19 +41,22 @@ test("fresh game and Act II stay inside the phone viewport", async ({ page }) =>
     await fits(page, `${phone.name} fresh plans`, true);
     await shot(page, phone.name, "tip-plans");
 
-    for (const tab of TABS) {
-      await page.getByTestId(`tab-${tab}`).click({ force: true });
-      const open = await page.getByTestId(`tab-${tab}`).getAttribute("data-open");
-      if (open === "true") {
-        await fits(page, `${phone.name} fresh ${tab}`, tab === "plans" || tab === "flock");
-        await shot(page, phone.name, `fresh-${tab}`);
-      } else {
-        await expect(page.getByTestId("tab-locked")).toBeVisible();
-        await expectNoDocumentOverflow(page, `${phone.name} locked ${tab}`);
-        await expectTabBarOnScreen(page, `${phone.name} locked ${tab}`);
-        await shot(page, phone.name, `fresh-${tab}-locked`);
-      }
+    await expect(page.getByTestId("tab-flock")).toBeVisible();
+    await expect(page.getByTestId("tab-plans")).toBeVisible();
+    for (const tab of ["study", "world", "log"] as const) {
+      await expect(page.getByTestId(`tab-${tab}`), `${phone.name} ${tab} hidden`).toHaveCount(0);
     }
+    await expect(page.getByTestId("tab-locked")).toHaveCount(0);
+    await expect(page.locator(".role.locked")).toHaveCount(0);
+    await expect(page.getByTestId("role-foragers")).toHaveCount(1);
+    await expect(page.getByTestId("role-weavers")).toHaveCount(0);
+    await expect(page.getByText("Opens in Act")).toHaveCount(0);
+    await expect(page.getByText("Migration is closed")).toHaveCount(0);
+    await page.getByTestId("tab-flock").click();
+    await fits(page, `${phone.name} fresh flock`, true);
+    await shot(page, phone.name, "fresh-flock");
+    await page.getByTestId("tab-plans").click();
+    await fits(page, `${phone.name} fresh plans return`, true);
 
     const payload = encodeSave(actTwo(Date.now()), Date.now());
     await page.evaluate((value) => sessionStorage.setItem("boot-save", value), payload);
@@ -119,6 +120,105 @@ test("event, season, and doctrine stay inside the phone", async ({ page }) => {
   }
 });
 
+test("locked tabs and species appear only after they unlock", async ({ page }) => {
+  await page.addInitScript(() => {
+    const raw = sessionStorage.getItem("boot-save");
+    if (raw) {
+      localStorage.setItem("bve.campaign", raw);
+      sessionStorage.removeItem("boot-save");
+    }
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  let state = finishIntro(createInitialState(Date.now()));
+  state = dismissTip(state, "plans");
+  state = { ...state, flags: ["seed-cache"], paused: true };
+  await boot(page, state);
+
+  await expect(page.getByTestId("tab-world")).toBeVisible();
+  await expect(page.getByTestId("tab-log")).toBeVisible();
+  await expect(page.getByTestId("new-tab-world")).toBeVisible();
+  await expect(page.getByTestId("new-tab-log")).toBeVisible();
+  await expect(page.getByTestId("tab-study")).toHaveCount(0);
+  await expect(page.getByTestId("role-weavers")).toHaveCount(1);
+  await expect(page.getByTestId("role-scouts")).toHaveCount(0);
+  await expect(page.getByTestId("new-role-weavers")).toHaveCount(1);
+  await expect(page.locator(".role.locked")).toHaveCount(0);
+  await expect(page.getByText("Opens in Act")).toHaveCount(0);
+  await expect(page.getByText("Locked")).toHaveCount(0);
+
+  await page.getByTestId("tab-world").click();
+  await expect(page.getByTestId("new-tab-world")).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByTestId("tab-world")).toBeVisible();
+  await expect(page.getByTestId("new-tab-world")).toHaveCount(0);
+  await expect(page.getByTestId("new-tab-log")).toBeVisible();
+
+  await page.getByTestId("tab-flock").click();
+  await expect(page.getByTestId("new-role-weavers")).toBeVisible();
+  await page.getByTestId("tab-plans").click();
+  await expect(page.getByTestId("new-role-weavers")).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByTestId("role-weavers")).toHaveCount(1);
+  await expect(page.getByTestId("new-role-weavers")).toHaveCount(0);
+});
+
+test("reduced motion keeps the new dot and drops the reveal", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.addInitScript(() => {
+    const raw = sessionStorage.getItem("boot-save");
+    if (raw) {
+      localStorage.setItem("bve.campaign", raw);
+      sessionStorage.removeItem("boot-save");
+    }
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  let state = finishIntro(createInitialState(Date.now()));
+  state = dismissTip(state, "plans");
+  state = { ...state, flags: ["seed-cache"], paused: true };
+  await boot(page, state);
+  const animation = await page.getByTestId("tab-world").evaluate((el) => getComputedStyle(el).animationName);
+  expect(animation).toBe("none");
+  await expect(page.getByTestId("new-tab-world")).toBeVisible();
+});
+
+test("knowledge cap is not clipped at phone width", async ({ page }) => {
+  await page.addInitScript(() => {
+    const raw = sessionStorage.getItem("boot-save");
+    if (raw) {
+      localStorage.setItem("bve.campaign", raw);
+      sessionStorage.removeItem("boot-save");
+    }
+  });
+  await page.setViewportSize({ width: 412, height: 915 });
+  let state = finishIntro(createInitialState(Date.now()));
+  for (const id of ["plans", "study", "seasons", "doctrine", "migration"]) state = dismissTip(state, id);
+  state = {
+    ...state,
+    act: 2,
+    elapsed: 3 * 120 + 20,
+    flags: ["seed-cache", "first-nest", "survey", "roost"],
+    counts: { nest: 2, archive: 1 },
+    doctrine: "stewardship",
+    resources: { ...state.resources, seeds: 80, twigs: 40, knowledge: 40 },
+    flock: 12,
+    roles: { ...state.roles, foragers: 6, weavers: 2, scholars: 0, scouts: 0 },
+  };
+  await boot(page, state);
+  await expect(page.getByTestId("season")).toContainText("Dearth");
+  const clip = await page.evaluate(() => {
+    const cap = document.querySelector("[data-testid='resource-knowledge'] .chip-inline-cap");
+    if (!(cap instanceof HTMLElement)) return "missing";
+    const text = cap.textContent ?? "";
+    if (!text.includes("350")) return `text:${text}`;
+    const capBox = cap.getBoundingClientRect();
+    const chip = cap.closest(".chip")?.getBoundingClientRect();
+    if (!chip) return "nochip";
+    if (capBox.right > chip.right + 1 || capBox.left < chip.left - 1) return "clipped";
+    return "ok";
+  });
+  expect(clip).toBe("ok");
+});
+
 async function boot(page: Page, state: GameState): Promise<void> {
   const payload = encodeSave(state, Date.now());
   await page.goto("/");
@@ -128,7 +228,7 @@ async function boot(page: Page, state: GameState): Promise<void> {
 
 function eventSave(now: number): GameState {
   let state = finishIntro(createInitialState(now));
-  for (const id of ["plans", "staffing", "events"]) state = dismissTip(state, id);
+  for (const id of ["plans", "staffing", "events", "study"]) state = dismissTip(state, id);
   return {
     ...state,
     flags: ["seed-cache", "first-nest", "survey"],
@@ -198,6 +298,12 @@ async function expectTabBarOnScreen(page: Page, label: string): Promise<void> {
   expect(box.tabBottom, `${label} tab bar`).toBeLessThanOrEqual(box.height + 1);
   expect(box.tabTop, `${label} tab bar`).toBeGreaterThan(120);
   expect(box.nowBottom, `${label} now card`).toBeLessThanOrEqual(box.tabTop + 1);
+  const tabOverflow = await page.evaluate(() => {
+    const tabs = document.querySelector(".tabs");
+    if (!tabs) return 1;
+    return tabs.scrollWidth - tabs.clientWidth;
+  });
+  expect(tabOverflow, `${label} tab bar width`).toBeLessThanOrEqual(1);
 }
 
 async function fits(page: Page, label: string, wholeCard: boolean): Promise<void> {

@@ -64,7 +64,7 @@ describe("opening", () => {
     expect(state.notebook.seen).toContain("plans");
     state = finishIntro(state);
     expect(currentTip(state, "plans")).toBeNull();
-    expect(currentTip(state, "flock")?.id).toBe("staffing");
+    expect(currentTip(state, "flock")).toBeNull();
   });
 
   it("unlocks tabs as the expedition advances and introduces each one once", () => {
@@ -75,7 +75,7 @@ describe("opening", () => {
     expect(tabAccess(fresh, "log").open).toBe(false);
     expect(tabAccess(fresh, "study").open).toBe(false);
     expect(currentTip(fresh, "plans")?.id).toBe("plans");
-    expect(currentTip(fresh, "flock")?.id).toBe("staffing");
+    expect(currentTip(fresh, "flock")).toBeNull();
     expect(currentTip(fresh, "world")).toBeNull();
 
     const cached: GameState = { ...fresh, flags: ["seed-cache"] };
@@ -83,11 +83,12 @@ describe("opening", () => {
     expect(tabAccess(cached, "log").open).toBe(true);
     expect(tabAccess(cached, "study").open).toBe(false);
     expect(currentTip(dismissTip(cached, "plans"), "world")?.id).toBe("seasons");
-    expect(currentTip(cached, "log")?.id).toBe("log");
+    expect(currentTip(cached, "log")).toBeNull();
 
     const nested: GameState = { ...cached, flags: ["seed-cache", "first-nest"] };
     expect(tabAccess(nested, "study").open).toBe(true);
     expect(currentTip(nested, "study")?.id).toBe("study");
+    expect(currentTip(dismissTip(nested, "plans"), "plans")?.id).toBe("study");
 
     const aerie: GameState = { ...nested, act: 2, flags: [...nested.flags, "survey", "roost"] };
     const studying = dismissTip(aerie, "study");

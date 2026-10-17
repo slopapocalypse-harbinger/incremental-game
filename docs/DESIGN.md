@@ -42,7 +42,7 @@ The campaign is one expedition. It is winnable without any particular tech and w
 1. Birds produce. Unassigned birds produce nothing. The flock eats seeds whether or not anyone is working.
 2. You staff roles. The mix is the minute-to-minute decision.
 3. Stores fill toward a cap. A full store is a nudge to spend, and it is how offline time stays bounded.
-4. You start one project. It spends stores immediately and borrows birds until it finishes. Recall is allowed, and the stores stay spent.
+4. You start one project. It spends stores immediately and borrows birds until it finishes. Recall is allowed, and the stores stay spent. The chip says whether the plan unlocks something, stays as a building, or fades. Buildings last until you migrate. A running boost shows the time left on a chip under the stores.
 5. Finished projects become nests, routes, archives, beacons, arks, or the next act.
 6. Research spends knowledge to bend a rate, a store, or the clock.
 7. Seasons rotate on a visible timer and change gathering. They do not change how fast a launch finishes.
@@ -57,29 +57,31 @@ A new game starts with three short story beats: the flock, the tree, and why the
 After that, the notebook introduces itself one surface at a time.
 
 - **Plans** and **Flock** are open immediately. Plans: one project, stores spent up front. Flock: idle birds eat and gather nothing.
-- **World** and **Log** stay locked until the seed cache. World introduces seasons, which change gathering and not launch speed. The log introduces itself as a record, not a choice.
-- **Study** stays locked until the first nest. It introduces research, then doctrine once the roost exists.
+- **World** and **Log** appear after the seed cache. World introduces seasons, which change gathering and not launch speed. The log introduces itself as a record, not a choice.
+- **Study** appears after the first nest. It introduces research, then doctrine once the roost exists.
 - The first **event** introduces the rule that one option never asks for a resource you might not have.
 - **Migration** introduces itself in Act II, including that a win pays 8 or more and the confirm line states the early payout.
 
-A locked tab stays visible, says it is locked, and explains the gate in one line. Tips are one or two lines, one at a time, and they are stored on the save.
+A locked tab, role, or later-act study is absent until it unlocks. The Now card is a title plus one line. When a tab or role appears, it fades in and keeps a new dot until the first look. That look is stored on the notebook, with the tips. Tips are one or two lines, one at a time.
+
+Birds speak in short quips. Pip is eager, Bram is grumpy and practical, Nell is the deadpan worrier, and Quill is the know-it-all. A card says what it does in one line. Tradeoffs, forecasts, and the route breakdown sit behind More. The log keeps one line per event, and it does not put two bird lines in a row.
 
 ### First five minutes
 
 The player lands on the plan, not on a diagram. The opening is the only thing in front of that plan, and it can be skipped.
 
-- Six birds. Three foragers, three idle. Seeds tick. Twigs, knowledge, and the later resources are not shown yet.
+- Six birds. Three foragers, three idle. Seeds tick. Twigs, knowledge, and the later resources are not shown yet. The flock count does not tick until the roost: the store card says so, and it does not show a housing cap to fill. Housing stays on the Flock tab as birds housed. After the roost, a broodkeeper is a slow trickle, shown as one bird every few minutes when that is clearer than a fraction per second.
 - The objective is one sentence: store the first harvest. The only project is **Line a seed cache** (about 60 seeds, instant). Assigning the idle birds is the first decision, and it is worth roughly double the seed rate. A player who never opens the Flock tab still finishes the cache; they just wait longer.
 - The cache unlocks twigs and Weavers. The objective becomes the first nest. If no weaver is assigned, twigs do not move, and the card says so.
 - **Weave the first nest** is instant. It unlocks research and the field plans.
-- **Survey the canopy** borrows two birds for a short expedition, opens knowledge and Scouts, and adds routes. Routes are a permanent, modest bonus to seeds and twigs.
+- **Survey the canopy** borrows two birds for a short expedition, opens knowledge and Scouts, and adds routes. Routes are a permanent, modest bonus to seeds and twigs. A thin thread of knowledge starts on its own, so the store moves before anyone is staffing it. If the Now goal is waiting on a resource that is barely coming in, that line names the role that fixes it (a Scout here, a Scholar once the aerie exists).
 - By about minute five a human is choosing between a second nest, Woven Baskets or Seed Ledgers, and the season, which has changed at least once. The objective already names the roost: two nests, the survey, then bind them.
 
 No zero-speed “tutorial lock” past those two instant builds. The instant work is only the first two, so the game answers the first taps immediately and then starts taking time.
 
 ### Mid-game
 
-**Act II, the aerie.** Founding the roost opens the doctrine, Broodkeepers, and Scholars. Broodkeepers grow the flock only while a seed reserve exists, so a growth push can stall a project and a project can stall a generation. Welcome a Brood is the impatient version: birds now, stores and time spent. Archives raise the knowledge cap and add a little passive scholarship. The Sky Council asks for an archive, a flock in the high teens, a doctrine, and a real bank of all three early resources.
+**Act II, the aerie.** Founding the roost opens the doctrine, Broodkeepers, and Scholars. The roost borrows three birds, so a flock of six can leave a crew on the seed heads. Broodkeepers grow the flock only while a seed reserve exists, so a growth push can stall a project and a project can stall a generation. Welcome a Brood is the impatient version: birds now, stores and time spent. The nursery then rests 120 seconds, and the card says both the full rest and the time left. Archives raise the knowledge cap and add a little passive scholarship. Each archive card is the next tier, named so it is not a second copy of the one you just built. The Sky Council asks for an archive, a flock in the high teens, a doctrine, and a real bank of all three early resources. If knowledge is barely coming in, the Now line says to assign a Scholar before that bank becomes a wall.
 
 **Act III, dominion.** Envoys and beacons make influence. Influence is a resource you spend, not a meter glued to 100. Two beacons and a larger flock open the Open-Sky Accord. Civic roosts are optional specializations, and the choice is on the card before you pay:
 
@@ -130,7 +132,7 @@ Second Look is bought between runs and spent during a later one. The first run l
 
 - **Who is idle, and who is eating.** Six roles by the end, never enough birds. Pulling the last foragers onto an ark is how a dearth becomes a morale problem. Morale slows influence and growth. It does not delete birds and it cannot fall low enough to freeze the economy.
 - **What the one active project is.** A beacon now, or a granary before the next bank. The era goal is pinned to the top of the list so it is never hidden behind four other cards.
-- **Doctrine.** Stewardship keeps stores, trims upkeep, lengthens offline twilight, and makes projects slower. Ingenuity speeds projects and scholarship and eats more. Wanderlust pays routes, scouts, and starlight, and gathers a little worse. All three can finish.
+- **Doctrine.** Chosen at the first roost, and each one pays off in that minute. Stewardship keeps stores, trims upkeep, lifts gathering, lengthens offline twilight, and makes projects slower. Ingenuity puts a scholar at the desk with knowledge already written, then speeds scholarship and projects and eats more. Wanderlust hands you two routes, then pays routes, scouts, and starlight, and gathers a little worse before those routes. All three can finish.
 - **Research order.** Everything can be bought eventually. The early pair (baskets vs ledgers) and the Act II pair (hatcheries vs logistics vs memory) change which resource is annoying for the next half hour.
 - **Ark or scan.** Infrastructure versus a cheaper star.
 - **Events.** Eleven of them, tied to milestones (the survey, the second nest, the first archive, the first beacon, the fourth system) so a locked phone does not skip the story and a fast player does not outrun it. The costly option is disabled, with the reason on the button, when you cannot pay. The other option is always available.
@@ -147,9 +149,21 @@ Simulated time, not wall-clock reading time. A scripted attentive player (instan
 | First roost, Act II | about 8–12 minutes | End of a coffee |
 | Sky Council, Act III | about 25–45 minutes | End of a sitting. Longer if research eats the knowledge bank |
 | Open-Sky Accord, Act IV | about 2–3 hours | Next session, with offline in between |
-| The Murmuration | about 4–7 hours | A long day of checking in, or a few evenings |
+| The Murmuration | about 3.5–4.5 hours | A long day of checking in, or a few evenings |
 
-Measured on the attentive Ingenuity script after seasons stopped changing launch speed: cache 40s, first nest 1m 20s, survey 2m 40s, roost 8m 20s, council 27m, accord 2h 03m, murmuration 4h 01m. Stewardship finishes in about 4h 10m. Wanderlust finishes in about 3h 36m, because the crossing is what that doctrine is for. A run that buys no tech still finishes in about 4h. The playthrough test locks these bands.
+Measured on the attentive script after the doctrine gifts. The roost is the same for every doctrine, because the choice comes after it.
+
+| Milestone | Stewardship | Ingenuity | Wanderlust |
+| --- | --- | --- | --- |
+| Seed cache | 40s | 40s | 40s |
+| First nest | 1m 20s | 1m 20s | 1m 20s |
+| Canopy surveyed | 2m 40s | 2m 40s | 2m 40s |
+| First roost | 8m 20s | 8m 20s | 8m 20s |
+| Sky Council | 26m 40s | 24m | 25m 40s |
+| Open-Sky Accord | 2h 00m | 2h 01m | 2h 03m |
+| The Murmuration | 3h 59m | 3h 58m | 3h 34m |
+
+Ingenuity reaches the council first, because the scholar and the written knowledge are already there. Wanderlust is the shortest full flight, because the crossing is what that doctrine is for. A run that buys no tech still finishes in about 3h 57m. The playthrough test locks these bands.
 
 The measured script times from the playthrough test are recorded in the test output and should stay inside those bands. If a balance change pushes them out, change the numbers or change this table in the same commit. Do not leave the table as a wish.
 
@@ -190,7 +204,7 @@ New key: `bve.campaign`. Rolling backup: `bve.campaign.backup`. Quarantine: `bve
 
 Tom reads this on a phone. The layout is a column.
 
-- Sticky header: act, season name, time remaining, and that season's multipliers for seeds, twigs, and knowledge. Launches are not on that line. The weather sentence lives on the World tab, where there is room for it. Pause and settings are at least 44px.
+- Sticky header: act, season name, time remaining, and that season's multipliers for seeds, twigs, and knowledge. Launches are not on that line. The World tab shows the season quip. The weather sentence, the route bonus, and the morale note sit behind More. Pause and settings are at least 44px.
 - Resource grid, two columns. Every chip is a button. The cap breakdown opens as a sheet. Nothing important is hover-only. Desktop uses the same button.
 - The objective and its next action stay on screen.
 - One panel at a time: Flock, Plans, Study, World, Log. Tabs that are not relevant yet stay visible and locked. The tab bar sits in the safe area. Targets are at least 44px, labels are words, and the active tab is not communicated by color alone.

@@ -1,9 +1,19 @@
 import { useState } from "react";
 
-import { DOCTRINES, ROLE_DEFS, TECHS, UPGRADES, projectById, type ProjectDef } from "../game/content";
+import {
+  DOCTRINES,
+  ROLE_DEFS,
+  TECHS,
+  TUNE,
+  UPGRADES,
+  projectById,
+  projectTitle,
+  type ProjectDef,
+} from "../game/content";
 import { sceneFromState } from "../game/scene";
 import { planFlavor, seasonRemark } from "../game/voice";
 import {
+  actionLabel,
   assignRole,
   buyTech,
   canBuyTech,
@@ -16,6 +26,8 @@ import {
   getIdleBirds,
   getObjective,
   getSeason,
+  planChip,
+  projectForecast,
   isRoleUnlocked,
   listProjects,
   marksForRun,
@@ -29,7 +41,7 @@ import {
 import { formatAmount, formatBirds, formatDuration } from "../game/number";
 import type { DoctrineId, GameState, RoleId } from "../game/types";
 import { LivingScene } from "./art/canopy";
-import { Icon, categoryIcon } from "./art/icons";
+import { Icon } from "./art/icons";
 import { Plate } from "./art/plates";
 
 type Apply = (update: (state: GameState) => GameState) => void;
@@ -45,10 +57,14 @@ const EFFECT_LABEL: Record<string, string> = {
 export function FlockPanel({
   game,
   active,
+  shown = active,
+  freshRoles = [],
   apply,
 }: {
   game: GameState;
   active: boolean;
+  shown?: boolean;
+  freshRoles?: RoleId[];
   apply: Apply;
 }) {
   const idle = getIdleBirds(game);
@@ -62,7 +78,9 @@ export function FlockPanel({
           <h2>The flock</h2>
         </div>
         <p className="stat">
-          <strong>{formatBirds(idle)}</strong> idle
+          <span className="stat-line">
+            <strong>{formatBirds(idle)}</strong> idle
+          </span>
           <span>
             {formatBirds(game.flock)} / {formatAmount(capacity, 0)} housed
             {out > 0 ? ` · ${out} out` : ""}
@@ -71,7 +89,16 @@ export function FlockPanel({
       </header>
       <ul className="role-list">
         {ROLE_DEFS.map((role) => (
-          <RoleRow key={role.id} game={game} role={role.id} name={role.name} blurb={role.blurb} apply={apply} />
+          <RoleRow
+            key={role.id}
+            game={game}
+            role={role.id}
+            name={role.name}
+            blurb={role.blurb}
+            fresh={freshRoles.includes(role.id)}
+            shown={shown}
+            apply={apply}
+          />
         ))}
       </ul>
     </section>
@@ -83,35 +110,34 @@ function RoleRow({
   role,
   name,
   blurb,
+  fresh,
+  shown,
   apply,
 }: {
   game: GameState;
   role: RoleId;
   name: string;
   blurb: string;
+  fresh: boolean;
+  shown: boolean;
   apply: Apply;
 }) {
-  if (!isRoleUnlocked(game, role)) {
-    return (
-      <li className="role locked">
-        <div>
-          <h3>
-            <Icon name={role} />
-            {name}
-          </h3>
-          <p>{unlockHint(role)}</p>
-        </div>
-      </li>
-    );
-  }
+  if (!isRoleUnlocked(game, role)) return null;
   const count = Math.floor(game.roles[role]);
   const idle = getIdleBirds(game);
   return (
-    <li className="role">
+    <li
+      className={`role${fresh && shown ? " reveal" : ""}`}
+      data-testid={`role-${role}`}
+      data-new={fresh ? "true" : "false"}
+    >
       <div className="role-copy">
         <h3>
           <Icon name={role} />
           {name}
+          {fresh ? (
+            <span className="new-dot" data-testid={`new-role-${role}`} aria-label="New" />
+          ) : null}
         </h3>
         <p>{blurb}</p>
         <p className="yield">{roleYield(game, role)}</p>
@@ -139,14 +165,6 @@ function RoleRow({
   );
 }
 
-function unlockHint(role: RoleId): string {
-  if (role === "weavers") return "Opens when the seed cache is lined.";
-  if (role === "scouts") return "Opens after the canopy survey.";
-  if (role === "broodkeepers" || role === "scholars") return "Opens with the aerie, in Act II.";
-  if (role === "envoys") return "Opens with dominion, in Act III.";
-  return "Opens on the crossing, in Act IV.";
-}
-
 export function PlansPanel({
   game,
   active,
@@ -169,19 +187,20 @@ export function PlansPanel({
         <div>
           <p className="eyebrow">What to spend</p>
           <h2>Plans</h2>
+          <p className="permanence" data-testid="buildings-last">
+            Buildings last until you migrate.
+          </p>
         </div>
         {game.act >= 2 || game.won ? (
           <button type="button" className="btn ghost" onClick={onMigrate}>
             Migrate
           </button>
-        ) : (
-          <p className="aside">Migration opens after the first roost.</p>
-        )}
+        ) : null}
       </header>
 
       {idle >= 1 && !game.won && !game.flags.includes("survey") ? (
         <p className="hint">
-          {formatBirds(idle)} bird{idle === 1 ? " is" : "s are"} idle. Staff them on the Flock tab, then come back to launch.
+          {formatBirds(idle)} idle. Assign them on Flock.
         </p>
       ) : null}
 
@@ -189,7 +208,7 @@ export function PlansPanel({
       {game.active ? <ActiveCard game={game} apply={apply} /> : null}
 
       {projects.length === 0 && !game.won ? (
-        <p className="empty">Nothing new can be started. Check the objective for the gate.</p>
+        <p className="empty">Nothing to start. Check Now for the gate.</p>
       ) : (
         <ul className="cards">
           {projects.map((project) => (
@@ -223,15 +242,15 @@ function ProjectCard({
   const afford = timeToAfford(game, costs);
   return (
     <li className={`card${project.goal ? " goal" : ""}`} data-testid={`project-${project.id}`}>
-      <p className="eyebrow">
-        <Icon name={categoryIcon(project.category)} />
-        {project.category}
-        {project.goal ? " · era goal" : ""}
+      <p className="type-chip" data-testid={`plan-chip-${project.id}`}>
+        {planChip(game, project.id)}
       </p>
-      <h3>{project.name}</h3>
-      <p className="summary">{project.summary}</p>
-      {planFlavor(project.id) ? <p className="flavor">{planFlavor(project.id)}</p> : null}
-      <p className={`plan-note${open ? " show" : ""}`}>{project.forecast}</p>
+      <h3>{projectTitle(game, project)}</h3>
+      <p className="summary">{projectForecast(game, project.id)}</p>
+      <div className={`plan-note${open ? " show" : ""}`}>
+        {planFlavor(project.id) ? <p className="flavor">{planFlavor(project.id)}</p> : null}
+        <p>{project.summary}</p>
+      </div>
       <p className="meta">
         {formatCosts(costs)}
         {" · "}
@@ -250,7 +269,7 @@ function ProjectCard({
           disabled={!readiness.ok}
           onClick={() => apply((state) => startProject(state, project.id))}
         >
-          {project.duration(game) <= 0 ? "Build" : "Launch"}
+          {actionLabel(readiness.reason, readiness.ok, project.duration(game) <= 0)}
         </button>
         <button
           type="button"
@@ -276,7 +295,7 @@ function ActiveCard({ game, apply }: { game: GameState; apply: Apply }) {
       <p className="eyebrow">Out now</p>
       <h3>{project?.name ?? "Expedition"}</h3>
       <p>
-        {active.birds} birds are away. About {formatDuration(active.remaining / speed)} of work remains.
+        {active.birds} birds away. {formatDuration(active.remaining / speed)} left.
       </p>
       <div className="meter" aria-hidden="true">
         <i style={{ width: `${Math.min(100, progress * 100)}%` }} />
@@ -284,7 +303,7 @@ function ActiveCard({ game, apply }: { game: GameState; apply: Apply }) {
       <button type="button" className="btn danger" onClick={() => apply(recallProject)}>
         Recall
       </button>
-      <p className="reason">Recalling does not refund what you spent.</p>
+      <p className="reason">Recall keeps the cost spent.</p>
     </article>
   );
 }
@@ -297,8 +316,8 @@ function EndingCard({ game, onMigrate }: { game: GameState; onMigrate: () => voi
       <p className="eyebrow">The route is written</p>
       <h3>This expedition can migrate</h3>
       <p>
-        Leaving now carries {carry} mark{carry === 1 ? "" : "s"}
-        {game.marks > 0 ? `, on top of the ${game.marks} already banked` : ""}.
+        Leaving carries {carry} mark{carry === 1 ? "" : "s"}
+        {game.marks > 0 ? `, plus ${game.marks} banked` : ""}.
       </p>
       <button type="button" className="btn" onClick={onMigrate}>
         Choose what to carry
@@ -333,80 +352,47 @@ export function StudyPanel({
         </button>
       </header>
 
+      {game.act < 2 ? null : (
       <article className="card">
         <p className="eyebrow">Doctrine</p>
-        {game.act < 2 ? (
-          <p>The roost has to exist before the flock will argue about how to fly.</p>
-        ) : (
           <>
           <Plate id="doctrine-choice" />
           <ul className="doctrines">
-            {DOCTRINES.map((doctrine) => {
-              const selected = game.doctrine === doctrine.id;
-              const locked = Boolean(game.doctrine) && !canRespec && !selected;
-              return (
-                <li key={doctrine.id} className={selected ? "doctrine on" : "doctrine"}>
-                  <h3>
-                    <Icon name={doctrine.id} />
-                    {doctrine.name}
-                  </h3>
-                  <p>{doctrine.summary}</p>
-                  <p className="forecast">{doctrine.tradeoff}</p>
-                  {selected ? <p className="reason ready">This is how the flock flies.</p> : null}
-                  {!selected && game.doctrine && canRespec ? (
-                    <button
-                      type="button"
-                      className="btn"
-                      data-testid={`doctrine-${doctrine.id}`}
-                      onClick={() => apply((state) => respecDoctrine(state, doctrine.id))}
-                    >
-                      Turn toward {doctrine.name}
-                    </button>
-                  ) : null}
-                  {!game.doctrine ? (
-                    <button
-                      type="button"
-                      className="btn"
-                      data-testid={`doctrine-${doctrine.id}`}
-                      disabled={game.act < 2}
-                      onClick={() => apply((state) => chooseDoctrine(state, doctrine.id as DoctrineId))}
-                    >
-                      Fly this way
-                    </button>
-                  ) : null}
-                  {locked ? <p className="reason">A doctrine stays unless a later flight bought Second look.</p> : null}
-                </li>
-              );
-            })}
+            {DOCTRINES.map((doctrine) => (
+              <DoctrineRow
+                key={doctrine.id}
+                game={game}
+                id={doctrine.id}
+                name={doctrine.name}
+                summary={doctrine.summary}
+                tradeoff={doctrine.tradeoff}
+                canRespec={canRespec}
+                apply={apply}
+              />
+            ))}
           </ul>
           </>
-        )}
       </article>
+      )}
 
       <article className="card">
         <p className="eyebrow">Field notes</p>
         <h3>Research</h3>
         <ul className="techs">
           {TECHS.map((tech) => {
+            if (tech.act > game.act) return null;
             const owned = game.techs.includes(tech.id);
-            const future = tech.act > game.act;
             const ready = canBuyTech(game, tech.id);
             return (
-              <li key={tech.id} className={owned ? "owned" : ""}>
+              <li key={tech.id} className={owned ? "owned" : ""} data-testid={`study-${tech.id}`}>
                 <div>
                   <h3>{tech.name}</h3>
                   <p>{tech.summary}</p>
                   <p className="forecast">{formatCosts(tech.cost)}</p>
                   {owned ? <p className="reason ready">Learned.</p> : null}
-                  {future ? <p className="reason">Opens in Act {tech.act}.</p> : null}
-                  {!owned && !future && !game.flags.includes("first-nest") ? (
-                    <p className="reason">The first nest has to exist before anyone writes this down.</p>
-                  ) : null}
-                  {!owned && !future && game.flags.includes("first-nest") && !ready ? (
-                    <p className="reason">{formatMissing(game, tech.cost)}</p>
-                  ) : null}
+                  {!owned && !ready ? <p className="reason">{formatMissing(game, tech.cost)}</p> : null}
                 </div>
-                {owned || future ? null : (
+                {owned ? null : (
                   <button
                     type="button"
                     className="btn"
@@ -427,13 +413,15 @@ export function StudyPanel({
         <p className="eyebrow">Carried between flights</p>
         <h3>Flyway ranks</h3>
         <p>
-          Banked marks: {game.marks}. This flight would add {marksForRun(game)} if you left now.
-          {game.migrations > 0 ? ` ${game.migrations} migration${game.migrations === 1 ? "" : "s"} so far.` : ""}
+          {game.marks} banked. This flight adds {marksForRun(game)}.
+          {game.migrations > 0 ? ` ${game.migrations} flight${game.migrations === 1 ? "" : "s"} so far.` : ""}
         </p>
         <RankList game={game} />
-        <button type="button" className="btn" onClick={onMigrate} disabled={game.act < 2 && !game.won}>
-          {game.act < 2 && !game.won ? "Migration is closed" : "Spend marks"}
-        </button>
+        {game.act >= 2 || game.won ? (
+          <button type="button" className="btn" onClick={onMigrate}>
+            Spend marks
+          </button>
+        ) : null}
       </article>
     </section>
   );
@@ -443,7 +431,7 @@ function RankList({ game }: { game: GameState }) {
   const entries = UPGRADES.map((upgrade) => ({ upgrade, rank: game.ranks[upgrade.id] ?? 0 })).filter(
     (entry) => entry.rank > 0,
   );
-  if (entries.length === 0) return <p className="reason">Nothing has been carried forward yet.</p>;
+  if (entries.length === 0) return <p className="reason">Nothing carried forward yet.</p>;
   return (
     <ul className="rank-list">
       {entries.map(({ upgrade, rank }) => (
@@ -452,6 +440,71 @@ function RankList({ game }: { game: GameState }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+function DoctrineRow({
+  game,
+  id,
+  name,
+  summary,
+  tradeoff,
+  canRespec,
+  apply,
+}: {
+  game: GameState;
+  id: DoctrineId;
+  name: string;
+  summary: string;
+  tradeoff: string;
+  canRespec: boolean;
+  apply: Apply;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = game.doctrine === id;
+  const locked = Boolean(game.doctrine) && !canRespec && !selected;
+  return (
+    <li className={selected ? "doctrine on" : "doctrine"}>
+      <h3>
+        <Icon name={id} />
+        {name}
+      </h3>
+      <p>{summary}</p>
+      <div className={`plan-note${open ? " show" : ""}`}>
+        <p className="forecast">{tradeoff}</p>
+        {locked ? <p className="reason">Stays unless a later flight bought Second look.</p> : null}
+      </div>
+      <div className="card-actions">
+        {!selected && game.doctrine && canRespec ? (
+          <button
+            type="button"
+            className="btn"
+            data-testid={`doctrine-${id}`}
+            onClick={() => apply((state) => respecDoctrine(state, id))}
+          >
+            Turn toward {name}
+          </button>
+        ) : null}
+        {!game.doctrine ? (
+          <button
+            type="button"
+            className="btn"
+            data-testid={`doctrine-${id}`}
+            onClick={() => apply((state) => chooseDoctrine(state, id))}
+          >
+            Fly this way
+          </button>
+        ) : null}
+        <button
+          type="button"
+          className="btn ghost more"
+          aria-expanded={open}
+          onClick={() => setOpen((value) => !value)}
+        >
+          {open ? "Less" : "More"}
+        </button>
+      </div>
+    </li>
   );
 }
 
@@ -464,7 +517,9 @@ export function WorldPanel({
   active: boolean;
   open?: boolean;
 }) {
+  const [details, setDetails] = useState(false);
   const effects = game.effects.filter((effect) => effect.until > game.elapsed);
+  const routeBonus = Math.round(TUNE.routeBonus * (game.doctrine === "wanderlust" ? 1.4 : 1) * 100);
   return (
     <section
       className={`panel panel-world${active ? " on" : ""}`}
@@ -510,16 +565,26 @@ export function WorldPanel({
             </li>
           ))}
         </ul>
-      ) : (
-        <p className="aside">No weather is sitting on the flock right now.</p>
-      )}
-      <p className="aside">
-        {getSeason(game).detail}{" "}
-        {game.systems > 0
-          ? "Stars on the map are harbors and scans, not decoration."
-          : "The map stays a tree until the accord opens the dark."}
-      </p>
+      ) : null}
       <p className="voice">{seasonRemark(getSeason(game).id)}</p>
+      <button
+        type="button"
+        className="btn ghost more"
+        aria-expanded={details}
+        onClick={() => setDetails((value) => !value)}
+      >
+        {details ? "Less" : "More"}
+      </button>
+      <div className={`plan-note${details ? " show" : ""}`}>
+        <p>
+          Each route adds {routeBonus}% to seeds and twigs. Morale speeds influence and growth, and it cannot
+          stop the flock.
+        </p>
+        <p>
+          {getSeason(game).detail}{" "}
+          {game.systems > 0 ? "Stars are harbors and scans." : "The map stays a tree until the accord."}
+        </p>
+      </div>
     </section>
   );
 }

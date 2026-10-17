@@ -21,7 +21,8 @@ export type IconName =
   | "crossing"
   | "stewardship"
   | "ingenuity"
-  | "wanderlust";
+  | "wanderlust"
+  | "boost";
 
 export function Icon({ name }: { name: IconName }) {
   return (
@@ -187,6 +188,14 @@ function Glyph({ name }: { name: IconName }) {
           <ellipse cx="9" cy="14.5" rx="1.6" ry="2" fill="var(--ochre)" />
           <ellipse cx="12.5" cy="14.2" rx="1.5" ry="1.9" fill="var(--ochre)" />
           <ellipse cx="15.4" cy="15" rx="1.4" ry="1.7" fill="var(--clay)" />
+        </g>
+      );
+    case "boost":
+      return (
+        <g>
+          <path d="M12 20.5v-8" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+          <path d="M7.2 12.2 12 6.8l4.8 5.4" fill="none" stroke="var(--ochre)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+          <circle cx="12" cy="5.2" r="1.5" fill="var(--ochre)" />
         </g>
       );
     case "season":
