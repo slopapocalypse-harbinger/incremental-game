@@ -12,6 +12,7 @@ export default tseslint.config(
       "dev-dist/**",
       "scripts/**",
       "public/**",
+      "playtest/**",
     ],
   },
   js.configs.recommended,

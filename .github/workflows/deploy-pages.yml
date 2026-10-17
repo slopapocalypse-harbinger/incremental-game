@@ -1,14 +1,14 @@
-# The cursor/birds-rebuild-233d branch publishes a playtest:
-# the current game stays at the site root, and the rebuild is served from /next/.
-# Remove that branch from this trigger after the rebuild replaces the live game.
-# A later push to the branch would put the old game back at the root.
+# Deploys from main only. The github-pages environment rejects other branches,
+# so a playtest push cannot update the live site. The phone build is the
+# committed playtest/ directory. To serve /next/ from this repo before merge,
+# allow the branch on that environment and add it under on.push.branches.
+# The preview build keeps the previous game at the site root.
 name: Deploy GitHub Pages
 
 on:
   push:
     branches:
       - main
-      - cursor/birds-rebuild-233d
   workflow_dispatch:
 
 permissions:

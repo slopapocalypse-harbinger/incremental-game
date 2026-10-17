@@ -10,11 +10,13 @@ The live game stays at the site root until the rebuild is merged:
 
 [Birds vs. Everything](https://slopapocalypse-harbinger.github.io/incremental-game/)
 
-The playtest build is published from `cursor/birds-rebuild-233d` at:
+The playtest build is published from `cursor/birds-rebuild-233d`. GitHub Pages only accepts deploys from branches allowed on the `github-pages` environment, and this branch is not one of them, so `/next/` is not on the live site yet.
 
-[Playtest](https://slopapocalypse-harbinger.github.io/incremental-game/next/)
+Until that environment allows the branch, the same build is committed under `playtest/` and can be opened here:
 
-That playtest keeps the previous game at the root and serves this one from `/next/`. After the playtest branch is merged, remove it from `.github/workflows/deploy-pages.yml`. A later push to that branch would put the old game back at the root.
+[Playtest](https://raw.githack.com/slopapocalypse-harbinger/incremental-game/cursor/birds-rebuild-233d/playtest/index.html)
+
+That URL is a static copy of this branch. It does not replace the live game. `/next/` on GitHub Pages is wired in the preview build, and it will publish only after the `github-pages` environment allows this branch.
 
 ## Run locally
 
