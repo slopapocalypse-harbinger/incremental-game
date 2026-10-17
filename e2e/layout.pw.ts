@@ -85,6 +85,64 @@ test("desktop keeps a single screen", async ({ page }) => {
   await shot(page, "1280x800", "desktop-plans");
 });
 
+test("event, season, and doctrine stay inside the phone", async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.addInitScript(() => {
+    const raw = sessionStorage.getItem("boot-save");
+    if (raw) {
+      localStorage.setItem("bve.campaign", raw);
+      sessionStorage.removeItem("boot-save");
+    }
+  });
+  for (const phone of PHONES) {
+    await page.setViewportSize({ width: phone.width, height: phone.height });
+
+    await boot(page, eventSave(Date.now()));
+    await expect(page.getByTestId("event-sheet")).toBeVisible();
+    await expectNoDocumentOverflow(page, `${phone.name} event`);
+    await shot(page, phone.name, "event");
+
+    await boot(page, rainy(Date.now()));
+    await expect(page.getByTestId("canopy")).toBeVisible();
+    await expect(page.getByTestId("season")).toContainText("Soft rain");
+    await page.getByTestId("tab-plans").click();
+    await fits(page, `${phone.name} rain plans`, true);
+    await shot(page, phone.name, "season-rain");
+
+    await boot(page, actTwo(Date.now()));
+    await page.getByTestId("tab-study").click();
+    await expect(page.getByTestId("doctrine-stewardship")).toBeVisible();
+    await expectNoDocumentOverflow(page, `${phone.name} doctrine`);
+    await expectTabBarOnScreen(page, `${phone.name} doctrine`);
+    await page.locator(".panel-study .plate").scrollIntoViewIfNeeded();
+    await shot(page, phone.name, "doctrine");
+  }
+});
+
+async function boot(page: Page, state: GameState): Promise<void> {
+  const payload = encodeSave(state, Date.now());
+  await page.goto("/");
+  await page.evaluate((value) => sessionStorage.setItem("boot-save", value), payload);
+  await page.reload();
+}
+
+function eventSave(now: number): GameState {
+  let state = finishIntro(createInitialState(now));
+  for (const id of ["plans", "staffing", "events"]) state = dismissTip(state, id);
+  return {
+    ...state,
+    flags: ["seed-cache", "first-nest", "survey"],
+    counts: { nest: 1 },
+    pendingEvent: "summer-gale",
+    seenEvents: ["summer-gale"],
+    resources: { ...state.resources, seeds: 80, twigs: 30, knowledge: 0, influence: 0, starlight: 0 },
+  };
+}
+
+function rainy(now: number): GameState {
+  return { ...actTwo(now), elapsed: 240 };
+}
+
 async function shot(page: Page, viewport: string, name: string): Promise<void> {
   const dir = process.env.SCREENSHOT_DIR;
   if (!dir) return;

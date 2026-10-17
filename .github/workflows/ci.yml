@@ -33,3 +33,5 @@ jobs:
         run: pnpm test:layout
       - name: Phone bundle matches a fresh build
         run: pnpm playtest:check
+        env:
+          PLAYTEST_BRANCH: ${{ github.head_ref || github.ref_name }}

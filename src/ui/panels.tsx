@@ -1,6 +1,8 @@
 import { useState } from "react";
 
 import { DOCTRINES, ROLE_DEFS, TECHS, UPGRADES, projectById, type ProjectDef } from "../game/content";
+import { sceneFromState } from "../game/scene";
+import { planFlavor, seasonRemark } from "../game/voice";
 import {
   assignRole,
   buyTech,
@@ -26,6 +28,9 @@ import {
 } from "../game/engine";
 import { formatAmount, formatBirds, formatDuration } from "../game/number";
 import type { DoctrineId, GameState, RoleId } from "../game/types";
+import { LivingScene } from "./art/canopy";
+import { Icon, categoryIcon } from "./art/icons";
+import { Plate } from "./art/plates";
 
 type Apply = (update: (state: GameState) => GameState) => void;
 
@@ -90,7 +95,10 @@ function RoleRow({
     return (
       <li className="role locked">
         <div>
-          <h3>{name}</h3>
+          <h3>
+            <Icon name={role} />
+            {name}
+          </h3>
           <p>{unlockHint(role)}</p>
         </div>
       </li>
@@ -101,7 +109,10 @@ function RoleRow({
   return (
     <li className="role">
       <div className="role-copy">
-        <h3>{name}</h3>
+        <h3>
+          <Icon name={role} />
+          {name}
+        </h3>
         <p>{blurb}</p>
         <p className="yield">{roleYield(game, role)}</p>
       </div>
@@ -213,11 +224,13 @@ function ProjectCard({
   return (
     <li className={`card${project.goal ? " goal" : ""}`} data-testid={`project-${project.id}`}>
       <p className="eyebrow">
+        <Icon name={categoryIcon(project.category)} />
         {project.category}
         {project.goal ? " · era goal" : ""}
       </p>
       <h3>{project.name}</h3>
       <p className="summary">{project.summary}</p>
+      {planFlavor(project.id) ? <p className="flavor">{planFlavor(project.id)}</p> : null}
       <p className={`plan-note${open ? " show" : ""}`}>{project.forecast}</p>
       <p className="meta">
         {formatCosts(costs)}
@@ -280,6 +293,7 @@ function EndingCard({ game, onMigrate }: { game: GameState; onMigrate: () => voi
   const carry = marksForRun(game);
   return (
     <article className="card goal">
+      <Plate id="win" />
       <p className="eyebrow">The route is written</p>
       <h3>This expedition can migrate</h3>
       <p>
@@ -324,13 +338,18 @@ export function StudyPanel({
         {game.act < 2 ? (
           <p>The roost has to exist before the flock will argue about how to fly.</p>
         ) : (
+          <>
+          <Plate id="doctrine-choice" />
           <ul className="doctrines">
             {DOCTRINES.map((doctrine) => {
               const selected = game.doctrine === doctrine.id;
               const locked = Boolean(game.doctrine) && !canRespec && !selected;
               return (
                 <li key={doctrine.id} className={selected ? "doctrine on" : "doctrine"}>
-                  <h3>{doctrine.name}</h3>
+                  <h3>
+                    <Icon name={doctrine.id} />
+                    {doctrine.name}
+                  </h3>
                   <p>{doctrine.summary}</p>
                   <p className="forecast">{doctrine.tradeoff}</p>
                   {selected ? <p className="reason ready">This is how the flock flies.</p> : null}
@@ -360,6 +379,7 @@ export function StudyPanel({
               );
             })}
           </ul>
+          </>
         )}
       </article>
 
@@ -444,10 +464,6 @@ export function WorldPanel({
   active: boolean;
   open?: boolean;
 }) {
-  const nests = Math.min(8, game.counts.nest ?? 0);
-  const routes = Math.min(8, game.routes);
-  const systems = Math.min(8, game.systems);
-  const birds = Math.min(14, Math.floor(game.flock));
   const effects = game.effects.filter((effect) => effect.until > game.elapsed);
   return (
     <section
@@ -461,44 +477,8 @@ export function WorldPanel({
           <h2>The route</h2>
         </div>
       </header>
-      <div className={`scene season-${getSeason(game).id}`} data-testid="world">
-        <svg viewBox="0 0 360 230" role="img" aria-label={sceneLabel(game)}>
-          <rect className="sky" width="360" height="230" />
-          {Array.from({ length: systems }, (_, index) => (
-            <circle
-              key={`star-${index}`}
-              className="star"
-              cx={36 + (index % 4) * 78 + (index > 3 ? 28 : 0)}
-              cy={28 + (index % 3) * 16}
-              r={index === 0 ? 3.2 : 2}
-            />
-          ))}
-          {Array.from({ length: routes }, (_, index) => (
-            <path
-              key={`route-${index}`}
-              className="route"
-              d={`M24 ${168 - index * 4} Q ${120 + index * 18} ${70 - index * 6} ${340 - index * 8} ${150 - index * 3}`}
-            />
-          ))}
-          <path className="branch" d="M8 188 C 80 170, 160 198, 352 176" />
-          {Array.from({ length: nests }, (_, index) => (
-            <path
-              key={`nest-${index}`}
-              className="nest"
-              d={`M${28 + index * 40} 176 q 10 14 20 0 q -4 10 -10 12 q -6 -2 -10 -12`}
-            />
-          ))}
-          {Array.from({ length: birds }, (_, index) => {
-            const x = 22 + ((index * 53) % 310);
-            const y = 48 + ((index * 37) % 78);
-            return (
-              <g key={`bird-${index}`} className="flyer" style={{ animationDelay: `${(index % 5) * 0.35}s` }}>
-                <ellipse cx={x} cy={y} rx="7" ry="3.2" />
-                <path d={`M${x - 2} ${y} q 6 -8 12 -1`} />
-              </g>
-            );
-          })}
-        </svg>
+      <div className="scene" data-testid="world">
+        <LivingScene model={sceneFromState(game)} motion={false} layout="map" />
         <ul className="scene-facts">
           <li>
             <span>Routes</span>
@@ -539,12 +519,9 @@ export function WorldPanel({
           ? "Stars on the map are harbors and scans, not decoration."
           : "The map stays a tree until the accord opens the dark."}
       </p>
+      <p className="voice">{seasonRemark(getSeason(game).id)}</p>
     </section>
   );
-}
-
-function sceneLabel(game: GameState): string {
-  return `${game.routes} routes, ${game.counts.nest ?? 0} nests, ${game.systems} systems.`;
 }
 
 function moraleWord(morale: number): string {

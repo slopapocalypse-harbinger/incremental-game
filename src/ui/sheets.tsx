@@ -12,6 +12,8 @@ import { formatAmount, formatBirds, formatDuration } from "../game/number";
 import { eventTip, replayIntro, skipAllTips } from "../game/guide";
 import { decodeSave, describeImport, encodeSave } from "../game/save";
 import type { GameState, ResourceId } from "../game/types";
+import { eventRemark } from "../game/voice";
+import { Plate } from "./art/plates";
 
 export function EventSheet({
   game,
@@ -26,12 +28,14 @@ export function EventSheet({
   const intro = eventTip(game);
   return (
     <Sheet title={event.title} eyebrow={event.eyebrow} testId="event-sheet">
+      <Plate id={event.id} />
       {intro ? (
         <p className="tip inline" data-testid="event-tip">
           <strong>{intro.title}.</strong> {intro.body}
         </p>
       ) : null}
       <p>{event.text}</p>
+      {eventRemark(event.id) ? <p className="voice">{eventRemark(event.id)}</p> : null}
       <ul className="options">
         {event.options.map((option) => {
           const readiness = canChooseOption(game, event.id, option.id);
@@ -265,6 +269,7 @@ export function MigrateSheet({
 
   return (
     <Sheet title="Migrate" eyebrow="What travels" onClose={onClose} testId="migrate-sheet">
+      <Plate id={game.won ? "win" : "migrate"} />
       {closed ? (
         <p>Finish the first roost before migrating. There is nothing to carry yet.</p>
       ) : (
