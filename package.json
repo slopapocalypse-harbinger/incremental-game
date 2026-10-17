@@ -12,7 +12,7 @@
     "build": "tsc --noEmit && vite build",
     "build:legacy": "vite build --config vite.legacy.config.ts",
     "build:preview": "node scripts/build-preview.mjs",
-    "build:playtest": "vite build --mode playtest",
+    "build:playtest": "vite build --mode playtest && node scripts/rewrite-playtest.mjs",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
