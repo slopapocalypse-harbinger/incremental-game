@@ -50,9 +50,23 @@ The campaign is one expedition. It is winnable without any particular tech and w
 
 While you watch, something on screen should ask for a decision every few minutes in the opening, and every quarter hour later. The long waits are banks of a resource, and those banks may run while the phone is in a pocket.
 
+### Opening
+
+A new game starts with three short story beats: the flock, the tree, and why they will leave. Each beat is a tap. Skip is always there. The opening is saved, so a reload does not play it again. Settings can replay it. Skip all tips silences the later introductions and also closes the opening.
+
+After that, the notebook introduces itself one surface at a time.
+
+- **Plans** and **Flock** are open immediately. Plans: one project, stores spent up front. Flock: idle birds eat and gather nothing.
+- **World** and **Log** stay locked until the seed cache. World introduces seasons, which change gathering and not launch speed. The log introduces itself as a record, not a choice.
+- **Study** stays locked until the first nest. It introduces research, then doctrine once the roost exists.
+- The first **event** introduces the rule that one option never asks for a resource you might not have.
+- **Migration** introduces itself in Act II, including that a win pays 8 or more and the confirm line states the early payout.
+
+A locked tab stays visible, says it is locked, and explains the gate in one line. Tips are one or two lines, one at a time, and they are stored on the save.
+
 ### First five minutes
 
-The player lands on the plan, not on a diagram.
+The player lands on the plan, not on a diagram. The opening is the only thing in front of that plan, and it can be skipped.
 
 - Six birds. Three foragers, three idle. Seeds tick. Twigs, knowledge, and the later resources are not shown yet.
 - The objective is one sentence: store the first harvest. The only project is **Line a seed cache** (about 60 seeds, instant). Assigning the idle birds is the first decision, and it is worth roughly double the seed rate. A player who never opens the Flock tab still finishes the cache; they just wait longer.
@@ -165,7 +179,7 @@ Seasons, project completion, and effect expiry are sliced inside a long catch-up
 
 New key: `bve.campaign`. Rolling backup: `bve.campaign.backup`. Quarantine: `bve.campaign.quarantine`.
 
-- The payload is versioned (currently 2), checksummed, and validated. Version 1 (ranks stored as an `upgrades` array, no event queue) migrates forward.
+- The payload is versioned (currently 3), checksummed, and validated. Version 1 (ranks stored as an `upgrades` array, no event queue) and version 2 (no notebook) migrate forward. The notebook records whether the opening and each tip have been seen. An in-progress older save does not replay them.
 - A newer version, a bad checksum, or a damaged shape is quarantined. The loader then tries the backup. It does not delete the only copy, and it does not silently start over without a note.
 - Import is a review step: the game shows act, flock, marks, and field time, and only replaces the run when you confirm. Export is the same envelope, pretty-printed so a phone can select it.
 - Autosave runs every few seconds and on `pagehide`.
@@ -179,7 +193,8 @@ Tom reads this on a phone. The layout is a column.
 - Sticky header: act, season name, time remaining, and that season's multipliers for seeds, twigs, and knowledge. Launches are not on that line. The weather sentence lives on the World tab, where there is room for it. Pause and settings are at least 44px.
 - Resource grid, two columns. Every chip is a button. The cap breakdown opens as a sheet. Nothing important is hover-only. Desktop uses the same button.
 - The objective and its next action stay on screen.
-- One panel at a time: Flock, Plans, Study, World, Log. The tab bar sits in the safe area. Targets are at least 44px, labels are words, and the active tab is not communicated by color alone.
+- One panel at a time: Flock, Plans, Study, World, Log. Tabs that are not relevant yet stay visible and locked. The tab bar sits in the safe area. Targets are at least 44px, labels are words, and the active tab is not communicated by color alone.
+- On a phone (390×844 and 412×915 CSS pixels) the page itself does not scroll. Header, stores, the Now card, and the first plan or role sit above the tab bar. Later lists scroll inside the panel. Body copy stays at least 14px. Desktop keeps the three-column layout.
 - Plans start with one tap. The reason a plan is disabled is on the card, not behind a second selection.
 - Events, migration, import review, and settings are sheets, not tooltips.
 - The world is a tab, not a 600px illustration shoved above the controls. On a wide screen it becomes the center column, with the flock on the left and plans on the right. Study swaps into the right column. Log and settings stay sheets.

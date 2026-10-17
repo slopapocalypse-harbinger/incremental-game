@@ -27,5 +27,9 @@ jobs:
         run: pnpm lint
       - name: Test
         run: pnpm test
+      - name: Install layout browser
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Layout
+        run: pnpm test:layout
       - name: Phone bundle matches a fresh build
         run: pnpm playtest:check

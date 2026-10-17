@@ -13,20 +13,21 @@ import {
   resolveEvent,
   seasonLength,
 } from "../game/engine";
+import { currentTip, dismissTip, finishIntro, tabAccess, type TabId } from "../game/guide";
 import { formatAmount, formatBirds, formatDuration, formatRate } from "../game/number";
 import type { GameState, ResourceId } from "../game/types";
+import { IntroSheet } from "./intro";
 import { FlockPanel, LogPanel, PlansPanel, StudyPanel, WorldPanel } from "./panels";
 import { CapSheet, EventSheet, MigrateSheet, SettingsSheet } from "./sheets";
 import { useCampaign } from "./useCampaign";
 
-type Tab = "flock" | "plans" | "study" | "world" | "log";
 type Sheet =
   | null
   | "settings"
   | "migrate"
   | { kind: "cap"; id: ResourceId | "flock" };
 
-const TABS: Array<{ id: Tab; label: string }> = [
+const TABS: Array<{ id: TabId; label: string }> = [
   { id: "flock", label: "Flock" },
   { id: "plans", label: "Plans" },
   { id: "study", label: "Study" },
@@ -36,8 +37,9 @@ const TABS: Array<{ id: Tab; label: string }> = [
 
 export function App() {
   const { game, note, apply, commit, dismissNote } = useCampaign();
-  const [tab, setTab] = useState<Tab>("plans");
+  const [tab, setTab] = useState<TabId>("plans");
   const [sheet, setSheet] = useState<Sheet>(null);
+  const [lockedReason, setLockedReason] = useState<string | null>(null);
   const playtest = import.meta.env.BASE_URL.includes("/next/");
 
   if (!game) {
@@ -52,9 +54,12 @@ export function App() {
   const left = seasonLength(game) - (game.elapsed % seasonLength(game));
   const objective = getObjective(game);
   const modeClass = tab === "study" ? "mode-study" : tab === "log" ? "mode-log" : "mode-plans";
+  const worldOpen = tabAccess(game, "world").open;
+  const tip = currentTip(game, tab);
+  const showingIntro = game.notebook.intro === "pending";
 
   return (
-    <main className={`app ${modeClass}${game.won ? " won" : ""}`}>
+    <main className={`app ${modeClass}${worldOpen ? "" : " world-closed"}${game.won ? " won" : ""}`}>
       {playtest ? (
         <p className="playtest">
           Playtest build. The live game is unchanged at the site root.
@@ -134,9 +139,29 @@ export function App() {
         </aside>
       ) : null}
 
+      {lockedReason ? (
+        <p className="tip" data-testid="tab-locked">
+          {lockedReason}
+        </p>
+      ) : tip ? (
+        <aside className="tip" data-testid="tip">
+          <p>
+            <strong>{tip.title}.</strong> {tip.body}
+          </p>
+          <button
+            type="button"
+            className="btn ghost"
+            data-testid="dismiss-tip"
+            onClick={() => commit((state) => dismissTip(state, tip.id))}
+          >
+            Got it
+          </button>
+        </aside>
+      ) : null}
+
       <div className="stage">
         <FlockPanel game={game} active={tab === "flock"} apply={apply} />
-        <WorldPanel game={game} active={tab === "world"} />
+        <WorldPanel game={game} active={tab === "world"} open={worldOpen} />
         <PlansPanel
           game={game}
           active={tab === "plans"}
@@ -155,18 +180,32 @@ export function App() {
       </div>
 
       <nav className="tabs" aria-label="Notebook sections">
-        {TABS.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            className={tab === item.id ? "on" : ""}
-            aria-current={tab === item.id ? "page" : undefined}
-            data-testid={`tab-${item.id}`}
-            onClick={() => setTab(item.id)}
-          >
-            {item.label}
-          </button>
-        ))}
+        {TABS.map((item) => {
+          const access = tabAccess(game, item.id);
+          const selected = tab === item.id;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              className={`${selected ? "on" : ""}${access.open ? "" : " locked"}`}
+              aria-current={selected ? "page" : undefined}
+              aria-disabled={access.open ? undefined : true}
+              data-testid={`tab-${item.id}`}
+              data-open={access.open ? "true" : "false"}
+              onClick={() => {
+                if (!access.open) {
+                  setLockedReason(access.reason);
+                  return;
+                }
+                setLockedReason(null);
+                setTab(item.id);
+              }}
+            >
+              <span>{item.label}</span>
+              {access.open ? null : <small>Locked</small>}
+            </button>
+          );
+        })}
       </nav>
 
       {game.pendingEvent ? (
@@ -176,7 +215,8 @@ export function App() {
             apply((state) => {
               const pending = state.pendingEvent;
               if (!pending) return state;
-              return resolveEvent(state, pending, optionId);
+              const noted = dismissTip(state, "events");
+              return resolveEvent(noted, pending, optionId);
             })
           }
         />
@@ -194,6 +234,12 @@ export function App() {
       ) : null}
       {sheet && typeof sheet === "object" ? (
         <CapSheet game={game} id={sheet.id} onClose={() => setSheet(null)} />
+      ) : null}
+      {showingIntro ? (
+        <IntroSheet
+          onAdvance={() => commit((state) => finishIntro(state))}
+          onSkip={() => commit((state) => finishIntro(state))}
+        />
       ) : null}
     </main>
   );
@@ -257,7 +303,10 @@ function ResourceChip({
       </span>
       <span className="chip-value">
         <strong>{shown}</strong>
-        <small>{formatRate(rate)}</small>
+        <small>
+          {formatRate(rate)}
+          <span className="chip-inline-cap"> · cap {formatAmount(cap, 0)}</span>
+        </small>
       </span>
       <span className="chip-cap">Cap {formatAmount(cap, 0)}</span>
       <span className="meter thin" aria-hidden="true">

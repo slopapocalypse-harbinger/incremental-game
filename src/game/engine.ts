@@ -87,6 +87,7 @@ export function createInitialState(now: number, meta?: Partial<RunMeta>): GameSt
     doctrinesWon: [...(meta?.doctrinesWon ?? [])],
     bestTime: meta?.bestTime ?? null,
     offlineReport: null,
+    notebook: { intro: "pending", seen: [], quiet: false },
   };
 }
 
@@ -759,6 +760,11 @@ export function migrate(
         ? state.elapsed
         : state.bestTime,
   });
+  fresh.notebook = {
+    intro: "done",
+    seen: [...state.notebook.seen],
+    quiet: state.notebook.quiet,
+  };
   return {
     ok: true,
     state: pushLog(

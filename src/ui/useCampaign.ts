@@ -26,6 +26,14 @@ export function useCampaign() {
     const tickNow = () => {
       const current = ref.current;
       if (!current) return;
+      if (current.notebook.intro === "pending") {
+        const now = Date.now();
+        if (now - current.lastTickAt < 1000) return;
+        const held = { ...current, lastTickAt: now };
+        ref.current = held;
+        setGame(held);
+        return;
+      }
       const next = catchUp(current, Date.now(), {
         enqueueEvents: document.visibilityState === "visible",
       });
@@ -56,10 +64,13 @@ export function useCampaign() {
     setGame(next);
   }
 
-  function commit(next: GameState): void {
-    ref.current = next;
-    setGame(next);
-    saveGame(window.localStorage, next, Date.now());
+  function commit(next: GameState | ((state: GameState) => GameState)): void {
+    const current = ref.current;
+    if (!current) return;
+    const resolved = typeof next === "function" ? next(current) : next;
+    ref.current = resolved;
+    setGame(resolved);
+    saveGame(window.localStorage, resolved, Date.now());
   }
 
   function dismissNote(): void {

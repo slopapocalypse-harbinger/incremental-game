@@ -1,4 +1,5 @@
 import { createInitialState, catchUp } from "./engine";
+import { notebookForOlderSave } from "./guide";
 import { clampResource } from "./number";
 import {
   SAVE_VERSION,
@@ -99,7 +100,7 @@ export function decodeSave(raw: string, now: number): DecodeResult {
     };
   }
   const version = envelope.version;
-  if (version !== 1 && version !== 2) {
+  if (version !== 1 && version !== 2 && version !== 3) {
     return {
       ok: false,
       error: `This save is version ${String(version)}, which this notebook cannot read. It was not applied.`,
@@ -138,7 +139,7 @@ export function loadGame(store: KeyValueStore, now = Date.now()): LoadResult {
   }
   const decoded = decodeSave(primary, now);
   if (decoded.ok) {
-    const caught = catchUp(decoded.state, now, { enqueueEvents: true });
+    const caught = wake(decoded.state, now);
     const migrationNote = decoded.migrated
       ? "An older notebook was brought forward to this version."
       : null;
@@ -154,7 +155,7 @@ export function loadGame(store: KeyValueStore, now = Date.now()): LoadResult {
     const restored = decodeSave(backup, now);
     if (restored.ok) {
       return {
-        state: catchUp(restored.state, now, { enqueueEvents: true }),
+        state: wake(restored.state, now),
         note: "The latest save could not be read. The backup was restored, and the broken copy was quarantined.",
         quarantined: true,
       };
@@ -195,6 +196,11 @@ function stateForDisk(state: GameState): GameState {
     eventQueue: [...state.eventQueue],
     effects: state.effects.map((effect) => ({ ...effect })),
     logs: state.logs.map((entry) => ({ ...entry })),
+    notebook: {
+      intro: state.notebook.intro,
+      seen: [...state.notebook.seen],
+      quiet: state.notebook.quiet,
+    },
     doctrinesWon: [...state.doctrinesWon],
     cooldowns: { ...state.cooldowns },
     active: state.active ? { ...state.active } : null,
@@ -337,9 +343,48 @@ function normalizeState(
     doctrinesWon: doctrinesWon as DoctrineId[],
     bestTime: finite(data.bestTime),
     offlineReport: null,
+    notebook: readNotebook(data),
   };
   if (state.won) state.act = 5;
   return { ok: true, state };
+}
+
+function wake(state: GameState, now: number): GameState {
+  if (state.notebook.intro === "pending") {
+    return { ...state, lastTickAt: now, offlineReport: null };
+  }
+  return catchUp(state, now, { enqueueEvents: true });
+}
+
+function readNotebook(data: Record<string, unknown>): GameState["notebook"] {
+  const raw = data.notebook;
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    const record = raw as Record<string, unknown>;
+    const seen = Array.isArray(record.seen)
+      ? record.seen.filter((item): item is string => typeof item === "string").slice(0, 40)
+      : [];
+    return {
+      intro: record.intro === "pending" ? "pending" : "done",
+      seen,
+      quiet: record.quiet === true,
+    };
+  }
+  const elapsed = finite(data.elapsed) ?? 0;
+  const flags = Array.isArray(data.flags) ? data.flags.length : 0;
+  const act = data.act;
+  const progressed =
+    elapsed > 0 ||
+    flags > 0 ||
+    act === 2 ||
+    act === 3 ||
+    act === 4 ||
+    act === 5 ||
+    (finite(data.migrations) ?? 0) > 0 ||
+    (finite(data.wins) ?? 0) > 0 ||
+    data.won === true ||
+    (Array.isArray(data.techs) && data.techs.length > 0) ||
+    (typeof data.doctrine === "string");
+  return notebookForOlderSave(progressed);
 }
 
 function finite(value: unknown): number | null {

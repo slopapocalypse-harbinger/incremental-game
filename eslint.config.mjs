@@ -17,7 +17,7 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: ["src/**/*.{ts,tsx}", "tests/**/*.ts"],
+    files: ["src/**/*.{ts,tsx}", "tests/**/*.ts", "e2e/**/*.ts", "playwright.config.ts"],
     plugins: {
       "react-hooks": reactHooks,
     },

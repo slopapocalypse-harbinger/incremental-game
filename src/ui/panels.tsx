@@ -1,4 +1,6 @@
-import { DOCTRINES, ROLE_DEFS, TECHS, UPGRADES, projectById } from "../game/content";
+import { useState } from "react";
+
+import { DOCTRINES, ROLE_DEFS, TECHS, UPGRADES, projectById, type ProjectDef } from "../game/content";
 import {
   assignRole,
   buyTech,
@@ -179,42 +181,9 @@ export function PlansPanel({
         <p className="empty">Nothing new can be started. Check the objective for the gate.</p>
       ) : (
         <ul className="cards">
-          {projects.map((project) => {
-            const costs = project.costs(game);
-            const readiness = canStart(game, project.id);
-            const seconds = wallTime(game, project);
-            const afford = timeToAfford(game, costs);
-            return (
-              <li key={project.id} className={`card${project.goal ? " goal" : ""}`} data-testid={`project-${project.id}`}>
-                <p className="eyebrow">
-                  {project.category}
-                  {project.goal ? " · era goal" : ""}
-                </p>
-                <h3>{project.name}</h3>
-                <p>{project.summary}</p>
-                <p className="forecast">{project.forecast}</p>
-                <p className="meta">
-                  {formatCosts(costs)}
-                  {" · "}
-                  {seconds <= 0 ? "Instant" : formatDuration(seconds)}
-                  {project.birds > 0 ? ` · ${project.birds} birds` : ""}
-                </p>
-                <p className={readiness.ok ? "reason ready" : "reason"}>
-                  {readiness.reason}
-                  {!readiness.ok && readiness.reason.startsWith("Need") ? ` ${afford}` : ""}
-                </p>
-                <button
-                  type="button"
-                  className="btn"
-                  data-testid={`start-${project.id}`}
-                  disabled={!readiness.ok}
-                  onClick={() => apply((state) => startProject(state, project.id))}
-                >
-                  {project.duration(game) <= 0 ? "Build" : "Launch"}
-                </button>
-              </li>
-            );
-          })}
+          {projects.map((project) => (
+            <ProjectCard key={project.id} game={game} project={project} apply={apply} />
+          ))}
         </ul>
       )}
 
@@ -224,6 +193,62 @@ export function PlansPanel({
         </button>
       ) : null}
     </section>
+  );
+}
+
+function ProjectCard({
+  game,
+  project,
+  apply,
+}: {
+  game: GameState;
+  project: ProjectDef;
+  apply: Apply;
+}) {
+  const [open, setOpen] = useState(false);
+  const costs = project.costs(game);
+  const readiness = canStart(game, project.id);
+  const seconds = wallTime(game, project);
+  const afford = timeToAfford(game, costs);
+  return (
+    <li className={`card${project.goal ? " goal" : ""}`} data-testid={`project-${project.id}`}>
+      <p className="eyebrow">
+        {project.category}
+        {project.goal ? " · era goal" : ""}
+      </p>
+      <h3>{project.name}</h3>
+      <p className="summary">{project.summary}</p>
+      <p className={`plan-note${open ? " show" : ""}`}>{project.forecast}</p>
+      <p className="meta">
+        {formatCosts(costs)}
+        {" · "}
+        {seconds <= 0 ? "Instant" : formatDuration(seconds)}
+        {project.birds > 0 ? ` · ${project.birds} birds` : ""}
+      </p>
+      <p className={readiness.ok ? "reason ready" : "reason"}>
+        {readiness.reason}
+        {!readiness.ok && readiness.reason.startsWith("Need") ? ` ${afford}` : ""}
+      </p>
+      <div className="card-actions">
+        <button
+          type="button"
+          className="btn"
+          data-testid={`start-${project.id}`}
+          disabled={!readiness.ok}
+          onClick={() => apply((state) => startProject(state, project.id))}
+        >
+          {project.duration(game) <= 0 ? "Build" : "Launch"}
+        </button>
+        <button
+          type="button"
+          className="btn ghost more"
+          aria-expanded={open}
+          onClick={() => setOpen((value) => !value)}
+        >
+          {open ? "Less" : "More"}
+        </button>
+      </div>
+    </li>
   );
 }
 
@@ -410,14 +435,26 @@ function RankList({ game }: { game: GameState }) {
   );
 }
 
-export function WorldPanel({ game, active }: { game: GameState; active: boolean }) {
+export function WorldPanel({
+  game,
+  active,
+  open = true,
+}: {
+  game: GameState;
+  active: boolean;
+  open?: boolean;
+}) {
   const nests = Math.min(8, game.counts.nest ?? 0);
   const routes = Math.min(8, game.routes);
   const systems = Math.min(8, game.systems);
   const birds = Math.min(14, Math.floor(game.flock));
   const effects = game.effects.filter((effect) => effect.until > game.elapsed);
   return (
-    <section className={`panel panel-world${active ? " on" : ""}`} aria-label="World">
+    <section
+      className={`panel panel-world${active ? " on" : ""}`}
+      data-open={open ? "true" : "false"}
+      aria-label="World"
+    >
       <header className="panel-head">
         <div>
           <p className="eyebrow">Where they are</p>

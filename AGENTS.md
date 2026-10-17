@@ -13,14 +13,16 @@ pnpm build        # typecheck, then the GitHub Pages site in dist-pages/
 pnpm test
 pnpm lint
 pnpm typecheck
+pnpm test:layout    # Playwright: no document scroll at 390×844 and 412×915
 pnpm build:playtest
 pnpm playtest:check
 ```
 
 ## Map
 
-- `src/game/` — pure simulation. `engine.ts` ticks, projects, doctrines, and objectives. `content.ts` holds roles, techs, projects, events, seasons, and every balance number. `save.ts` encodes, migrates, and loads. `types.ts` and `number.ts` are the shared shapes and formatting.
+- `src/game/` — pure simulation. `engine.ts` ticks, projects, doctrines, and objectives. `content.ts` holds roles, techs, projects, events, seasons, and every balance number. `guide.ts` is the opening, the tab gates, and the one-time tips. `save.ts` encodes, migrates, and loads. `types.ts` and `number.ts` are the shared shapes and formatting.
 - `src/ui/` — React notebook. It calls the engine; it does not reimplement rules.
+- `e2e/` — Playwright layout checks. They need Chromium (`pnpm exec playwright install chromium`).
 - `src/main.tsx`, `index.html`, `public/` — the shell, manifest, and service worker.
 - `tests/` — Vitest. `campaign.test.ts` is the campaign, saves, and pacing. `policy.ts` is the scripted player.
 - `playtest/` — generated phone bundle. Do not edit it by hand.
@@ -30,7 +32,8 @@ pnpm playtest:check
 
 - `engine.ts` stays pure and deterministic. Same state and same duration, same result. No `Date.now()`, no DOM, no randomness.
 - Every balance number lives in `content.ts` (`TUNE`, costs, durations, event effects). The engine reads those values; it does not invent new ones.
-- A save-format change bumps `SAVE_VERSION`, migrates older payloads in `save.ts`, and adds a test that a previous envelope still loads. A bad checksum or a damaged payload is quarantined, not deleted and not applied.
+- A save-format change bumps `SAVE_VERSION`, migrates older payloads in `save.ts`, and adds a test that a previous envelope still loads. A bad checksum or a damaged payload is quarantined, not deleted and not applied. The notebook (opening and tips) lives on the save. Do not make it change rates, costs, or the clock.
+- Phone layout: at 390×844 and 412×915 the document must not scroll. Long lists scroll inside `.stage`. Keep tap targets at 44px and body copy at least 14px. Do not collapse the desktop three-column layout.
 - On startup, delete `birds-vs-everything-v3` and `birdGameSave`. Do not read them, import them, or show a notice about them.
 
 ## Off limits

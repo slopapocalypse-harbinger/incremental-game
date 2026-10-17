@@ -239,6 +239,7 @@ describe("saves", () => {
     const store = new MemoryStore();
     const now = 50_000_000;
     const played = tick(createInitialState(now - 30_000), 30);
+    played.notebook = { ...played.notebook, intro: "done" };
     saveGame(store, played, now);
     const loaded = loadGame(store, now + 10_000);
     expect(loaded.state.elapsed).toBeGreaterThan(30);

@@ -1,4 +1,4 @@
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 
 export type Act = 1 | 2 | 3 | 4 | 5;
 
@@ -59,6 +59,15 @@ export interface OfflineReport {
   eventsWaiting: number;
 }
 
+export interface Notebook {
+  /** Story intro still waiting, or finished. */
+  intro: "pending" | "done";
+  /** Tip ids already dismissed. */
+  seen: string[];
+  /** When true, no tips are shown. */
+  quiet: boolean;
+}
+
 export interface GameState {
   version: number;
   act: Act;
@@ -93,6 +102,7 @@ export interface GameState {
   doctrinesWon: DoctrineId[];
   bestTime: number | null;
   offlineReport: OfflineReport | null;
+  notebook: Notebook;
 }
 
 export interface Rates extends Resources {

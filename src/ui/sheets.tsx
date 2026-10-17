@@ -9,6 +9,7 @@ import {
   migrate,
 } from "../game/engine";
 import { formatAmount, formatBirds, formatDuration } from "../game/number";
+import { eventTip, replayIntro, skipAllTips } from "../game/guide";
 import { decodeSave, describeImport, encodeSave } from "../game/save";
 import type { GameState, ResourceId } from "../game/types";
 
@@ -22,8 +23,14 @@ export function EventSheet({
   const event = EVENTS.find((item) => item.id === game.pendingEvent);
   if (!event) return null;
   const waiting = game.eventQueue.length;
+  const intro = eventTip(game);
   return (
     <Sheet title={event.title} eyebrow={event.eyebrow} testId="event-sheet">
+      {intro ? (
+        <p className="tip inline" data-testid="event-tip">
+          <strong>{intro.title}.</strong> {intro.body}
+        </p>
+      ) : null}
       <p>{event.text}</p>
       <ul className="options">
         {event.options.map((option) => {
@@ -190,6 +197,31 @@ export function SettingsSheet({
           </button>
         </div>
       ) : null}
+
+      <h3>Opening</h3>
+      <p>The opening can be read again. Tips stay quiet once you skip them.</p>
+      <div className="card-actions">
+        <button
+          type="button"
+          className="btn ghost"
+          data-testid="replay-intro"
+          onClick={() => {
+            commit(replayIntro(game));
+            onClose();
+          }}
+        >
+          Replay the opening
+        </button>
+        <button
+          type="button"
+          className="btn ghost"
+          data-testid="skip-tips"
+          disabled={game.notebook.quiet}
+          onClick={() => commit(skipAllTips(game))}
+        >
+          {game.notebook.quiet ? "Tips are off" : "Skip all tips"}
+        </button>
+      </div>
 
       <h3>Leave the flight</h3>
       <p>Migration spends marks and starts a new flock. It does not erase the export you already copied.</p>
