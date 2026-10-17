@@ -366,6 +366,18 @@ export function calculateRates(state: GameState): Rates {
   return { seeds, twigs, knowledge, influence, starlight, population, upkeep };
 }
 
+/** Why the flock number is not moving. Null when young are actually arriving. */
+export function growthPause(state: GameState): string | null {
+  if (calculateRates(state).population >= 0.0005) return null;
+  if (state.act < 2) return "The flock grows once there is a roost to raise young in";
+  const raising = state.roles.broodkeepers > 0 || count(state, "eyrie") > 0;
+  if (!raising) return "Assign Broodkeepers to raise young";
+  if (state.flock >= getCapacity(state) - 0.05) return "At capacity";
+  const need = state.flock * 5;
+  const shown = Number.isInteger(need) ? formatAmount(need, 0) : formatAmount(need, 1);
+  return `Seed reserve too low: growth needs more than ${shown} seeds`;
+}
+
 export function roleYield(state: GameState, role: RoleId): string {
   const definition = ROLE_DEFS.find((item) => item.id === role);
   if (!definition) return "";

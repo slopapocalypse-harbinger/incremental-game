@@ -68,7 +68,7 @@ A locked tab, role, or later-act study is absent until it unlocks. The Now line 
 
 The player lands on the plan, not on a diagram. The opening is the only thing in front of that plan, and it can be skipped.
 
-- Six birds. Three foragers, three idle. Seeds tick. Twigs, knowledge, and the later resources are not shown yet.
+- Six birds. Three foragers, three idle. Seeds tick. Twigs, knowledge, and the later resources are not shown yet. The flock count does not tick until the roost: the store card says so, and it does not show a housing cap to fill. Housing stays on the Flock tab as birds housed. After the roost, a broodkeeper is a slow trickle, shown as one bird every few minutes when that is clearer than a fraction per second.
 - The objective is one sentence: store the first harvest. The only project is **Line a seed cache** (about 60 seeds, instant). Assigning the idle birds is the first decision, and it is worth roughly double the seed rate. A player who never opens the Flock tab still finishes the cache; they just wait longer.
 - The cache unlocks twigs and Weavers. The objective becomes the first nest. If no weaver is assigned, twigs do not move, and the card says so.
 - **Weave the first nest** is instant. It unlocks research and the field plans.

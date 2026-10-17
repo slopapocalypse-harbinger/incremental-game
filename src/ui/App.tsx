@@ -8,6 +8,7 @@ import {
   getObjective,
   getSeason,
   getStorage,
+  growthPause,
   isResourceUnlocked,
   pauseGame,
   resolveEvent,
@@ -25,7 +26,7 @@ import {
   visibleTabs,
   type TabId,
 } from "../game/guide";
-import { formatAmount, formatBirds, formatDuration, formatRate } from "../game/number";
+import { formatAmount, formatBirds, formatDuration, formatPopulationRate, formatRate } from "../game/number";
 import { sceneFromState } from "../game/scene";
 import type { GameState, ResourceId, RoleId } from "../game/types";
 import { projectRemark } from "../game/voice";
@@ -370,17 +371,21 @@ function ResourceChip({
   rates: ReturnType<typeof calculateRates>;
   onOpen: (id: ResourceId | "flock") => void;
 }) {
-  const value = id === "flock" ? game.flock : game.resources[id];
-  const rate = id === "flock" ? rates.population : rates[id];
-  const cap = id === "flock" ? capOfFlock(game) : capOf(game, id);
+  const flock = id === "flock";
+  const value = flock ? game.flock : game.resources[id];
+  const rate = flock ? rates.population : rates[id];
+  const cap = flock ? capOfFlock(game) : capOf(game, id);
   const ratio = cap > 0 ? Math.min(1, value / cap) : 0;
-  const capped = value >= cap - 0.05;
-  const label = id === "flock" ? "Flock" : id[0].toUpperCase() + id.slice(1);
-  const shown = id === "flock" ? formatBirds(value) : formatAmount(value, value < 100 ? 1 : 0);
+  const showCap = !flock || game.act >= 2;
+  const capped = showCap && value >= cap - 0.05;
+  const label = flock ? "Flock" : id[0].toUpperCase() + id.slice(1);
+  const shown = flock ? formatBirds(value) : formatAmount(value, value < 100 ? 1 : 0);
+  const pause = flock ? growthPause(game) : null;
+  const rateText = flock ? formatPopulationRate(rate) : formatRate(rate);
   return (
     <button
       type="button"
-      className={`chip${capped ? " capped" : ""}`}
+      className={`chip${capped ? " capped" : ""}${pause ? " has-note" : ""}`}
       data-testid={`resource-${id}`}
       onClick={() => onOpen(id)}
     >
@@ -393,15 +398,24 @@ function ResourceChip({
       </span>
       <span className="chip-value">
         <strong>{shown}</strong>
-        <small>
-          <span className="chip-rate">{formatRate(rate)}</span>
-          <span className="chip-inline-cap">cap {formatAmount(cap, 0)}</span>
-        </small>
+        {pause && !showCap ? null : (
+          <small>
+            {pause ? null : <span className="chip-rate">{rateText}</span>}
+            {showCap ? <span className="chip-inline-cap">cap {formatAmount(cap, 0)}</span> : null}
+          </small>
+        )}
       </span>
-      <span className="chip-cap">Cap {formatAmount(cap, 0)}</span>
-      <span className="meter thin" aria-hidden="true">
-        <i style={{ width: `${ratio * 100}%` }} />
-      </span>
+      {pause ? (
+        <span className="chip-note" data-testid="flock-growth">
+          {pause}
+        </span>
+      ) : null}
+      {showCap ? <span className="chip-cap">Cap {formatAmount(cap, 0)}</span> : null}
+      {showCap ? (
+        <span className="meter thin" aria-hidden="true">
+          <i style={{ width: `${ratio * 100}%` }} />
+        </span>
+      ) : null}
     </button>
   );
 }

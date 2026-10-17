@@ -7,16 +7,19 @@ import {
   canStart,
   chooseDoctrine,
   createInitialState,
+  getCapacity,
   getObjective,
   getSeason,
   getStorage,
+  growthPause,
   respecDoctrine,
   startProject,
   tick,
   timeToAfford,
   wallTime,
 } from "../src/game/engine";
-import { formatAmount } from "../src/game/number";
+import { formatAmount, formatPopulationRate } from "../src/game/number";
+import { roleArrival } from "../src/game/voice";
 import type { GameState } from "../src/game/types";
 
 
@@ -233,5 +236,49 @@ describe("playtest regressions", () => {
     );
     expect(launched.active?.birds).toBe(3);
     expect(launched.active?.duration).toBe(42);
+  });
+
+  it("says why the flock is not growing, and shows a slow broodkeeper as a wait", () => {
+    const roles = {
+      foragers: 3,
+      weavers: 0,
+      scouts: 0,
+      broodkeepers: 0,
+      scholars: 0,
+      envoys: 0,
+      navigators: 0,
+    };
+    expect(growthPause(createInitialState(0))).toBe(
+      "The flock grows once there is a roost to raise young in",
+    );
+
+    const housed = {
+      ...createInitialState(0),
+      act: 2 as const,
+      flags: ["seed-cache", "first-nest", "survey", "roost"],
+      counts: { nest: 2 },
+      flock: 10,
+      morale: 1,
+      resources: { seeds: 400, twigs: 40, knowledge: 0, influence: 0, starlight: 0 },
+      roles,
+    };
+    expect(growthPause(housed)).toBe("Assign Broodkeepers to raise young");
+
+    const keepers = { ...housed, roles: { ...roles, broodkeepers: 1 } };
+    expect(growthPause(keepers)).toBeNull();
+    expect(calculateRates(keepers).population).toBeCloseTo(TUNE.brood, 6);
+    expect(formatPopulationRate(TUNE.brood)).toBe("+1 bird every ~2.5m");
+    expect(formatPopulationRate(calculateRates(keepers).population)).toBe("+1 bird every ~2.5m");
+
+    const hungry = { ...keepers, resources: { ...keepers.resources, seeds: 40 } };
+    expect(growthPause(hungry)).toBe("Seed reserve too low: growth needs more than 50 seeds");
+
+    const full = { ...keepers, flock: getCapacity(keepers) };
+    expect(growthPause(full)).toBe("At capacity");
+
+    expect(formatPopulationRate(0.05)).toBe("+1 bird every ~20s");
+    expect(formatPopulationRate(0.2)).toBe("+0.20/s");
+    expect(formatPopulationRate(0)).toBe("+0/s");
+    expect(roleArrival("broodkeepers")).toMatch(/grow the flock/i);
   });
 });

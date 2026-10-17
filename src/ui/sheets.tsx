@@ -5,6 +5,7 @@ import {
   canChooseOption,
   capBreakdown,
   formatCosts,
+  growthPause,
   marksForRun,
   migrate,
 } from "../game/engine";
@@ -81,6 +82,7 @@ export function CapSheet({
 }) {
   const lines = capBreakdown(game, id);
   const flock = id === "flock";
+  const pause = flock ? growthPause(game) : null;
   const title = flock ? "Housing limit" : `${RESOURCE_LABEL[id]} cap`;
   const held = flock ? formatBirds(game.flock) : formatAmount(game.resources[id], 1);
   return (
@@ -88,6 +90,7 @@ export function CapSheet({
       {flock ? (
         <p>This is how many birds the branches can hold. Staffing is on the Flock tab.</p>
       ) : null}
+      {pause ? <p data-testid="growth-reason">{pause}</p> : null}
       <p className="stat">
         <strong>{held}</strong> {flock ? "housed" : "on hand"}
       </p>

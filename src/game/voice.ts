@@ -76,7 +76,7 @@ export function roleArrival(id: RoleId): string {
     case "scouts":
       return "Nell: Scouts. They bring more back.";
     case "broodkeepers":
-      return "Pip: Broodkeepers. More mouths, kept.";
+      return "Pip: Broodkeepers grow the flock.";
     case "scholars":
       return "Quill: Scholars. Write it down now.";
     case "envoys":
